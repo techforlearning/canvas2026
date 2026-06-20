@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ちゃんのすけの日常</title>
+    <!-- Tailwind CSS for high-fidelity UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            background-color: #fdf2f8; /* Soft pinkish pastel background */
+        }
+        canvas {
+            image-rendering: auto;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-hidden font-sans">
+
+    <!-- Header UI -->
+    <header class="bg-gradient-to-r from-pink-500 via-pink-400 to-yellow-400 p-3 shadow-lg border-b-4 border-pink-300 z-10 shrink-0">
+        <div class="max-w-4xl mx-auto flex justify-between items-center text-white">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl md:text-3xl">🌸🎒🐶🌟</span>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-black tracking-wider filter drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]">
+                        ちゃんのすけの日常
+                    </h1>
+                    <p class="text-[10px] md:text-xs text-pink-100 font-bold">みつば幼稚園をピンクのお洋服で元気いっぱいに走るゾ！</p>
+                </div>
+            </div>
+            <!-- Score Boxes -->
+            <div class="flex gap-2">
+                <div class="bg-white/20 backdrop-blur rounded-lg px-3 py-1 text-center min-w-[75px] md:min-w-[95px] border border-white/30">
+                    <p class="text-[9px] text-pink-100 font-bold uppercase leading-none">スコア</p>
+                    <p id="ui-score" class="text-base md:text-lg font-black leading-tight">0</p>
+                </div>
+                <div class="bg-white/20 backdrop-blur rounded-lg px-3 py-1 text-center min-w-[55px] md:min-w-[75px] border border-white/30">
+                    <p class="text-[9px] text-pink-100 font-bold uppercase leading-none">チョコビ</p>
+                    <p id="ui-chocobi" class="text-base md:text-lg font-black text-yellow-300 leading-tight">0</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Game Workspace -->
+    <main class="flex-1 flex flex-col items-center justify-center p-2 relative overflow-hidden">
+        
+        <!-- Instruction Board -->
+        <div id="tutorial-banner" class="absolute top-2 left-1/2 transform -translate-x-1/2 bg-white/95 border-2 border-pink-400 rounded-full py-1 px-4 text-xs font-bold text-pink-600 shadow-md z-10 pointer-events-none transition-opacity duration-500">
+            💻 PC: [スペースキー / ↑] でジャンプ！ | [↓] でしゃがむ
+        </div>
+
+        <!-- Canvas Game Container -->
+        <div id="game-container" class="w-full max-w-2xl aspect-[16/9] bg-sky-200 rounded-2xl border-4 border-white shadow-xl relative overflow-hidden">
+            <!-- Active Invincible Status Bar overlay -->
+            <div id="invincible-bar" class="hidden absolute top-3 left-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white text-[10px] md:text-xs font-black py-1 px-3 rounded-full border-2 border-white shadow animate-pulse z-10">
+                🐶 シロと一緒！スーパーむてきタイム！！
+            </div>
+            <!-- Game Canvas -->
+            <canvas id="game-canvas" class="w-full h-full block"></canvas>
+        </div>
+
+        <!-- Mobile Touch Controller -->
+        <div class="w-full max-w-md mx-auto grid grid-cols-2 gap-4 mt-2 px-2 shrink-0">
+            <button id="touch-jump" class="bg-gradient-to-b from-pink-400 to-pink-600 active:from-pink-600 active:to-pink-700 text-white font-extrabold py-3 md:py-4 px-6 rounded-2xl shadow-lg shadow-pink-500/30 transform active:scale-95 transition-all flex flex-col items-center justify-center border-b-4 border-pink-700">
+                <span class="text-xl md:text-2xl">▲</span>
+                <span class="text-xs md:text-sm tracking-widest mt-1">ジャンプ（2回おせるゾ）</span>
+            </button>
+            <button id="touch-crouch" class="bg-gradient-to-b from-purple-400 to-purple-600 active:from-purple-600 active:to-purple-700 text-white font-extrabold py-3 md:py-4 px-6 rounded-2xl shadow-lg shadow-purple-500/30 transform active:scale-95 transition-all flex flex-col items-center justify-center border-b-4 border-purple-700">
+                <span class="text-xl md:text-2xl">▼</span>
+                <span class="text-xs md:text-sm tracking-widest mt-1">しゃがむ</span>
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Start / GameOver Overlays inside Canvas space -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-20 p-4">
+        
+        <!-- Welcome Screen -->
+        <div id="screen-start" class="bg-white border-8 border-pink-400 rounded-3xl p-6 md:p-8 max-w-sm w-full text-center shadow-2xl transform transition-all">
+            <div class="inline-flex p-3 bg-pink-100 rounded-2xl mb-3 text-3xl">
+                👦🎒🌸🐶
+            </div>
+            <h2 class="text-2xl md:text-3xl font-black text-pink-600 mb-2 tracking-wider">ちゃんのすけの日常</h2>
+            <p class="text-gray-600 text-xs md:text-sm mb-6 leading-relaxed">
+                ピンクのお洋服にお着替えして、新しくなった**みつば幼稚園**を大冒険だゾ！<br>
+                お空の**シロ**を捕まえるとスーパーむてきモード！<br>
+                **2だんジャンプ**でピーマンを軽々飛び越えよう！
+            </p>
+            <button id="btn-start" class="w-full bg-gradient-to-r from-pink-500 to-yellow-400 hover:from-pink-600 hover:to-yellow-500 text-white font-black py-3 px-6 rounded-2xl shadow-lg text-lg transform hover:-translate-y-0.5 active:translate-y-0 transition-all border-b-4 border-pink-700">
+                ほほーい！はじめるゾ！
+            </button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="screen-gameover" class="hidden bg-white border-8 border-red-400 rounded-3xl p-6 md:p-8 max-w-sm w-full text-center shadow-2xl">
+            <div class="inline-flex p-3 bg-red-100 rounded-2xl mb-3 text-3xl">
+                🤢💔😭
+            </div>
+            <h2 class="text-2xl md:text-3xl font-black text-red-600 mb-2">あちゃ〜！</h2>
+            <p class="text-gray-600 text-xs md:text-sm mb-4">
+                ピーマンにぶつかっちゃったゾ...。
+            </p>
+            
+            <div class="bg-pink-50 border-2 border-pink-100 rounded-xl p-3 mb-6">
+                <p class="text-xs text-pink-600 font-bold">今回のけっか</p>
+                <div class="flex justify-around mt-1">
+                    <div>
+                        <p class="text-[10px] text-gray-400">スコア</p>
+                        <p id="go-score" class="text-xl font-black text-pink-500">0</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-gray-400">チョコビ</p>
+                        <p id="go-chocobi" class="text-xl font-black text-yellow-600">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <button id="btn-restart" class="w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-black py-3 px-6 rounded-2xl shadow-lg text-lg transform hover:-translate-y-0.5 active:translate-y-0 transition-all border-b-4 border-pink-800">
+                もういっかい挑戦するゾ！
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer Copyright -->
+    <footer class="text-center py-2 text-[10px] text-pink-800/60 font-semibold tracking-wider shrink-0">
+        ちゃんのすけの日常 ファンゲーム 2026 | Safe & Clean Play
+    </footer>
+
+    <script>
+        // --- WEB AUDIO API EFFECTS ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'jump') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(280, now);
+                osc.frequency.exponentialRampToValueAtTime(780, now + 0.2);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'double-jump') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(480, now);
+                osc.frequency.exponentialRampToValueAtTime(1000, now + 0.25);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (type === 'coin') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(900, now);
+                osc.frequency.setValueAtTime(1400, now + 0.08);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (type === 'powerup') {
+                const notes = [523, 659, 783, 1046];
+                notes.forEach((freq, index) => {
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.connect(g);
+                    g.connect(audioCtx.destination);
+                    o.frequency.setValueAtTime(freq, now + index * 0.07);
+                    g.gain.setValueAtTime(0.1, now + index * 0.07);
+                    g.gain.exponentialRampToValueAtTime(0.005, now + index * 0.07 + 0.15);
+                    o.start(now + index * 0.07);
+                    o.stop(now + index * 0.07 + 0.15);
+                });
+            } else if (type === 'hit') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.linearRampToValueAtTime(80, now + 0.25);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (type === 'crouch') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.linearRampToValueAtTime(160, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            }
+        }
+
+        // --- GAME PARAMETERS & INITIAL STATES ---
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let gameState = 'start';
+        let score = 0;
+        let chocobiCount = 0;
+        let gameSpeed = 5;
+        let frameCount = 0;
+
+        // Player: Chan-nosuke (ちゃんのすけ)
+        let shin = {
+            x: 90,
+            y: 0,
+            width: 60,
+            height: 86,
+            vy: 0,
+            gravity: 0.36,
+            jumpStrength: -11.0,
+            isJumping: false,
+            jumpCount: 0,
+            maxJumps: 2,
+            state: 'running',
+            crouchDuration: 0,
+            invincibleTimer: 0,
+            stretchX: 1,
+            stretchY: 1
+        };
+
+        let groundY = 0;
+
+        // Parallax Background offsets
+        let bgSkyOffset = 0;
+        let bgCloudOffset = 0;
+        let bgMountainOffset = 0;
+        let bgSchoolOffset = 0;
+        let bgFenceOffset = 0;
+
+        // Entities arrays
+        let obstacles = [];
+        let items = [];
+        let clouds = [];
+        let particles = [];
+        let popups = [];
+        let cherryBlossoms = [];
+
+        function initClouds() {
+            clouds = [];
+            for (let i = 0; i < 4; i++) {
+                clouds.push({
+                    x: Math.random() * canvas.width,
+                    y: 20 + Math.random() * 50,
+                    speed: 0.08 + Math.random() * 0.1,
+                    scale: 0.7 + Math.random() * 0.6
+                });
+            }
+        }
+
+        function initCherryBlossoms() {
+            cherryBlossoms = [];
+            for (let i = 0; i < 15; i++) {
+                cherryBlossoms.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: 4 + Math.random() * 5,
+                    speedX: -0.8 - Math.random() * 1.2,
+                    speedY: 0.5 + Math.random() * 0.8,
+                    rotation: Math.random() * Math.PI,
+                    rotSpeed: 0.01 + Math.random() * 0.02
+                });
+            }
+        }
+
+        function resizeCanvas() {
+            canvas.width = 800;
+            canvas.height = 450;
+            groundY = canvas.height - 70;
+            if (gameState === 'start' || gameState === 'gameover') {
+                renderMenuBackground();
+            }
+        }
+
+        function createSparkles(x, y, count = 8, color = '#facc15') {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    size: 3 + Math.random() * 5,
+                    color: color,
+                    alpha: 1,
+                    decay: 0.02 + Math.random() * 0.02
+                });
+            }
+        }
+
+        function triggerScorePopup(x, y, text, color = '#f43f5e') {
+            popups.push({
+                x: x,
+                y: y,
+                text: text,
+                color: color,
+                alpha: 1,
+                vy: -1.5,
+                timer: 45
+            });
+        }
+
+        // --- REAL CHAN-NOSUKO CANVAS DRAWING (PINK CLOTHES & ULTRA SMOOTH) ---
+        function drawChanNosuke(ctx, x, y, width, height, state) {
+            ctx.save();
+            ctx.translate(x + width / 2, y + height);
+            ctx.scale(shin.stretchX, shin.stretchY);
+            ctx.translate(-width / 2, -height);
+
+            let currentHeight = height;
+            let currentWidth = width;
+            let offsetHeight = 0;
+
+            let armCycle = Math.sin(Date.now() * 0.018); // Defined at the top of the function to prevent ReferenceErrors
+
+            let bobY = 0;
+            let waddleAngle = 0;
+            if (state === 'running') {
+                bobY = armCycle * 4;
+                waddleAngle = armCycle * 0.08;
+                ctx.translate(currentWidth / 2, currentHeight / 2);
+                ctx.rotate(waddleAngle);
+                ctx.translate(-currentWidth / 2, -currentHeight / 2 + bobY);
+            } else if (state === 'jumping') {
+                let jumpTilt = Math.max(-0.15, Math.min(0.15, shin.vy * 0.02));
+                ctx.translate(currentWidth / 2, currentHeight / 2);
+                ctx.rotate(jumpTilt);
+                ctx.translate(-currentWidth / 2, -currentHeight / 2);
+            }
+
+            if (state === 'crouching') {
+                currentHeight = height * 0.65;
+                offsetHeight = height * 0.35;
+                ctx.translate(0, offsetHeight);
+            }
+
+            if (shin.invincibleTimer > 0) {
+                ctx.shadowColor = `hsl(${(Date.now() * 0.5) % 360}, 100%, 70%)`;
+                ctx.shadowBlur = 20;
+            }
+
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2.8;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            let legCycle = armCycle;
+
+            // 1. FEET AND YELLOW SHOES
+            if (state !== 'crouching') {
+                // Left Foot
+                let leftLegY = state === 'running' ? Math.max(0, legCycle * 5.5) : 0;
+                let leftLegX = state === 'running' ? legCycle * 4 : 0;
+                
+                ctx.fillStyle = '#fca5a5'; // Skin
+                ctx.fillRect(currentWidth * 0.28 + leftLegX, currentHeight - 20 - leftLegY, 7, 10);
+                ctx.strokeRect(currentWidth * 0.28 + leftLegX, currentHeight - 20 - leftLegY, 7, 10);
+                
+                ctx.fillStyle = '#ffffff'; // White Sock
+                ctx.fillRect(currentWidth * 0.28 + leftLegX, currentHeight - 12 - leftLegY, 7, 6);
+                ctx.strokeRect(currentWidth * 0.28 + leftLegX, currentHeight - 12 - leftLegY, 7, 6);
+
+                ctx.fillStyle = '#facc15'; // Yellow shoe
+                ctx.beginPath();
+                ctx.ellipse(currentWidth * 0.3 + leftLegX, currentHeight - 5 - leftLegY, 10, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Right Foot
+                let rightLegY = state === 'running' ? Math.max(0, -legCycle * 5.5) : 0;
+                let rightLegX = state === 'running' ? -legCycle * 4 : 0;
+
+                ctx.fillStyle = '#fca5a5';
+                ctx.fillRect(currentWidth * 0.56 + rightLegX, currentHeight - 20 - rightLegY, 7, 10);
+                ctx.strokeRect(currentWidth * 0.56 + rightLegX, currentHeight - 20 - rightLegY, 7, 10);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(currentWidth * 0.56 + rightLegX, currentHeight - 12 - rightLegY, 7, 6);
+                ctx.strokeRect(currentWidth * 0.56 + rightLegX, currentHeight - 12 - rightLegY, 7, 6);
+
+                ctx.fillStyle = '#facc15';
+                ctx.beginPath();
+                ctx.ellipse(currentWidth * 0.58 + rightLegX, currentHeight - 5 - rightLegY, 10, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            // 2. CHUBBY PANTS
+            ctx.fillStyle = '#c084fc'; // Cute pastel purple pants
+            if (state === 'crouching') {
+                ctx.beginPath();
+                ctx.arc(currentWidth * 0.24, currentHeight - 20, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillRect(currentWidth * 0.2, currentHeight - 24, currentWidth * 0.55, 14);
+                ctx.strokeRect(currentWidth * 0.2, currentHeight - 24, currentWidth * 0.55, 14);
+            } else {
+                ctx.beginPath();
+                ctx.arc(currentWidth * 0.26, currentHeight - 28, 9, Math.PI * 0.5, Math.PI * 1.5);
+                ctx.lineTo(currentWidth * 0.65, currentHeight - 37);
+                ctx.quadraticCurveTo(currentWidth * 0.68, currentHeight - 28, currentWidth * 0.65, currentHeight - 20);
+                ctx.lineTo(currentWidth * 0.26, currentHeight - 19);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            // 3. PINK CLOTHES / CLOTHING
+            ctx.fillStyle = '#f472b6'; // Beautiful Sakura Pink
+            ctx.beginPath();
+            if (state === 'crouching') {
+                ctx.moveTo(currentWidth * 0.15, currentHeight - 42);
+                ctx.quadraticCurveTo(currentWidth * 0.1, currentHeight - 32, currentWidth * 0.12, currentHeight - 24);
+                ctx.lineTo(currentWidth * 0.78, currentHeight - 24);
+                ctx.quadraticCurveTo(currentWidth * 0.82, currentHeight - 32, currentWidth * 0.74, currentHeight - 42);
+            } else {
+                ctx.moveTo(currentWidth * 0.18, currentHeight - 58);
+                ctx.quadraticCurveTo(currentWidth * 0.10, currentHeight - 44, currentWidth * 0.16, currentHeight - 32);
+                ctx.lineTo(currentWidth * 0.72, currentHeight - 32);
+                ctx.quadraticCurveTo(currentWidth * 0.78, currentHeight - 46, currentWidth * 0.70, currentHeight - 58);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Sleeves
+            ctx.fillStyle = '#f472b6';
+            ctx.beginPath();
+            ctx.arc(currentWidth * 0.18, currentHeight - 50, 4.5, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 4. ARMS
+            ctx.fillStyle = '#fca5a5';
+            if (state === 'jumping') {
+                ctx.beginPath();
+                ctx.ellipse(currentWidth * 0.08, currentHeight - 64, 5, 12, -0.3, 0, Math.PI*2);
+                ctx.ellipse(currentWidth * 0.82, currentHeight - 62, 5, 12, 0.3, 0, Math.PI*2);
+                ctx.fill();
+                ctx.stroke();
+            } else if (state === 'crouching') {
+                ctx.beginPath();
+                ctx.ellipse(currentWidth * 0.74, currentHeight - 30, 11, 5, 0.2, 0, Math.PI*2);
+                ctx.fill();
+                ctx.stroke();
+            } else {
+                ctx.save();
+                ctx.beginPath();
+                ctx.ellipse(currentWidth * 0.08, currentHeight - 46 + armCycle * 5, 5, 10, armCycle * 0.3, 0, Math.PI*2);
+                ctx.ellipse(currentWidth * 0.80, currentHeight - 44 - armCycle * 5, 5, 10, -armCycle * 0.3, 0, Math.PI*2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // 5. POTATO HEAD PROFILE
+            ctx.fillStyle = '#fca5a5';
+            ctx.beginPath();
+            ctx.moveTo(currentWidth * 0.28, currentHeight - 55);
+            ctx.quadraticCurveTo(currentWidth * 0.22, currentHeight - 78, currentWidth * 0.42, currentHeight - 80);
+            ctx.quadraticCurveTo(currentWidth * 0.58, currentHeight - 81, currentWidth * 0.68, currentHeight - 75);
+            ctx.quadraticCurveTo(currentWidth * 0.78, currentHeight - 69, currentWidth * 0.81, currentHeight - 62);
+            ctx.bezierCurveTo(
+                currentWidth * 1.05, currentHeight - 60,
+                currentWidth * 1.02, currentHeight - 44,
+                currentWidth * 0.74, currentHeight - 47
+            );
+            ctx.quadraticCurveTo(currentWidth * 0.52, currentHeight - 49, currentWidth * 0.32, currentHeight - 53);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // 6. HAIR
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.moveTo(currentWidth * 0.28, currentHeight - 55);
+            ctx.quadraticCurveTo(currentWidth * 0.22, currentHeight - 78, currentWidth * 0.42, currentHeight - 80);
+            ctx.quadraticCurveTo(currentWidth * 0.58, currentHeight - 81, currentWidth * 0.68, currentHeight - 75);
+            ctx.quadraticCurveTo(currentWidth * 0.60, currentHeight - 66, currentWidth * 0.44, Math.max(0, currentHeight - 63));
+            ctx.quadraticCurveTo(currentWidth * 0.34, currentHeight - 58, currentWidth * 0.28, currentHeight - 55);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // 7. EYES
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.ellipse(currentWidth * 0.55, currentHeight - 66, 5.2, 7.8, 0.05, 0, Math.PI * 2);
+            ctx.ellipse(currentWidth * 0.74, currentHeight - 63, 5.2, 7.8, -0.05, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(currentWidth * 0.57, currentHeight - 65, 2.7, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(currentWidth * 0.71, currentHeight - 62, 2.7, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(currentWidth * 0.58, currentHeight - 66.8, 1.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(currentWidth * 0.73, currentHeight - 63.8, 1.4, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(currentWidth * 0.55, currentHeight - 63.2, 0.8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(currentWidth * 0.70, currentHeight - 60.2, 0.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 8. EYEBROWS
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.ellipse(currentWidth * 0.51, currentHeight - 76, 7.2, 3.0, -0.15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.ellipse(currentWidth * 0.72, currentHeight - 73, 7.2, 3.0, -0.05, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 9. ROSY CHEEKS
+            ctx.fillStyle = '#ff8fa3';
+            ctx.beginPath();
+            ctx.ellipse(currentWidth * 0.83, currentHeight - 52, 5.5, 3.8, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(currentWidth * 0.85, currentHeight - 53, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 10. MOUTH
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2.2;
+            ctx.fillStyle = '#fda4af';
+            ctx.beginPath();
+            ctx.arc(currentWidth * 0.64, currentHeight - 52, 3.8, 0, Math.PI);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // --- ENEMY / ITEM DRAWINGS ---
+        function drawShiro(ctx, x, y, size) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+
+            let wag = Math.sin(Date.now() * 0.02) * 3;
+            ctx.beginPath();
+            ctx.arc(4, size - 8 + wag, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(size * 0.35, size * 0.62, 7, 0, Math.PI * 2);
+            ctx.arc(size * 0.48, size * 0.65, 8, 0, Math.PI * 2);
+            ctx.arc(size * 0.45, size * 0.52, 7, 0, Math.PI * 2);
+            ctx.arc(size * 0.32, size * 0.50, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(size * 0.7, size * 0.42, 9, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.ellipse(size * 0.58, size * 0.34, 3.5, 6, 0.4, 0, Math.PI * 2);
+            ctx.ellipse(size * 0.82, size * 0.34, 3.5, 6, -0.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(size * 0.68, size * 0.42, 1.5, Math.PI, 0); ctx.stroke();
+            ctx.beginPath(); ctx.arc(size * 0.78, size * 0.42, 1.5, Math.PI, 0); ctx.stroke();
+            ctx.fillStyle = '#000000';
+            ctx.beginPath(); ctx.arc(size * 0.73, size * 0.47, 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+
+        function drawGreenPepper(ctx, x, y, width, height) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.fillStyle = '#10b981';
+            ctx.strokeStyle = '#047857';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(width * 0.35, height * 0.6, width * 0.3, 0, Math.PI * 2);
+            ctx.arc(width * 0.65, height * 0.6, width * 0.3, 0, Math.PI * 2);
+            ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(width * 0.5, height * 0.45, width * 0.28, 0, Math.PI * 2);
+            ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#047857';
+            ctx.fillRect(width * 0.45, height * 0.1, width * 0.1, height * 0.2);
+            ctx.strokeRect(width * 0.45, height * 0.1, width * 0.1, height * 0.2);
+            ctx.restore();
+        }
+
+        function drawChocobiStar(ctx, x, y, size) {
+            ctx.save();
+            ctx.translate(x, y);
+            let rotation = (Date.now() * 0.002) % (Math.PI * 2);
+            ctx.translate(size / 2, size / 2);
+            ctx.rotate(rotation);
+            ctx.fillStyle = '#facc15';
+            ctx.strokeStyle = '#ec4899'; // Pink outlined chocobi star
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * (size / 2), -Math.sin((18 + i * 72) * Math.PI / 180) * (size / 2));
+                ctx.lineTo(Math.cos((54 + i * 72) * Math.PI / 180) * (size / 4), -Math.sin((54 + i * 72) * Math.PI / 180) * (size / 4));
+            }
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.restore();
+        }
+
+        // --- MITSUBA KINDERGARTEN PARALLAX BACKGROUNDS (みつば幼稚園) ---
+        function drawParallaxMountains(offset) {
+            ctx.save();
+            ctx.fillStyle = '#fef08a'; // Pastel Yellow Hills
+            ctx.strokeStyle = '#fef08a';
+            ctx.beginPath();
+            let startX = -(offset % 300);
+            ctx.moveTo(startX, groundY);
+            for (let x = startX; x < canvas.width + 300; x += 150) {
+                ctx.quadraticCurveTo(x + 75, groundY - 60, x + 150, groundY);
+            }
+            ctx.lineTo(canvas.width, groundY);
+            ctx.closePath(); ctx.fill();
+            ctx.restore();
+        }
+
+        // Mid background: Mitsuba Kindergarten Building (みつば幼稚園)
+        function drawParallaxSchool(offset) {
+            ctx.save();
+            let startX = -(offset % 600);
+            let schoolY = groundY - 110;
+
+            for (let i = 0; i < 3; i++) {
+                let x = startX + i * 600;
+
+                // Pretty background round trees
+                ctx.fillStyle = '#a7f3d0';
+                ctx.beginPath();
+                ctx.arc(x + 30, schoolY + 20, 35, 0, Math.PI * 2);
+                ctx.arc(x + 290, schoolY + 30, 40, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Mitsuba Kindergarten (Cream/Yellowish walls with green aesthetic)
+                ctx.fillStyle = '#fef9c3'; 
+                ctx.strokeStyle = '#ca8a04';
+                ctx.lineWidth = 2.5;
+                ctx.fillRect(x + 50, schoolY, 220, 110);
+                ctx.strokeRect(x + 50, schoolY, 220, 110);
+
+                // Mitsuba Forest-green Roof
+                ctx.fillStyle = '#10b981';
+                ctx.beginPath();
+                ctx.moveTo(x + 35, schoolY);
+                ctx.lineTo(x + 160, schoolY - 35);
+                ctx.lineTo(x + 285, schoolY);
+                ctx.closePath(); ctx.fill(); ctx.stroke();
+
+                // MITSUBA SIGNBOARD
+                ctx.fillStyle = '#a7f3d0';
+                ctx.fillRect(x + 100, schoolY + 20, 120, 32);
+                ctx.strokeRect(x + 100, schoolY + 20, 120, 32);
+                
+                // clover icon (みつばマーク)
+                ctx.fillStyle = '#047857';
+                ctx.beginPath();
+                ctx.arc(x + 112, schoolY + 31, 3, 0, Math.PI*2);
+                ctx.arc(x + 118, schoolY + 31, 3, 0, Math.PI*2);
+                ctx.arc(x + 115, schoolY + 26, 3, 0, Math.PI*2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ea580c';
+                ctx.font = 'bold 12px "Comic Sans MS", sans-serif';
+                ctx.textBaseline = 'middle';
+                ctx.fillText("みつば幼稚園", x + 130, schoolY + 36);
+
+                // Cute windows
+                ctx.fillStyle = '#e0f2fe';
+                ctx.fillRect(x + 75, schoolY + 65, 35, 30);
+                ctx.strokeRect(x + 75, schoolY + 65, 35, 30);
+                ctx.fillRect(x + 210, schoolY + 65, 35, 30);
+                ctx.strokeRect(x + 210, schoolY + 65, 35, 30);
+
+                // Glass frame cross lines
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x + 92.5, schoolY + 65); ctx.lineTo(x + 92.5, schoolY + 95);
+                ctx.moveTo(x + 75, schoolY + 80); ctx.lineTo(x + 110, schoolY + 80);
+                ctx.moveTo(x + 227.5, schoolY + 65); ctx.lineTo(x + 227.5, schoolY + 95);
+                ctx.moveTo(x + 210, schoolY + 80); ctx.lineTo(x + 245, schoolY + 80);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        // Near fence
+        function drawParallaxFence(offset) {
+            ctx.save();
+            ctx.fillStyle = '#fbcfe8'; // Pretty pink wooden fence for school yard
+            ctx.strokeStyle = '#db2777';
+            ctx.lineWidth = 1.5;
+
+            let startX = -(offset % 40);
+            for (let x = startX; x < canvas.width + 40; x += 40) {
+                // Post
+                ctx.fillRect(x, groundY - 45, 15, 45);
+                ctx.strokeRect(x, groundY - 45, 15, 45);
+                
+                // Pointy top
+                ctx.beginPath();
+                ctx.moveTo(x, groundY - 45);
+                ctx.lineTo(x + 7.5, groundY - 53);
+                ctx.lineTo(x + 15, groundY - 45);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+            ctx.fillStyle = '#db2777';
+            ctx.fillRect(0, groundY - 34, canvas.width, 6);
+            ctx.restore();
+        }
+
+        function renderMenuBackground() {
+            let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGrad.addColorStop(0, '#fbcfe8'); // Pinkish sky tone
+            skyGrad.addColorStop(0.7, '#fef08a');
+            skyGrad.addColorStop(1, '#e0f2fe');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawParallaxMountains(0);
+            drawParallaxSchool(0);
+            drawParallaxFence(0);
+
+            ctx.fillStyle = '#fdf2f8';
+            ctx.fillRect(0, groundY, canvas.width, 10);
+            ctx.fillStyle = '#f472b6'; // Pink ground track base
+            ctx.fillRect(0, groundY + 10, canvas.width, canvas.height - groundY - 10);
+
+            drawChanNosuke(ctx, 120, groundY - shin.height, shin.width, shin.height, 'running');
+        }
+
+        // --- GAME PLAY LOGIC ---
+        function startGame() {
+            gameState = 'playing';
+            score = 0; chocobiCount = 0; gameSpeed = 6; frameCount = 0;
+            obstacles = []; items = []; particles = []; popups = [];
+            bgSkyOffset = 0; bgCloudOffset = 0; bgMountainOffset = 0; bgSchoolOffset = 0; bgFenceOffset = 0;
+
+            shin.y = groundY - shin.height;
+            shin.vy = 0; shin.isJumping = false; shin.jumpCount = 0;
+            shin.state = 'running'; shin.invincibleTimer = 0;
+            shin.stretchX = 1; shin.stretchY = 1;
+
+            initClouds(); initCherryBlossoms(); updateScoreUI();
+            document.getElementById('modal-overlay').classList.add('hidden');
+            document.getElementById('invincible-bar').classList.add('hidden');
+        }
+
+        function triggerGameOver() {
+            gameState = 'gameover';
+            playSound('hit');
+            document.getElementById('go-score').innerText = score;
+            document.getElementById('go-chocobi').innerText = chocobiCount;
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('screen-start').classList.add('hidden');
+            document.getElementById('screen-gameover').classList.remove('hidden');
+        }
+
+        function updateScoreUI() {
+            document.getElementById('ui-score').innerText = score;
+            document.getElementById('ui-chocobi').innerText = chocobiCount;
+        }
+
+        function spawnObstaclesAndItems() {
+            if (frameCount % 180 === 0) {
+                clouds.push({ x: canvas.width, y: 20 + Math.random() * 50, speed: 0.15 + Math.random() * 0.25, scale: 0.6 + Math.random() * 0.6 });
+            }
+            if (frameCount % 110 === 0) {
+                obstacles.push({ type: 'pepper', x: canvas.width, y: groundY - 32, width: 32, height: 32 });
+            }
+            if (frameCount % 140 === 0) {
+                items.push({ type: 'chocobi', x: canvas.width, y: groundY - 50 - Math.random() * 110, size: 24 });
+            }
+            if (frameCount % 480 === 0) {
+                items.push({ type: 'shiro', x: canvas.width, y: groundY - 130 - Math.random() * 40, size: 32 });
+            }
+        }
+
+        function update() {
+            if (gameState !== 'playing') return;
+            frameCount++;
+            if (frameCount % 500 === 0) gameSpeed += 0.5;
+            if (frameCount % 10 === 0) { score += 1; updateScoreUI(); }
+
+            bgCloudOffset += gameSpeed * 0.1;
+            bgMountainOffset += gameSpeed * 0.15;
+            bgSchoolOffset += gameSpeed * 0.38;
+            bgFenceOffset += gameSpeed;
+
+            cherryBlossoms.forEach(blossom => {
+                blossom.x += blossom.speedX - (gameSpeed * 0.2);
+                blossom.y += blossom.speedY;
+                if (blossom.x < -20) { blossom.x = canvas.width + 20; blossom.y = Math.random() * (canvas.height - 100); }
+            });
+
+            if (shin.invincibleTimer > 0) {
+                shin.invincibleTimer--;
+                if (shin.invincibleTimer === 0) document.getElementById('invincible-bar').classList.add('hidden');
+                if (frameCount % 4 === 0) createSparkles(shin.x + 10, shin.y + shin.height / 2, 2, '#ec4899');
+            }
+
+            // PHYSICS
+            if (shin.isJumping) {
+                shin.vy += shin.gravity;
+                shin.y += shin.vy;
+                if (shin.vy < 0) { shin.stretchX = 0.92; shin.stretchY = 1.08; } 
+                else { shin.stretchX = 1.04; shin.stretchY = 0.96; }
+
+                if (shin.y >= groundY - shin.height) {
+                    shin.y = groundY - shin.height; shin.vy = 0; shin.isJumping = false; shin.jumpCount = 0;
+                    if (shin.state !== 'crouching') shin.state = 'running';
+                    shin.stretchX = 1.2; shin.stretchY = 0.8;
+                }
+            } else {
+                shin.stretchX += (1 - shin.stretchX) * 0.12;
+                shin.stretchY += (1 - shin.stretchY) * 0.12;
+            }
+
+            if (shin.state === 'crouching') {
+                shin.crouchDuration--;
+                if (shin.crouchDuration <= 0 && !shin.isJumping) shin.state = 'running';
+            }
+
+            clouds.forEach(cloud => cloud.x -= cloud.speed + (gameSpeed * 0.05));
+            obstacles.forEach(obs => obs.x -= gameSpeed);
+
+            // Collisions
+            obstacles.forEach((obs, index) => {
+                let sBox = {
+                    left: shin.x + 12, right: shin.x + shin.width - 12,
+                    top: shin.state === 'crouching' ? shin.y + (shin.height * 0.48) : shin.y + 10,
+                    bottom: shin.y + shin.height
+                };
+                let oBox = { left: obs.x + 4, right: obs.x + obs.width - 4, top: obs.y + 4, bottom: obs.y + obs.height };
+
+                if (sBox.right > oBox.left && sBox.left < oBox.right && sBox.bottom > oBox.top && sBox.top < oBox.bottom) {
+                    if (shin.invincibleTimer > 0) {
+                        playSound('hit');
+                        createSparkles(obs.x + 15, obs.y + 15, 12, '#ec4899');
+                        triggerScorePopup(obs.x, obs.y - 10, "みつばアタック！+100", '#f472b6');
+                        score += 100; updateScoreUI(); obstacles.splice(index, 1);
+                    } else {
+                        triggerGameOver();
+                    }
+                }
+            });
+            obstacles = obstacles.filter(obs => obs.x > -50);
+
+            items.forEach((item, idx) => {
+                item.x -= gameSpeed;
+                let shinCenterX = shin.x + shin.width / 2;
+                let shinCenterY = shin.state === 'crouching' ? shin.y + (shin.height * 0.75) : shin.y + (shin.height / 2);
+                let dist = Math.hypot(shinCenterX - (item.x + item.size / 2), shinCenterY - (item.y + item.size / 2));
+
+                if (dist < 38) {
+                    if (item.type === 'chocobi') {
+                        playSound('coin'); chocobiCount++; score += 50;
+                        triggerScorePopup(item.x, item.y, "チョコビ！+50", '#f472b6');
+                        createSparkles(item.x, item.y, 8, '#facc15'); updateScoreUI();
+                    } else if (item.type === 'shiro') {
+                        playSound('powerup'); shin.invincibleTimer = 300;
+                        document.getElementById('invincible-bar').classList.remove('hidden');
+                        triggerScorePopup(item.x, item.y - 15, "むてきモードだゾ！", '#db2777');
+                        createSparkles(item.x, item.y, 25, '#f472b6');
+                    }
+                    items.splice(idx, 1);
+                }
+            });
+            items = items.filter(item => item.x > -50);
+
+            particles.forEach((p, idx) => { p.x += p.vx; p.y += p.vy; p.alpha -= p.decay; if (p.alpha <= 0) particles.splice(idx, 1); });
+            popups.forEach((pop, idx) => { pop.y += pop.vy; pop.timer--; if (pop.timer <= 0) popups.splice(idx, 1); });
+
+            spawnObstaclesAndItems();
+        }
+
+        // --- RENDER ---
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Sky Gradient (パステルピンク〜ブルーの綺麗な空)
+            let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGrad.addColorStop(0, '#fbcfe8');
+            skyGrad.addColorStop(0.6, '#fef08a');
+            skyGrad.addColorStop(1, '#e0f2fe');
+            ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Sun
+            ctx.fillStyle = '#ec4899'; ctx.beginPath(); ctx.arc(canvas.width - 80, 50, 18, 0, Math.PI * 2); ctx.fill();
+
+            // Clouds
+            ctx.fillStyle = '#ffffff';
+            clouds.forEach(cloud => {
+                ctx.save(); ctx.globalAlpha = 0.85; ctx.beginPath();
+                let cloudX = cloud.x - (bgCloudOffset * cloud.speed * 0.4);
+                ctx.arc(cloudX, cloud.y, 16 * cloud.scale, 0, Math.PI * 2);
+                ctx.arc(cloudX + 12 * cloud.scale, cloud.y - 8 * cloud.scale, 16 * cloud.scale, 0, Math.PI * 2);
+                ctx.arc(cloudX + 24 * cloud.scale, cloud.y, 16 * cloud.scale, 0, Math.PI * 2);
+                ctx.fill(); ctx.restore();
+            });
+
+            drawParallaxMountains(bgMountainOffset);
+            drawParallaxSchool(bgSchoolOffset);
+
+            // Background Cherry Blossoms
+            ctx.fillStyle = '#fbcfe8';
+            cherryBlossoms.forEach(blossom => {
+                ctx.save(); ctx.translate(blossom.x, blossom.y); ctx.rotate(blossom.rotation);
+                ctx.beginPath(); ctx.ellipse(0, 0, blossom.size * 1.5, blossom.size, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+            });
+
+            drawParallaxFence(bgFenceOffset);
+
+            // Ground base
+            ctx.fillStyle = '#fdf2f8'; ctx.fillRect(0, groundY, canvas.width, 10);
+            ctx.fillStyle = '#f472b6'; ctx.fillRect(0, groundY + 10, canvas.width, canvas.height - groundY - 10);
+
+            // Grass
+            ctx.fillStyle = '#f43f5e';
+            for (let i = 0; i < 6; i++) {
+                let bushX = ((canvas.width / 5) * i) - (bgFenceOffset % (canvas.width / 5));
+                ctx.beginPath(); ctx.arc(bushX, groundY, 8, Math.PI, 0); ctx.arc(bushX + 10, groundY, 12, Math.PI, 0); ctx.fill();
+            }
+
+            items.forEach(item => {
+                if (item.type === 'chocobi') drawChocobiStar(ctx, item.x, item.y, item.size);
+                else if (item.type === 'shiro') drawShiro(ctx, item.x, item.y, item.size);
+            });
+
+            obstacles.forEach(obs => { if (obs.type === 'pepper') drawGreenPepper(ctx, obs.x, obs.y, obs.width, obs.height); });
+
+            // Corrected function name call here
+            drawChanNosuke(ctx, shin.x, shin.y, shin.width, shin.height, shin.state);
+
+            particles.forEach(p => {
+                ctx.save(); ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+            });
+
+            popups.forEach(pop => {
+                ctx.save(); ctx.fillStyle = pop.color; ctx.font = 'bold 14px sans-serif';
+                ctx.fillText(pop.text, pop.x, pop.y); ctx.restore();
+            });
+        }
+
+        // --- CONTROLS ---
+        function handleJump() {
+            if (gameState !== 'playing') return;
+            if (shin.jumpCount < shin.maxJumps) {
+                if (shin.jumpCount === 0) {
+                    playSound('jump'); createSparkles(shin.x + shin.width/2, shin.y + shin.height, 8, '#ffffff');
+                    shin.stretchX = 0.85; shin.stretchY = 1.25;
+                } else {
+                    playSound('double-jump'); createSparkles(shin.x + shin.width/2, shin.y + shin.height, 12, '#f472b6');
+                    shin.stretchX = 1.15; shin.stretchY = 0.85;
+                }
+                shin.vy = shin.jumpStrength; shin.isJumping = true; shin.jumpCount++; shin.state = 'jumping';
+            }
+        }
+
+        function handleCrouch() {
+            if (gameState !== 'playing') return;
+            if (!shin.isJumping) {
+                playSound('crouch'); shin.state = 'crouching'; shin.crouchDuration = 45;
+                shin.stretchX = 1.25; shin.stretchY = 0.75;
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); handleJump(); }
+            if (e.code === 'ArrowDown') { e.preventDefault(); handleCrouch(); }
+        });
+
+        document.getElementById('touch-jump').addEventListener('pointerdown', (e) => { e.preventDefault(); handleJump(); });
+        document.getElementById('touch-crouch').addEventListener('pointerdown', (e) => { e.preventDefault(); handleCrouch(); });
+
+        function gameLoop() {
+            update();
+            if (gameState === 'playing') draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.getElementById('btn-start').addEventListener('click', () => { startGame(); });
+        document.getElementById('btn-restart').addEventListener('click', () => { startGame(); });
+
+        window.addEventListener('resize', resizeCanvas);
+        window.onload = function() { resizeCanvas(); renderMenuBackground(); gameLoop(); };
+    </script>
+</body>
+</html>

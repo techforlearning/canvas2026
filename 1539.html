@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ネオン・ブロック・コネクト</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            touch-action: none; /* ズーム・画面引っ張りを防止 */
+            background-color: #0b0f19;
+        }
+        #gameCanvas {
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.15);
+            image-rendering: auto;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-between min-h-screen text-white font-sans p-2 overflow-hidden select-none">
+
+    <!-- ヘッダー / ステータスエリア -->
+    <header class="w-full max-w-lg flex items-center justify-between px-4 py-3 bg-slate-900/90 rounded-2xl border border-slate-800 backdrop-blur">
+        <div class="flex flex-col">
+            <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">SCORE</span>
+            <span id="scoreDisplay" class="font-mono text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">00000</span>
+        </div>
+        
+        <!-- タイムゲージ -->
+        <div class="flex-grow mx-4">
+            <div class="flex justify-between text-xs text-slate-400 mb-1 font-bold">
+                <span>TIME LIMIT</span>
+                <span id="timeText" class="font-mono">60s</span>
+            </div>
+            <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-[2px]">
+                <div id="timeBar" class="h-full bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 rounded-full transition-all duration-100" style="width: 100%;"></div>
+            </div>
+        </div>
+
+        <div class="flex flex-col items-end">
+            <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">HI-SCORE</span>
+            <span id="hiScoreDisplay" class="font-mono text-lg text-slate-300 font-bold">00000</span>
+        </div>
+    </header>
+
+    <!-- メインゲームエリア -->
+    <main class="relative w-full max-w-lg my-2 flex-grow flex items-center justify-center">
+        <!-- ゲームキャンバス -->
+        <canvas id="gameCanvas" class="bg-slate-950 rounded-2xl max-w-full max-h-full object-contain border border-slate-800"></canvas>
+
+        <!-- スタート / リザルト画面などのオーバーレイ -->
+        <div id="overlay" class="absolute inset-0 bg-slate-950/95 rounded-2xl flex flex-col items-center justify-center p-6 text-center z-10">
+            
+            <!-- スタート画面 -->
+            <div id="startScreen" class="space-y-6 max-w-xs">
+                <h1 class="text-4xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 uppercase drop-shadow-[0_0_15px_rgba(236,72,153,0.5)] animate-bounce">
+                    NEON CONNECT
+                </h1>
+                <p class="text-slate-400 text-sm">
+                    おなじ動物のネオンブロックをなぞって繋げよう！指を離すと一気に大爆発！
+                </p>
+                <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 text-left text-xs space-y-2 text-slate-300">
+                    <p class="flex items-center"><i class="fa-solid fa-circle-nodes text-pink-500 mr-2 text-base"></i><span><strong>3匹以上繋げる:</strong> 縦・横・斜めにおなじ種類の動物をなぞって連結！</span></p>
+                    <p class="flex items-center"><i class="fa-solid fa-hourglass-half text-purple-400 mr-2 text-base"></i><span><strong>制限時間 60秒:</strong> たくさん消すと残り時間が少し回復するよ！</span></p>
+                    <p class="flex items-center"><i class="fa-solid fa-bolt text-cyan-400 mr-2 text-base"></i><span><strong>大連鎖（チェイン）:</strong> 繋げれば繋げるほど、爆発の範囲とスコアが超アップ！</span></p>
+                </div>
+                <button id="startButton" class="w-full py-4 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold rounded-xl shadow-lg shadow-pink-500/20 transform transition active:scale-95 text-lg cursor-pointer">
+                    プレイスタート
+                </button>
+            </div>
+
+            <!-- リザルト（タイムアップ）画面 -->
+            <div id="resultScreen" class="hidden space-y-6 max-w-xs">
+                <h2 class="text-4xl font-black text-rose-500 tracking-wide uppercase drop-shadow-[0_0_10px_rgba(244,63,94,0.5)] animate-pulse">TIME UP!</h2>
+                <div class="space-y-2 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                    <p class="text-slate-400 text-sm">今回の獲得スコア</p>
+                    <p id="finalScore" class="text-4xl font-mono font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400">0</p>
+                    <p id="newRecordText" class="text-yellow-400 text-xs font-bold hidden"><i class="fa-solid fa-crown mr-1"></i>自己ベスト更新！</p>
+                </div>
+                <button id="restartButton" class="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl transition active:scale-95 cursor-pointer">
+                    もう一度挑戦する
+                </button>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- フッター -->
+    <footer class="w-full max-w-lg mb-2">
+        <div class="flex justify-between items-center px-4 py-2 bg-slate-900/40 rounded-xl border border-slate-800/50 text-xs text-slate-500">
+            <span>SOUND <i class="fa-solid fa-volume-high ml-1 text-slate-400"></i></span>
+            <span>なぞって繋げて、手を離して爆破！</span>
+            <button id="muteBtn" class="text-slate-400 hover:text-white transition">
+                <i id="muteIcon" class="fa-solid fa-volume-high"></i>
+            </button>
+        </div>
+    </footer>
+
+    <!-- Web Audio API を使ったシンセサイザー効果音 -->
+    <script>
+        const soundEnabled = { val: true };
+        let audioCtx = null;
+
+        function initAudio() {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            } catch (e) {
+                console.warn("Web Audio API not supported", e);
+            }
+        }
+
+        function playSound(type, pitchModifier = 1) {
+            if (!soundEnabled.val) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            try {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'select') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400 + (pitchModifier * 80), now);
+                    osc.frequency.exponentialRampToValueAtTime(1000, now + 0.05);
+                    gain.gain.setValueAtTime(0.04, now);
+                    gain.gain.linearRampToValueAtTime(0.001, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'pop') {
+                    osc.type = 'triangle';
+                    const base = 250 + (pitchModifier * 30);
+                    osc.frequency.setValueAtTime(base, now);
+                    osc.frequency.exponentialRampToValueAtTime(base * 3, now + 0.25);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.linearRampToValueAtTime(0.001, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+
+                    const oscSub = audioCtx.createOscillator();
+                    const gainSub = audioCtx.createGain();
+                    oscSub.connect(gainSub);
+                    gainSub.connect(audioCtx.destination);
+                    oscSub.type = 'sawtooth';
+                    oscSub.frequency.setValueAtTime(120, now);
+                    oscSub.frequency.exponentialRampToValueAtTime(40, now + 0.3);
+                    gainSub.gain.setValueAtTime(0.08, now);
+                    gainSub.gain.linearRampToValueAtTime(0.001, now + 0.3);
+                    oscSub.start(now);
+                    oscSub.stop(now + 0.3);
+
+                } else if (type === 'cancel') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.linearRampToValueAtTime(110, now + 0.15);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.linearRampToValueAtTime(0.001, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'timeup') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.setValueAtTime(200, now + 0.15);
+                    osc.frequency.setValueAtTime(150, now + 0.3);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.linearRampToValueAtTime(0.001, now + 0.5);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                } else if (type === 'button') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.linearRampToValueAtTime(0.001, now + 0.1);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                }
+            } catch (e) {
+                console.warn("Sound play failed", e);
+            }
+        }
+    </script>
+
+    <!-- メインゲームロジック -->
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI 要素
+        const overlay = document.getElementById('overlay');
+        const startScreen = document.getElementById('startScreen');
+        const resultScreen = document.getElementById('resultScreen');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const hiScoreDisplay = document.getElementById('hiScoreDisplay');
+        const finalScore = document.getElementById('finalScore');
+        const newRecordText = document.getElementById('newRecordText');
+        const timeText = document.getElementById('timeText');
+        const timeBar = document.getElementById('timeBar');
+        
+        const muteBtn = document.getElementById('muteBtn');
+        const muteIcon = document.getElementById('muteIcon');
+
+        // キャンバスサイズ設定（アス比 4:5 縦長パズルに最適化）
+        const CANVAS_WIDTH = 500;
+        const CANVAS_HEIGHT = 600;
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+
+        // ゲームステート
+        let gameState = 'START'; 
+        let score = 0;
+        let hiScore = 0;
+        let timeRemaining = 60; 
+        let lastTime = 0;
+        let animationFrameId = null;
+
+        // グリッドパズル設計
+        const ROWS = 8;
+        const COLS = 7;
+        const BLOCK_SIZE = 58;
+        const GRID_PADDING_X = (CANVAS_WIDTH - (BLOCK_SIZE * COLS)) / 2;
+        const GRID_PADDING_Y = 80;
+
+        // カラーパレット (かわいいネオンアニマル - 軽量フラット化)
+        const blockColors = {
+            'PINK': { main: '#db2777', light: '#f472b6', shadow: 'rgba(236, 72, 153, 0.4)', bg: '#1e111d', name: 'うさぎ' },
+            'CYAN': { main: '#0891b2', light: '#22d3ee', shadow: 'rgba(6, 182, 212, 0.4)', bg: '#0e1b24', name: 'ねこ' },
+            'GREEN': { main: '#059669', light: '#34d399', shadow: 'rgba(16, 185, 129, 0.4)', bg: '#0f1c16', name: 'かえる' },
+            'YELLOW': { main: '#ca8a04', light: '#fde047', shadow: 'rgba(234, 179, 8, 0.4)', bg: '#211d10', name: 'ひよこ' },
+            'PURPLE': { main: '#7c3aed', light: '#a78bfa', shadow: 'rgba(139, 92, 246, 0.4)', bg: '#171226', name: 'くま' }
+        };
+        const colorKeys = Object.keys(blockColors);
+
+        // ブロッククラス (可愛い動物ブロック - 描画軽量化版)
+        class Block {
+            constructor(row, col, colorKey) {
+                this.row = row;
+                this.col = col;
+                this.colorKey = colorKey;
+                
+                // 表示用物理パラメータ
+                this.x = GRID_PADDING_X + col * BLOCK_SIZE + BLOCK_SIZE / 2;
+                this.targetY = GRID_PADDING_Y + row * BLOCK_SIZE + BLOCK_SIZE / 2;
+                this.y = this.targetY - 300; // 上空から降ってくる演出
+                this.radius = BLOCK_SIZE / 2 - 4;
+                
+                this.isMatched = false; 
+            }
+
+            update() {
+                // スムーズな落下物理
+                if (this.y < this.targetY) {
+                    this.y += (this.targetY - this.y) * 0.22 + 0.5;
+                    if (this.y > this.targetY) this.y = this.targetY;
+                }
+                
+                this.targetY = GRID_PADDING_Y + this.row * BLOCK_SIZE + BLOCK_SIZE / 2;
+                this.x = GRID_PADDING_X + this.col * BLOCK_SIZE + BLOCK_SIZE / 2;
+            }
+
+            draw(isSelected, selectionOrderIndex) {
+                const config = blockColors[this.colorKey];
+                ctx.save();
+                
+                // シャドウ（光るエフェクト）は選択中ブロックのみに限定して大幅軽量化
+                if (isSelected) {
+                    ctx.shadowColor = config.shadow;
+                    ctx.shadowBlur = 15;
+                }
+                
+                let drawRadius = this.radius;
+                if (isSelected) {
+                    drawRadius *= 1.12;
+                }
+
+                // --- 1. 耳や装飾パーツ（円と直線のみで極限まで高速化） ---
+                ctx.fillStyle = config.main;
+                ctx.strokeStyle = isSelected ? '#ffffff' : config.light;
+                ctx.lineWidth = isSelected ? 2.5 : 1.5;
+
+                if (this.colorKey === 'PINK') { // うさぎの耳
+                    ctx.beginPath();
+                    // 左耳 (シンプルな長丸)
+                    ctx.arc(this.x - drawRadius * 0.35, this.y - drawRadius * 0.65, drawRadius * 0.2, 0, Math.PI * 2);
+                    // 右耳
+                    ctx.arc(this.x + drawRadius * 0.35, this.y - drawRadius * 0.65, drawRadius * 0.2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // 内耳ピンク
+                    ctx.fillStyle = '#f472b6';
+                    ctx.beginPath();
+                    ctx.arc(this.x - drawRadius * 0.35, this.y - drawRadius * 0.65, drawRadius * 0.1, 0, Math.PI * 2);
+                    ctx.arc(this.x + drawRadius * 0.35, this.y - drawRadius * 0.65, drawRadius * 0.1, 0, Math.PI * 2);
+                    ctx.fill();
+                } 
+                else if (this.colorKey === 'CYAN') { // ねこの三角耳
+                    ctx.beginPath();
+                    // 左耳三角
+                    ctx.moveTo(this.x - drawRadius * 0.8, this.y - drawRadius * 0.3);
+                    ctx.lineTo(this.x - drawRadius * 0.5, this.y - drawRadius * 0.95);
+                    ctx.lineTo(this.x - drawRadius * 0.1, this.y - drawRadius * 0.6);
+                    // 右耳三角
+                    ctx.moveTo(this.x + drawRadius * 0.8, this.y - drawRadius * 0.3);
+                    ctx.lineTo(this.x + drawRadius * 0.5, this.y - drawRadius * 0.95);
+                    ctx.lineTo(this.x + drawRadius * 0.1, this.y - drawRadius * 0.6);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } 
+                else if (this.colorKey === 'GREEN') { // かえるの飛び出た目
+                    ctx.beginPath();
+                    ctx.arc(this.x - drawRadius * 0.45, this.y - drawRadius * 0.65, drawRadius * 0.3, 0, Math.PI * 2);
+                    ctx.arc(this.x + drawRadius * 0.45, this.y - drawRadius * 0.65, drawRadius * 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    // 白目
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(this.x - drawRadius * 0.45, this.y - drawRadius * 0.65, drawRadius * 0.18, 0, Math.PI * 2);
+                    ctx.arc(this.x + drawRadius * 0.45, this.y - drawRadius * 0.65, drawRadius * 0.18, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 黒目
+                    ctx.fillStyle = '#0f172a';
+                    ctx.beginPath();
+                    ctx.arc(this.x - drawRadius * 0.45, this.y - drawRadius * 0.65, drawRadius * 0.08, 0, Math.PI * 2);
+                    ctx.arc(this.x + drawRadius * 0.45, this.y - drawRadius * 0.65, drawRadius * 0.08, 0, Math.PI * 2);
+                    ctx.fill();
+                } 
+                else if (this.colorKey === 'YELLOW') { // ひよこのあたまの双葉
+                    ctx.strokeStyle = '#22c55e';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y - drawRadius * 0.8);
+                    ctx.lineTo(this.x - drawRadius * 0.2, this.y - drawRadius * 1.1);
+                    ctx.moveTo(this.x, this.y - drawRadius * 0.8);
+                    ctx.lineTo(this.x + drawRadius * 0.2, this.y - drawRadius * 1.1);
+                    ctx.stroke();
+                } 
+                else if (this.colorKey === 'PURPLE') { // くまの丸耳
+                    ctx.beginPath();
+                    ctx.arc(this.x - drawRadius * 0.6, this.y - drawRadius * 0.6, drawRadius * 0.28, 0, Math.PI * 2);
+                    ctx.arc(this.x + drawRadius * 0.6, this.y - drawRadius * 0.6, drawRadius * 0.28, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                // --- 2. メインのお顔（軽量フラット塗りつぶし） ---
+                // 重い RadialGradient の作成を廃止し、定数カラーでフラットに塗りつぶすことで描画速度が劇的に向上！
+                ctx.fillStyle = config.bg; // 背景用の深みのある色
+                ctx.strokeStyle = isSelected ? '#ffffff' : config.light;
+                ctx.lineWidth = isSelected ? 3 : 1.8;
+
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, drawRadius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // --- 3. それぞれの顔パーツ（シンプルな線画・円で軽量化） ---
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+
+                if (this.colorKey === 'PINK') { // うさぎの顔
+                    // おめめ
+                    ctx.beginPath();
+                    ctx.arc(this.x - drawRadius * 0.28, this.y - drawRadius * 0.1, drawRadius * 0.1, Math.PI, 0, false);
+                    ctx.arc(this.x + drawRadius * 0.28, this.y - drawRadius * 0.1, drawRadius * 0.1, Math.PI, 0, false);
+                    ctx.stroke();
+
+                    // お鼻
+                    ctx.fillStyle = '#f472b6';
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y + drawRadius * 0.05, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // おくち (w)
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(this.x - drawRadius * 0.08, this.y + drawRadius * 0.15, drawRadius * 0.08, 0, Math.PI, false);
+                    ctx.arc(this.x + drawRadius * 0.08, this.y + drawRadius * 0.15, drawRadius * 0.08, 0, Math.PI, false);
+                    ctx.stroke();
+                } 
+                else if (this.colorKey === 'CYAN') { // ねこの顔
+                    // 白目
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(this.x - drawRadius * 0.26, this.y - drawRadius * 0.12, drawRadius * 0.12, 0, Math.PI * 2);
+                    ctx.arc(this.x + drawRadius * 0.26, this.y - drawRadius * 0.12, drawRadius * 0.12, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 黒目
+                    ctx.fillStyle = '#0f172a';
+                    ctx.beginPath();
+                    ctx.arc(this.x - drawRadius * 0.26, this.y - drawRadius * 0.12, drawRadius * 0.06, 0, Math.PI * 2);
+                    ctx.arc(this.x + drawRadius * 0.26, this.y - drawRadius * 0.12, drawRadius * 0.06, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 口 (ω)
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(this.x - drawRadius * 0.08, this.y + drawRadius * 0.1, drawRadius * 0.08, 0, Math.PI, false);
+                    ctx.arc(this.x + drawRadius * 0.08, this.y + drawRadius * 0.1, drawRadius * 0.08, 0, Math.PI, false);
+                    ctx.stroke();
+
+                    // ひげ (シンプルな2本の線)
+                    ctx.beginPath();
+                    ctx.moveTo(this.x - drawRadius * 0.45, this.y + drawRadius * 0.08);
+                    ctx.lineTo(this.x - drawRadius * 0.7, this.y + drawRadius * 0.05);
+                    ctx.moveTo(this.x - drawRadius * 0.45, this.y + drawRadius * 0.16);
+                    ctx.lineTo(this.x - drawRadius * 0.7, this.y + drawRadius * 0.18);
+                    ctx.moveTo(this.x + drawRadius * 0.45, this.y + drawRadius * 0.08);
+                    ctx.lineTo(this.x + drawRadius * 0.7, this.y + drawRadius * 0.05);
+                    ctx.moveTo(this.x + drawRadius * 0.45, this.y + drawRadius * 0.16);
+                    ctx.lineTo(this.x + drawRadius * 0.7, this.y + drawRadius * 0.18);
+                    ctx.stroke();
+                } 
+                else if (this.colorKey === 'GREEN') { // かえるの笑顔の口
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, drawRadius * 0.4, 0, Math.PI, false);
+                    ctx.stroke();
+                } 
+                else if (this.colorKey === 'YELLOW') { // ひよこの顔
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(this.x - drawRadius * 0.25, this.y - drawRadius * 0.12, 3, 0, Math.PI * 2);
+                    ctx.arc(this.x + drawRadius * 0.25, this.y - drawRadius * 0.12, 3, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 三角くちばし
+                    ctx.fillStyle = '#f97316';
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y - drawRadius * 0.05);
+                    ctx.lineTo(this.x - drawRadius * 0.12, this.y + drawRadius * 0.12);
+                    ctx.lineTo(this.x + drawRadius * 0.12, this.y + drawRadius * 0.12);
+                    ctx.closePath();
+                    ctx.fill();
+                } 
+                else if (this.colorKey === 'PURPLE') { // くまの顔
+                    // 目
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(this.x - drawRadius * 0.25, this.y - drawRadius * 0.12, 3.5, 0, Math.PI * 2);
+                    ctx.arc(this.x + drawRadius * 0.25, this.y - drawRadius * 0.12, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 白いお鼻まわり
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.ellipse(this.x, this.y + drawRadius * 0.12, drawRadius * 0.2, drawRadius * 0.15, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // お鼻
+                    ctx.fillStyle = '#0f172a';
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y + drawRadius * 0.06, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // ほっぺのチーク (透明度の処理負荷を下げるため半透明率を調整)
+                ctx.fillStyle = 'rgba(244, 114, 182, 0.35)';
+                ctx.beginPath();
+                ctx.arc(this.x - drawRadius * 0.45, this.y + drawRadius * 0.12, drawRadius * 0.09, 0, Math.PI * 2);
+                ctx.arc(this.x + drawRadius * 0.45, this.y + drawRadius * 0.12, drawRadius * 0.09, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 選択順数字の表示
+                if (isSelected && selectionOrderIndex !== undefined) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 15px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(selectionOrderIndex + 1, this.x, this.y - drawRadius * 0.42);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // ゲーム状態変数
+        let grid = [];
+        let selectedChain = []; // 現在なぞって繋いでいるブロックの配列
+        let particles = [];
+        let chainTexts = [];
+
+        // --- パーティクルエフェクト (上限数を減らし処理を軽くする) ---
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 5 + 2; // スピード上限を下げて滑らかに
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.radius = Math.random() * 3 + 1;
+                this.color = color;
+                this.alpha = 1.0;
+                this.decay = Math.random() * 0.04 + 0.02; // 素早く消えるように
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.08; 
+                this.alpha -= this.decay;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                // パーティクルごとの重いシャドウ処理は廃止
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // --- フローティングテキスト ---
+        class FloatingText {
+            constructor(x, y, text, color) {
+                this.x = x;
+                this.y = y;
+                this.text = text;
+                this.color = color;
+                this.vy = -1.8;
+                this.alpha = 1.0;
+                this.life = 40;
+            }
+            update() {
+                this.y += this.vy;
+                this.alpha -= 0.025;
+                this.life--;
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 3;
+                ctx.font = 'bold 24px "Courier New", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.strokeText(this.text, this.x, this.y);
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.restore();
+            }
+        }
+
+        // --- グリッド初期化と生成 ---
+        function initGrid() {
+            grid = [];
+            for (let r = 0; r < ROWS; r++) {
+                grid[r] = [];
+                for (let c = 0; c < COLS; c++) {
+                    grid[r][c] = generateRandomBlock(r, c);
+                }
+            }
+        }
+
+        function generateRandomBlock(row, col) {
+            const randomColor = colorKeys[Math.floor(Math.random() * colorKeys.length)];
+            return new Block(row, col, randomColor);
+        }
+
+        // 隣接チェック
+        function isNeighbor(b1, b2) {
+            const rowDiff = Math.abs(b1.row - b2.row);
+            const colDiff = Math.abs(b1.col - b2.col);
+            return (rowDiff <= 1 && colDiff <= 1) && (b1 !== b2);
+        }
+
+        // --- ドラッグ / タッチ操作時のヒットテスト ---
+        function getBlockAtPointer(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            const pointerX = ((clientX - rect.left) / rect.width) * CANVAS_WIDTH;
+            const pointerY = ((clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
+
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const block = grid[r][c];
+                    if (block) {
+                        const dist = Math.hypot(pointerX - block.x, pointerY - block.y);
+                        if (dist < BLOCK_SIZE * 0.52) {
+                            return block;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        // 繋ぎアクション中のハンドラー
+        let isPointerDown = false;
+
+        function handlePointerStart(clientX, clientY) {
+            if (gameState !== 'PLAYING') return;
+            isPointerDown = true;
+            
+            const hitBlock = getBlockAtPointer(clientX, clientY);
+            if (hitBlock) {
+                selectedChain = [hitBlock];
+                playSound('select', 1);
+            }
+        }
+
+        function handlePointerMove(clientX, clientY) {
+            if (!isPointerDown || gameState !== 'PLAYING' || selectedChain.length === 0) return;
+
+            const hitBlock = getBlockAtPointer(clientX, clientY);
+            if (!hitBlock) return;
+
+            const lastSelected = selectedChain[selectedChain.length - 1];
+
+            // 1つ前に戻る操作（なぞり直し）
+            if (selectedChain.length > 1 && hitBlock === selectedChain[selectedChain.length - 2]) {
+                selectedChain.pop();
+                playSound('select', selectedChain.length);
+                return;
+            }
+
+            // 未選択かつ同じ種類の動物、かつ隣接しているものを繋げる
+            if (!selectedChain.includes(hitBlock)) {
+                if (hitBlock.colorKey === lastSelected.colorKey && isNeighbor(lastSelected, hitBlock)) {
+                    selectedChain.push(hitBlock);
+                    playSound('select', selectedChain.length);
+                }
+            }
+        }
+
+        function handlePointerEnd() {
+            if (!isPointerDown) return;
+            isPointerDown = false;
+
+            if (selectedChain.length >= 3) {
+                triggerChainExplosion(selectedChain);
+            } else if (selectedChain.length > 0) {
+                playSound('cancel');
+            }
+            
+            selectedChain = [];
+        }
+
+        // --- 連鎖爆発とスコア・ドロップ落下処理 ---
+        function triggerChainExplosion(chain) {
+            const count = chain.length;
+            const colorKey = chain[0].colorKey;
+            const config = blockColors[colorKey];
+
+            // 連鎖ボーナス計算
+            const basePoints = count * 150;
+            const chainMultiplier = 1 + (count - 3) * 0.25; 
+            const pointsGained = Math.round(basePoints * chainMultiplier);
+            
+            score += pointsGained;
+            
+            // タイムボーナス
+            const timeBonus = Math.min(5, Math.floor(count * 0.4));
+            timeRemaining = Math.min(60, timeRemaining + timeBonus);
+
+            playSound('pop', count);
+
+            // 代表ブロックの位置にフローティングテキスト表示
+            const centerBlock = chain[Math.floor(count / 2)];
+            chainTexts.push(new FloatingText(centerBlock.x, centerBlock.y, `${count} CONNECT!`, config.light));
+
+            // パーティクル発生（放出量を少し抑えて負荷軽減）
+            chain.forEach(b => {
+                b.isMatched = true;
+                for (let i = 0; i < 7; i++) { // 12から7に削減してパフォーマンスを大幅確保
+                    particles.push(new Particle(b.x, b.y, config.light));
+                }
+            });
+
+            // 落下・補充
+            setTimeout(() => {
+                applyDropAndRefill();
+            }, 80);
+        }
+
+        function applyDropAndRefill() {
+            for (let c = 0; c < COLS; c++) {
+                const activeBlocksInCol = [];
+                for (let r = ROWS - 1; r >= 0; r--) {
+                    if (grid[r][c] && !grid[r][c].isMatched) {
+                        activeBlocksInCol.push(grid[r][c]);
+                    }
+                }
+
+                let currentNewRow = ROWS - 1;
+                activeBlocksInCol.forEach(block => {
+                    block.row = currentNewRow;
+                    grid[currentNewRow][c] = block;
+                    currentNewRow--;
+                });
+
+                while (currentNewRow >= 0) {
+                    const newBlock = generateRandomBlock(currentNewRow, c);
+                    newBlock.y = GRID_PADDING_Y - 80 - (currentNewRow * BLOCK_SIZE);
+                    grid[currentNewRow][c] = newBlock;
+                    currentNewRow--;
+                }
+            }
+
+            updateHUD();
+        }
+
+        // --- 各種イベント登録 ---
+        canvas.addEventListener('mousedown', e => {
+            handlePointerStart(e.clientX, e.clientY);
+        });
+
+        document.addEventListener('mousemove', e => {
+            handlePointerMove(e.clientX, e.clientY);
+        });
+
+        document.addEventListener('mouseup', () => {
+            handlePointerEnd();
+        });
+
+        canvas.addEventListener('touchstart', e => {
+            if (e.touches.length > 0) {
+                handlePointerStart(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchmove', e => {
+            if (e.touches.length > 0) {
+                handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchend', () => {
+            handlePointerEnd();
+        });
+
+
+        // --- ゲームメイン処理 ---
+
+        function updateHUD() {
+            scoreDisplay.textContent = String(score).padStart(5, '0');
+            hiScoreDisplay.textContent = String(hiScore).padStart(5, '0');
+        }
+
+        function draw() {
+            // 背景クリア
+            ctx.fillStyle = '#0b0f19';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // グリッド背景線の描画
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= COLS; i++) {
+                const x = GRID_PADDING_X + i * BLOCK_SIZE;
+                ctx.beginPath();
+                ctx.moveTo(x, GRID_PADDING_Y - 10);
+                ctx.lineTo(x, GRID_PADDING_Y + ROWS * BLOCK_SIZE + 10);
+                ctx.stroke();
+            }
+            for (let j = 0; j <= ROWS; j++) {
+                const y = GRID_PADDING_Y + j * BLOCK_SIZE;
+                ctx.beginPath();
+                ctx.moveTo(GRID_PADDING_X - 10, y);
+                ctx.lineTo(GRID_PADDING_X + COLS * BLOCK_SIZE + 10, y);
+                ctx.stroke();
+            }
+
+            // 繋いでいるパスの電光線（シャドウ効果はここに集約して負荷最小限に）
+            if (selectedChain.length > 1) {
+                ctx.save();
+                const config = blockColors[selectedChain[0].colorKey];
+                ctx.strokeStyle = config.light;
+                ctx.lineWidth = 7;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.shadowColor = config.shadow;
+                ctx.shadowBlur = 10;
+
+                ctx.beginPath();
+                ctx.moveTo(selectedChain[0].x, selectedChain[0].y);
+                for (let i = 1; i < selectedChain.length; i++) {
+                    ctx.lineTo(selectedChain[i].x, selectedChain[i].y);
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // 全ブロック描画
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const block = grid[r][c];
+                    if (block && !block.isMatched) {
+                        const isSelected = selectedChain.includes(block);
+                        const selectionOrderIndex = selectedChain.indexOf(block);
+                        block.draw(isSelected, selectionOrderIndex >= 0 ? selectionOrderIndex : undefined);
+                    }
+                }
+            }
+
+            // パーティクル＆エフェクト
+            particles.forEach(p => p.draw());
+            chainTexts.forEach(ct => ct.draw());
+        }
+
+        function update(deltaTime) {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c]) {
+                        grid[r][c].update();
+                    }
+                }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                if (particles[i].alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            for (let i = chainTexts.length - 1; i >= 0; i--) {
+                chainTexts[i].update();
+                if (chainTexts[i].life <= 0) {
+                    chainTexts.splice(i, 1);
+                }
+            }
+
+            if (gameState === 'PLAYING') {
+                timeRemaining = Math.max(0, timeRemaining - deltaTime);
+                const percentage = (timeRemaining / 60) * 100;
+                timeBar.style.width = `${percentage}%`;
+                timeText.textContent = `${Math.ceil(timeRemaining)}s`;
+
+                if (timeRemaining <= 0) {
+                    endGame();
+                }
+            }
+        }
+
+        let previousTime = 0;
+        function gameLoop(timestamp) {
+            if (!previousTime) previousTime = timestamp;
+            const delta = (timestamp - previousTime) / 1000;
+            previousTime = timestamp;
+
+            // 制限スピード（カクつき防止）
+            update(Math.min(delta, 0.1));
+            draw();
+
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // --- スタート / リザルト ---
+
+        function startGame() {
+            playSound('button');
+            score = 0;
+            timeRemaining = 60;
+            selectedChain = [];
+            particles = [];
+            chainTexts = [];
+
+            initGrid();
+            updateHUD();
+
+            gameState = 'PLAYING';
+            overlay.classList.add('hidden');
+            startScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+        }
+
+        function endGame() {
+            gameState = 'GAME_OVER';
+            playSound('timeup');
+
+            let isNewRecord = false;
+            if (score > hiScore) {
+                hiScore = score;
+                isNewRecord = true;
+                try {
+                    localStorage.setItem('neon_connect_hiscore', hiScore);
+                } catch(e){}
+            }
+
+            finalScore.textContent = score;
+            if (isNewRecord) {
+                newRecordText.classList.remove('hidden');
+            } else {
+                newRecordText.classList.add('hidden');
+            }
+
+            overlay.classList.remove('hidden');
+            resultScreen.classList.remove('hidden');
+            updateHUD();
+        }
+
+        try {
+            const savedHiScore = localStorage.getItem('neon_connect_hiscore');
+            if (savedHiScore) {
+                hiScore = parseInt(savedHiScore, 10);
+            }
+        } catch(e){}
+
+        startButton.addEventListener('click', () => {
+            initAudio();
+            startGame();
+        });
+        restartButton.addEventListener('click', () => {
+            initAudio();
+            startGame();
+        });
+
+        muteBtn.addEventListener('click', () => {
+            soundEnabled.val = !soundEnabled.val;
+            if (soundEnabled.val) {
+                muteIcon.className = 'fa-solid fa-volume-high';
+            } else {
+                muteIcon.className = 'fa-solid fa-volume-xmark text-rose-500';
+            }
+        });
+
+        window.addEventListener('load', () => {
+            initGrid();
+            updateHUD();
+            requestAnimationFrame(gameLoop);
+        });
+    </script>
+</body>
+</html>

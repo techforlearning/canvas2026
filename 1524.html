@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ハイキュー!! 頂のバレーバトル - 漫画風かんたん版</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for Anime & Manga Theme -->
+    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .font-anime {
+            font-family: 'Mochiy Pop One', sans-serif;
+        }
+        /* 漫画風の吹き出しや外枠アニメーション */
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        .pulse-active {
+            animation: pulse-slow 2s infinite;
+        }
+        /* コミック風の太線枠線 */
+        .manga-border {
+            border: 4px solid #000000;
+            box-shadow: 8px 8px 0px #000000;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white overflow-hidden min-h-screen flex flex-col justify-between">
+
+    <!-- ヘッダー（スコア表示） -->
+    <header id="gameHeader" class="hidden bg-gray-800 border-b-4 border-black p-2 md:p-4 z-10">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <!-- プレイヤー側（左） -->
+            <div class="flex items-center space-x-3">
+                <div id="playerTeamBadge" class="w-4 h-12 bg-orange-600 rounded border-2 border-black"></div>
+                <div>
+                    <h2 id="playerNameDisplay" class="font-anime text-lg md:text-xl text-orange-400">日向 翔陽</h2>
+                    <p id="playerTeamName" class="text-xs text-gray-400">烏野高校</p>
+                </div>
+            </div>
+
+            <!-- スコアボード（少年漫画のカットイン風） -->
+            <div class="flex items-center space-x-4 bg-yellow-400 text-black px-5 py-2 rounded-lg border-4 border-black shadow-[4px_4px_0px_#000]">
+                <div id="playerScore" class="font-anime text-3xl md:text-4xl">0</div>
+                <div class="font-anime text-xl font-black">VS</div>
+                <div id="cpuScore" class="font-anime text-3xl md:text-4xl">0</div>
+            </div>
+
+            <!-- CPU側（右） -->
+            <div class="flex items-center space-x-3 text-right">
+                <div>
+                    <h2 id="cpuNameDisplay" class="font-anime text-lg md:text-xl text-red-400">孤爪 研磨</h2>
+                    <p id="cpuTeamName" class="text-xs text-gray-400">音駒高校</p>
+                </div>
+                <div id="cpuTeamBadge" class="w-4 h-12 bg-red-600 rounded border-2 border-black"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインエリア -->
+    <main class="flex-grow flex flex-col items-center justify-center p-2 relative">
+        
+        <!-- ================= START SCREEN ================= -->
+        <div id="startScreen" class="w-full max-w-2xl bg-white text-black rounded-2xl border-4 border-black p-6 md:p-8 shadow-[12px_12px_0px_rgba(0,0,0,1)] z-10 my-auto">
+            <h1 class="font-anime text-4xl md:text-6xl text-orange-500 mb-1 tracking-wider drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]">ハイキュー!!</h1>
+            <h2 class="font-anime text-2xl md:text-3xl text-yellow-500 mb-6 drop-shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)]">頂のバレーバトル 2D <span class="text-xs bg-black text-white px-2 py-1 rounded ml-1">超漫画風・強敵AI版</span></h2>
+            
+            <p class="text-sm md:text-base font-bold text-gray-700 mb-4">プレイするキャラクターを選択せよ！</p>
+            
+            <!-- キャラクター選択 -->
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <!-- 烏野：日向 -->
+                <button onclick="selectCharacter('karasuno')" id="btnKarasuno" class="border-4 border-black bg-orange-100 hover:bg-orange-200 p-4 rounded-xl flex flex-col items-center transition-all transform hover:scale-105 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                    <div class="w-16 h-16 rounded-full bg-orange-500 flex items-center justify-center text-3xl mb-2 border-4 border-black shadow-md">
+                        🍊
+                    </div>
+                    <span class="font-anime text-xl text-orange-600">日向 翔陽</span>
+                    <span class="text-xs font-bold text-gray-700 mt-1">烏野高校 (スピード型)</span>
+                    <span class="text-[10px] text-white font-bold mt-2 bg-black px-2 py-0.5 rounded">トス：影山 飛雄</span>
+                </button>
+                
+                <!-- 音駒：研磨 -->
+                <button onclick="selectCharacter('nekoma')" id="btnNekoma" class="border-4 border-black bg-gray-100 hover:bg-red-100 p-4 rounded-xl flex flex-col items-center transition-all transform hover:scale-105 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                    <div class="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center text-3xl mb-2 border-4 border-black shadow-md">
+                        🐱
+                    </div>
+                    <span class="font-anime text-xl text-red-600">孤爪 研磨</span>
+                    <span class="text-xs font-bold text-gray-700 mt-1">音駒高校 (テクニック型)</span>
+                    <span class="text-[10px] text-white font-bold mt-2 bg-black px-2 py-0.5 rounded">トス：黒尾 鉄朗</span>
+                </button>
+            </div>
+
+            <!-- 操作方法説明 -->
+            <div class="bg-gray-100 p-4 rounded-lg text-left text-xs md:text-sm text-gray-800 border-2 border-black max-w-md mx-auto mb-6">
+                <p class="font-black text-center text-sm border-b-2 border-black pb-1 mb-2">💥 週刊少年風・超かんたんオート操作 💥</p>
+                <div class="space-y-1.5 font-bold">
+                    <div class="flex items-center justify-between">
+                        <span>← / → (A / Dキー) :</span>
+                        <span class="text-orange-600">左右移動（ボールの下に走れ！）</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>↑ (W / Space) :</span>
+                        <span class="text-blue-600">ジャンプ（高めのトスを叩け！）</span>
+                    </div>
+                    <div class="border-t border-dashed border-gray-400 my-1"></div>
+                    <p class="text-center text-xs text-green-700 font-black">🏐 ボールに近づくだけで、自動でレシーブ＆スパイク発動！</p>
+                    <p class="text-center text-[11px] text-red-600 font-black">🔥 15点先取！AIが賢くなり、コースを狙ってスパイクしてきます！</p>
+                </div>
+            </div>
+
+            <button onclick="startGame()" class="font-anime bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-10 rounded-xl text-2xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all transform hover:scale-105 pulse-active">
+                勝負開始ィ！！！
+            </button>
+        </div>
+
+        <!-- ================= GAME PLAY AREA ================= -->
+        <div id="gameCanvasContainer" class="hidden w-full max-w-4xl flex flex-col items-center justify-center relative">
+            <!-- インゲーム中の吹き出しエフェクトなど -->
+            <div id="gameMessage" class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-black font-anime font-bold py-2 px-6 rounded-lg shadow-lg text-lg border-4 border-black opacity-0 transition-opacity duration-300 pointer-events-none z-20">
+                ナイスレシーブ！
+            </div>
+
+            <!-- ゲームキャンバス（漫画コマ風） -->
+            <canvas id="gameCanvas" class="w-full bg-white rounded-lg border-4 border-black shadow-[10px_10px_0px_rgba(0,0,0,1)]"></canvas>
+
+            <!-- 得点演出オーバーレイ（漫画のトビラ絵風） -->
+            <div id="scoreOverlay" class="absolute inset-0 bg-white/90 flex flex-col items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 z-10 rounded-lg border-4 border-black">
+                <h2 id="overlayText" class="font-anime text-5xl md:text-7xl text-orange-600 drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] uppercase">POINT!!</h2>
+                <p id="overlaySub" class="text-xl md:text-2xl text-black mt-4 font-black tracking-widest border-b-4 border-black pb-1">烏野高校が得点！</p>
+                <div id="duiceBadge" class="hidden mt-2 bg-red-600 text-white px-3 py-1 font-anime text-sm border-2 border-black rotate-[-2deg]">DEUCE! 2点差つくまで終わらない！</div>
+            </div>
+        </div>
+
+        <!-- ================= RESULT SCREEN ================= -->
+        <div id="resultScreen" class="hidden w-full max-w-md bg-white text-black rounded-2xl border-4 border-black p-6 md:p-8 shadow-[12px_12px_0px_rgba(0,0,0,1)] text-center z-10 my-auto">
+            <h2 id="resultTitle" class="font-anime text-4xl text-orange-600 drop-shadow-[2px_2px_0px_#000] mb-2">完全勝利！！</h2>
+            <p id="resultSub" class="text-gray-800 font-bold mb-6">見事、音駒高校を制した！</p>
+            
+            <div class="bg-yellow-100 p-4 rounded-lg mb-6 border-4 border-black shadow-[4px_4px_0px_#000]">
+                <span class="text-gray-700 text-sm font-bold">最終スコア</span>
+                <div class="flex justify-center items-center space-x-6 mt-1">
+                    <span id="resPlayerScore" class="font-anime text-4xl text-orange-600">15</span>
+                    <span class="font-anime text-2xl text-black">対</span>
+                    <span id="resCpuScore" class="font-anime text-4xl text-red-600">13</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col space-y-3">
+                <button onclick="restartGame()" class="font-anime bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-lg border-4 border-black shadow-[4px_4px_0px_#000] transition-all transform hover:scale-105">
+                    もう一回勝負する！
+                </button>
+                <button onclick="backToTitle()" class="font-anime bg-gray-200 hover:bg-gray-300 text-black font-bold py-2.5 px-6 rounded-lg border-4 border-black">
+                    タイトルへ戻る
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- モバイル用コントローラー -->
+    <div id="mobileController" class="hidden md:hidden bg-gray-800 border-t-4 border-black p-4 select-none">
+        <div class="flex justify-between items-center max-w-xl mx-auto px-4">
+            <!-- 左側：移動ボタン -->
+            <div class="flex space-x-4 flex-grow mr-6">
+                <button id="btnLeft" class="flex-1 h-16 bg-white active:bg-orange-400 rounded-xl flex items-center justify-center text-3xl font-bold text-black border-4 border-black shadow-[4px_4px_0px_#000]">
+                    ◀
+                </button>
+                <button id="btnRight" class="flex-1 h-16 bg-white active:bg-orange-400 rounded-xl flex items-center justify-center text-3xl font-bold text-black border-4 border-black shadow-[4px_4px_0px_#000]">
+                    ▶
+                </button>
+            </div>
+            <!-- 右側：ジャンプのみ -->
+            <div class="w-24">
+                <button id="btnJump" class="w-full h-16 bg-blue-500 active:bg-blue-400 rounded-xl flex flex-col items-center justify-center text-sm font-bold text-white border-4 border-black shadow-[4px_4px_0px_#000]">
+                    <span class="text-xl">▲</span>
+                    <span>ジャンプ</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- フッター -->
+    <footer class="bg-gray-900 border-t-4 border-black p-3 text-center text-xs text-gray-500">
+        <p>© 古舘春一／集英社・「ハイキュー!!」製作委員会・MBS ベース二次創作ファンゲーム</p>
+    </footer>
+
+    <!-- ゲームロジック用スクリプト -->
+    <script>
+        // --- ゲーム設定 & 定数 ---
+        const CANVAS_WIDTH = 800;
+        const CANVAS_HEIGHT = 450;
+        const GRAVITY = 0.5;
+        const MATCH_POINT = 15; // 15点マッチに変更！
+
+        // キャラクター固有パラメータ
+        const CHAR_STATS = {
+            karasuno: {
+                name: '日向 翔陽',
+                team: '烏野高校',
+                partner: '影山 飛雄',
+                color: '#ea580c', // オレンジ
+                secondary: '#1e293b', // 黒
+                speed: 6.2,
+                jumpForce: 13,
+                emoji: '🍊',
+                opponents: { 
+                    name: '孤爪 研磨', 
+                    team: '音駒高校', 
+                    partner: '黒尾 鉄朗', 
+                    color: '#dc2626', 
+                    secondary: '#111827', 
+                    emoji: '🐱', 
+                    type: 'nekoma',
+                    speed: 5.8,
+                    jumpForce: 12.2
+                }
+            },
+            nekoma: {
+                name: '孤爪 研磨',
+                team: '音駒高校',
+                partner: '黒尾 鉄朗',
+                color: '#dc2626', // 赤
+                secondary: '#111827', // 黒
+                speed: 5.8,
+                jumpForce: 12.2,
+                emoji: '🐱',
+                opponents: { 
+                    name: '日向 翔陽', 
+                    team: '烏野高校', 
+                    partner: '影山 飛雄', 
+                    color: '#ea580c', 
+                    secondary: '#1e293b', 
+                    emoji: '🍊', 
+                    type: 'karasuno',
+                    speed: 6.2,
+                    jumpForce: 13
+                }
+            }
+        };
+
+        // --- ゲームステート変数 ---
+        let selectedTeam = 'karasuno';
+        let playerStats = CHAR_STATS.karasuno;
+        let cpuStats = CHAR_STATS.karasuno.opponents;
+
+        let canvas = document.getElementById('gameCanvas');
+        let ctx = canvas.getContext('2d');
+
+        let scores = { player: 0, cpu: 0 };
+        let isGameRunning = false;
+        let isRoundActive = false;
+        let roundStarter = 'player'; 
+
+        // 画面揺れ（スクリーンシェイク）の強さ
+        let shakeTime = 0;
+        let shakeIntensity = 0;
+
+        // 入力検知
+        const keys = {
+            Left: false,
+            Right: false,
+            Up: false
+        };
+
+        // タッチ操作用
+        let mobileLeft = false;
+        let mobileRight = false;
+        let mobileJump = false;
+
+        // --- ゲームオブジェクトの定義 ---
+        const Net = {
+            x: CANVAS_WIDTH / 2 - 5,
+            y: CANVAS_HEIGHT - 130,
+            width: 10,
+            height: 130
+        };
+
+        let player = {
+            x: 200,
+            y: CANVAS_HEIGHT - 50,
+            vx: 0,
+            vy: 0,
+            radius: 25,
+            isGrounded: true,
+            isSpiking: false,
+            spikeTimer: 0,
+            isReceiving: false,
+            receiveTimer: 0,
+            mangaSymbol: null, // 頭上に浮かぶ漫符 ('fire', 'sweat', 'spark', etc)
+            mangaSymbolTimer: 0
+        };
+
+        let partner = {
+            x: 100,
+            y: CANVAS_HEIGHT - 50,
+            vx: 0,
+            vy: 0,
+            radius: 25,
+            targetX: 150,
+            state: 'idle',
+            mangaSymbol: null,
+            mangaSymbolTimer: 0
+        };
+
+        let cpu = {
+            x: 600,
+            y: CANVAS_HEIGHT - 50,
+            vx: 0,
+            vy: 0,
+            radius: 25,
+            isGrounded: true,
+            isSpiking: false,
+            spikeTimer: 0,
+            isReceiving: false,
+            receiveTimer: 0,
+            targetX: 600,
+            decisionTimer: 0,
+            mangaSymbol: null,
+            mangaSymbolTimer: 0
+        };
+
+        let cpuPartner = {
+            x: 700,
+            y: CANVAS_HEIGHT - 50,
+            vx: 0,
+            vy: 0,
+            radius: 25,
+            targetX: 650,
+            state: 'idle',
+            mangaSymbol: null,
+            mangaSymbolTimer: 0
+        };
+
+        let ball = {
+            x: 200,
+            y: 100,
+            vx: 0,
+            vy: 0,
+            radius: 12,
+            gravity: 0.25,
+            lastTouchedBy: null, 
+            touchCount: 0, 
+            side: 'left', 
+            angle: 0 
+        };
+
+        // パーティクルエフェクト
+        let particles = [];
+
+        // --- [NEW] 漫画の描き文字（擬音オノマトペ）エフェクト ---
+        let onomatopoeias = []; // { x, y, text, alpha, scale, vy, color, rotation }
+
+        function createOnomatopoeia(x, y, text, color = '#000000') {
+            onomatopoeias.push({
+                x: x,
+                y: y - 25,
+                text: text,
+                alpha: 1.0,
+                scale: 1.2 + Math.random() * 0.4,
+                vy: -1.2,
+                color: color,
+                rotation: (Math.random() - 0.5) * 0.4
+            });
+        }
+
+        function updateOnomatopoeias() {
+            for (let i = onomatopoeias.length - 1; i >= 0; i--) {
+                let o = onomatopoeias[i];
+                o.y += o.vy;
+                o.alpha -= 0.02;
+                if (o.alpha <= 0) {
+                    onomatopoeias.splice(i, 1);
+                }
+            }
+        }
+
+        function drawOnomatopoeias() {
+            onomatopoeias.forEach(o => {
+                ctx.save();
+                ctx.translate(o.x, o.y);
+                ctx.rotate(o.rotation);
+                ctx.scale(o.scale, o.scale);
+                ctx.globalAlpha = o.alpha;
+
+                // 漫画調の縁取り太字
+                ctx.font = "900 24px 'Mochiy Pop One', sans-serif";
+                ctx.textAlign = 'center';
+
+                // 黒い太い縁
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 6;
+                ctx.strokeText(o.text, 0, 0);
+
+                // メインカラー
+                ctx.fillStyle = o.color;
+                ctx.fillText(o.text, 0, 0);
+
+                ctx.restore();
+            });
+        }
+
+        // --- 漫符トリガーヘルパー ---
+        function triggerMangaSymbol(char, symbol, duration = 60) {
+            char.mangaSymbol = symbol;
+            char.mangaSymbolTimer = duration;
+        }
+
+        function updateMangaSymbolTimers() {
+            [player, partner, cpu, cpuPartner].forEach(char => {
+                if (char.mangaSymbolTimer > 0) {
+                    char.mangaSymbolTimer--;
+                    if (char.mangaSymbolTimer <= 0) {
+                        char.mangaSymbol = null;
+                    }
+                }
+            });
+        }
+
+        // --- 画面シェイク開始 ---
+        function startCameraShake(intensity, duration) {
+            shakeIntensity = intensity;
+            shakeTime = duration;
+        }
+
+        // --- 音声生成 ---
+        let audioCtx = null;
+        function playSound(type) {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'hit') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.15);
+                } else if (type === 'spike') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.25);
+                    gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.25);
+                } else if (type === 'toss') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.1);
+                } else if (type === 'point') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.4);
+                }
+            } catch (e) {
+                console.log("Audio play failed", e);
+            }
+        }
+
+        // --- パーティクルエフェクト ---
+        function createSpikeEffect(x, y, color) {
+            for (let i = 0; i < 15; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    radius: Math.random() * 4 + 2,
+                    color: color || '#f59e0b',
+                    alpha: 1,
+                    decay: Math.random() * 0.05 + 0.02
+                });
+            }
+        }
+
+        function createDustEffect(x, y) {
+            for (let i = 0; i < 5; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: -Math.random() * 2,
+                    radius: Math.random() * 3 + 1,
+                    color: '#000000', // 漫画風に黒・灰の砂埃にする
+                    alpha: 0.7,
+                    decay: 0.04
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= p.decay;
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+                // 漫画的な黒いフチ
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.restore();
+            });
+        }
+
+        // --- メッセージ表示 ---
+        function showMessage(text) {
+            const msgEl = document.getElementById('gameMessage');
+            msgEl.innerText = text;
+            msgEl.style.opacity = '1';
+            setTimeout(() => {
+                msgEl.style.opacity = '0';
+            }, 1200);
+        }
+
+        // --- キャラクター選択 ---
+        function selectCharacter(team) {
+            selectedTeam = team;
+            playerStats = CHAR_STATS[team];
+            cpuStats = CHAR_STATS[team].opponents;
+
+            const btnK = document.getElementById('btnKarasuno');
+            const btnN = document.getElementById('btnNekoma');
+
+            if (team === 'karasuno') {
+                btnK.className = "border-4 border-black bg-orange-100 hover:bg-orange-200 p-4 rounded-xl flex flex-col items-center transition-all transform hover:scale-105 shadow-[4px_4px_0px_rgba(0,0,0,1)]";
+                btnN.className = "border-4 border-black bg-gray-100 hover:bg-red-100 p-4 rounded-xl flex flex-col items-center transition-all transform hover:scale-105 shadow-[4px_4px_0px_rgba(0,0,0,1)]";
+            } else {
+                btnK.className = "border-4 border-black bg-gray-100 hover:bg-orange-100 p-4 rounded-xl flex flex-col items-center transition-all transform hover:scale-105 shadow-[4px_4px_0px_rgba(0,0,0,1)]";
+                btnN.className = "border-4 border-black bg-red-100 hover:bg-red-200 p-4 rounded-xl flex flex-col items-center transition-all transform hover:scale-105 shadow-[4px_4px_0px_rgba(0,0,0,1)]";
+            }
+        }
+
+        function resizeCanvas() {
+            const container = document.getElementById('gameCanvasContainer');
+            if (window.innerWidth < 768) {
+                const aspect = CANVAS_HEIGHT / CANVAS_WIDTH;
+                const targetWidth = container.clientWidth;
+                canvas.style.width = targetWidth + 'px';
+                canvas.style.height = (targetWidth * aspect) + 'px';
+            } else {
+                canvas.style.width = '100%';
+                canvas.style.height = 'auto';
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // --- 入力制御 ---
+        window.addEventListener('keydown', e => {
+            if (!isGameRunning) return;
+            if (['Space', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+                e.preventDefault();
+            }
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.Left = true;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.Right = true;
+            if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') keys.Up = true;
+        });
+
+        window.addEventListener('keyup', e => {
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.Left = false;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.Right = false;
+            if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') keys.Up = false;
+        });
+
+        function setupMobileControls() {
+            const btnLeft = document.getElementById('btnLeft');
+            const btnRight = document.getElementById('btnRight');
+            const btnJump = document.getElementById('btnJump');
+
+            btnLeft.addEventListener('touchstart', e => { e.preventDefault(); mobileLeft = true; });
+            btnRight.addEventListener('touchstart', e => { e.preventDefault(); mobileRight = true; });
+            btnJump.addEventListener('touchstart', e => { e.preventDefault(); mobileJump = true; });
+
+            btnLeft.addEventListener('touchend', e => { e.preventDefault(); mobileLeft = false; });
+            btnRight.addEventListener('touchend', e => { e.preventDefault(); mobileRight = false; });
+            btnJump.addEventListener('touchend', e => { e.preventDefault(); mobileJump = false; });
+
+            // マウステスト用
+            btnLeft.addEventListener('mousedown', () => mobileLeft = true);
+            btnRight.addEventListener('mousedown', () => mobileRight = true);
+            btnJump.addEventListener('mousedown', () => mobileJump = true);
+
+            window.addEventListener('mouseup', () => {
+                mobileLeft = false;
+                mobileRight = false;
+                mobileJump = false;
+            });
+        }
+
+        // --- ゲーム開始 & ラウンド初期化 ---
+        function startGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameCanvasContainer').classList.remove('hidden');
+            document.getElementById('gameHeader').classList.remove('hidden');
+            
+            if (window.matchMedia('(max-width: 767px)').matches) {
+                document.getElementById('mobileController').classList.remove('hidden');
+            }
+
+            document.getElementById('playerNameDisplay').innerText = playerStats.name;
+            document.getElementById('playerTeamName').innerText = playerStats.team;
+            document.getElementById('playerTeamBadge').style.backgroundColor = playerStats.color;
+
+            document.getElementById('cpuNameDisplay').innerText = cpuStats.name;
+            document.getElementById('cpuTeamName').innerText = cpuStats.team;
+            document.getElementById('cpuTeamBadge').style.backgroundColor = cpuStats.color;
+
+            canvas.width = CANVAS_WIDTH;
+            canvas.height = CANVAS_HEIGHT;
+            resizeCanvas();
+
+            scores.player = 0;
+            scores.cpu = 0;
+            updateScoreUI();
+
+            isGameRunning = true;
+            roundStarter = 'player';
+            setupMobileControls();
+            startRound();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateScoreUI() {
+            document.getElementById('playerScore').innerText = scores.player;
+            document.getElementById('cpuScore').innerText = scores.cpu;
+        }
+
+        function startRound() {
+            isRoundActive = true;
+            particles = [];
+            onomatopoeias = [];
+
+            // キャラクター位置初期化
+            player.x = 200;
+            player.y = CANVAS_HEIGHT - player.radius - 20;
+            player.vx = 0;
+            player.vy = 0;
+            player.isGrounded = true;
+            player.isSpiking = false;
+            player.spikeTimer = 0;
+            player.isReceiving = false;
+            player.receiveTimer = 0;
+            player.mangaSymbol = null;
+
+            partner.x = 100;
+            partner.y = CANVAS_HEIGHT - partner.radius - 20;
+            partner.vx = 0;
+            partner.vy = 0;
+            partner.state = 'idle';
+            partner.mangaSymbol = null;
+
+            cpu.x = 600;
+            cpu.y = CANVAS_HEIGHT - cpu.radius - 20;
+            cpu.vx = 0;
+            cpu.vy = 0;
+            cpu.isGrounded = true;
+            cpu.isSpiking = false;
+            cpu.spikeTimer = 0;
+            cpu.isReceiving = false;
+            cpu.receiveTimer = 0;
+            cpu.mangaSymbol = null;
+
+            cpuPartner.x = 700;
+            cpuPartner.y = CANVAS_HEIGHT - cpuPartner.radius - 20;
+            cpuPartner.vx = 0;
+            cpuPartner.vy = 0;
+            cpuPartner.state = 'idle';
+            cpuPartner.mangaSymbol = null;
+
+            ball.touchCount = 0;
+            ball.lastTouchedBy = null;
+            ball.angle = 0;
+
+            if (roundStarter === 'player') {
+                ball.x = player.x;
+                ball.y = player.y - 120;
+                ball.vx = 1.8;
+                ball.vy = -6;
+                triggerMangaSymbol(player, '🔥', 90);
+                createOnomatopoeia(player.x, player.y - 40, "サーブッ!!", "#f97316");
+            } else {
+                ball.x = cpu.x;
+                ball.y = cpu.y - 120;
+                ball.vx = -1.8;
+                ball.vy = -6;
+                triggerMangaSymbol(cpu, '🔥', 90);
+                createOnomatopoeia(cpu.x, cpu.y - 40, "サーブッ!!", "#ef4444");
+            }
+        }
+
+        function gameLoop() {
+            if (!isGameRunning) return;
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- ステート更新 ---
+        function update() {
+            if (!isRoundActive) return;
+
+            // 画面シェイク更新
+            if (shakeTime > 0) {
+                shakeTime--;
+            }
+
+            // 1. ボールの物理＆スピン
+            ball.vy += ball.gravity;
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            ball.angle += ball.vx * 0.05;
+
+            ball.side = (ball.x < CANVAS_WIDTH / 2) ? 'left' : 'right';
+
+            if (ball.x - ball.radius < 0) {
+                ball.x = ball.radius;
+                ball.vx = -ball.vx * 0.8;
+                createOnomatopoeia(ball.x, ball.y, "バウンドッ", "#ffffff");
+            }
+            if (ball.x + ball.radius > CANVAS_WIDTH) {
+                ball.x = CANVAS_WIDTH - ball.radius;
+                ball.vx = -ball.vx * 0.8;
+                createOnomatopoeia(ball.x, ball.y, "バウンドッ", "#ffffff");
+            }
+            if (ball.y - ball.radius < 0) {
+                ball.y = ball.radius;
+                ball.vy = -ball.vy * 0.5;
+            }
+
+            checkNetCollision();
+
+            // 2. プレイヤー操作
+            let pSpeed = playerStats.speed;
+            if (keys.Left || mobileLeft) {
+                player.vx = -pSpeed;
+            } else if (keys.Right || mobileRight) {
+                player.vx = pSpeed;
+            } else {
+                player.vx *= 0.8;
+            }
+
+            // プレイヤージャンプ
+            if ((keys.Up || mobileJump) && player.isGrounded) {
+                player.vy = -playerStats.jumpForce;
+                player.isGrounded = false;
+                createDustEffect(player.x, player.y + player.radius);
+                createOnomatopoeia(player.x, player.y, "サッ", "#ffffff");
+            }
+
+            player.vy += GRAVITY;
+            player.x += player.vx;
+            player.y += player.vy;
+
+            if (player.x - player.radius < 0) player.x = player.radius;
+            if (player.x + player.radius > Net.x) player.x = Net.x - player.radius;
+
+            if (player.y + player.radius > CANVAS_HEIGHT - 20) {
+                player.y = CANVAS_HEIGHT - 20 - player.radius;
+                player.vy = 0;
+                player.isGrounded = true;
+            }
+
+            // --- プレイヤー側オートアクションシステム ---
+            let distToBall = Math.hypot(ball.x - player.x, ball.y - player.y);
+            if (distToBall < 110 && ball.side === 'left') {
+                if (player.isGrounded) {
+                    player.isReceiving = true;
+                    player.receiveTimer = 5;
+                    player.isSpiking = false;
+                } else {
+                    player.isSpiking = true;
+                    player.spikeTimer = 5;
+                    player.isReceiving = false;
+                }
+            }
+
+            if (player.spikeTimer > 0) player.spikeTimer--;
+            if (player.spikeTimer <= 0) player.isSpiking = false;
+            if (player.receiveTimer > 0) player.receiveTimer--;
+            if (player.receiveTimer <= 0) player.isReceiving = false;
+
+            // プレイヤーとボールの当たり判定
+            checkPlayerBallCollision(player, 'player');
+
+            // 3. パートナー AI
+            updatePartnerAI();
+
+            // 4. CPU AI (強化版)
+            updateCpuAI();
+
+            // 5. パーティクル・擬音・漫符更新
+            updateParticles();
+            updateOnomatopoeias();
+            updateMangaSymbolTimers();
+
+            // 6. 得点判定
+            checkScoreConditions();
+
+            // 7. NaN ガード
+            if (isNaN(ball.x) || isNaN(ball.y)) {
+                ball.x = CANVAS_WIDTH / 2;
+                ball.y = 100;
+                ball.vx = 0;
+                ball.vy = 0;
+            }
+            if (isNaN(player.x) || isNaN(player.y)) {
+                player.x = 200;
+                player.y = CANVAS_HEIGHT - player.radius - 20;
+            }
+            if (isNaN(cpu.x) || isNaN(cpu.y)) {
+                cpu.x = 600;
+                cpu.y = CANVAS_HEIGHT - cpu.radius - 20;
+            }
+        }
+
+        // --- ボールとネットの衝突 ---
+        function checkNetCollision() {
+            if (ball.x + ball.radius > Net.x && ball.x - ball.radius < Net.x + Net.width) {
+                if (ball.y + ball.radius > Net.y) {
+                    if (ball.y > Net.y && ball.y < CANVAS_HEIGHT - 20) {
+                        ball.vx = -ball.vx * 0.6;
+                        if (ball.x < CANVAS_WIDTH/2) {
+                            ball.x = Net.x - ball.radius;
+                        } else {
+                            ball.x = Net.x + Net.width + ball.radius;
+                        }
+                        createOnomatopoeia(Net.x, ball.y, "パサッ", "#e2e8f0");
+                    } else if (ball.y <= Net.y) {
+                        ball.vy = -ball.vy * 0.5;
+                        ball.y = Net.y - ball.radius;
+                        createOnomatopoeia(Net.x, Net.y, "ピタッ", "#ffffff");
+                    }
+                }
+            }
+        }
+
+        // --- パートナー AI ---
+        function updatePartnerAI() {
+            partner.vy += GRAVITY;
+            partner.y += partner.vy;
+            partner.x += partner.vx;
+
+            if (partner.y + partner.radius > CANVAS_HEIGHT - 20) {
+                partner.y = CANVAS_HEIGHT - 20 - partner.radius;
+                partner.vy = 0;
+            }
+
+            if (partner.x - partner.radius < 0) partner.x = partner.radius;
+            if (partner.x + partner.radius > Net.x - 30) partner.x = Net.x - 30 - partner.radius;
+
+            if (ball.side === 'left' && ball.vx < 0 && ball.lastTouchedBy === 'player' && ball.touchCount < 2) {
+                partner.state = 'chasing';
+            } else if (ball.side === 'left' && ball.lastTouchedBy === null) {
+                partner.state = 'chasing';
+            } else {
+                partner.state = 'idle';
+            }
+
+            if (partner.state === 'chasing') {
+                let targetX = ball.x;
+                if (targetX > Net.x - 50) targetX = Net.x - 50;
+                
+                let diffX = targetX - partner.x;
+                if (Math.abs(diffX) > 10) {
+                    partner.vx = Math.sign(diffX) * 4;
+                } else {
+                    partner.vx = 0;
+                }
+
+                if (Math.abs(diffX) < 30 && ball.y > 150 && ball.y < 300 && partner.y === CANVAS_HEIGHT - 20 - partner.radius) {
+                    partner.vy = -6;
+                }
+            } else {
+                let defaultX = 120;
+                let diffX = defaultX - partner.x;
+                if (Math.abs(diffX) > 10) {
+                    partner.vx = Math.sign(diffX) * 3;
+                } else {
+                    partner.vx = 0;
+                }
+            }
+
+            checkPartnerBallCollision(partner, 'partner');
+        }
+
+        // --- [UPGRADED] CPU AI (対戦相手アタッカー) ---
+        function updateCpuAI() {
+            cpu.vy += GRAVITY;
+            cpu.y += cpu.vy;
+            cpu.x += cpu.vx;
+
+            if (cpu.y + cpu.radius > CANVAS_HEIGHT - 20) {
+                cpu.y = CANVAS_HEIGHT - 20 - cpu.radius;
+                cpu.vy = 0;
+                cpu.isGrounded = true;
+            }
+
+            // 味方（CPUパートナー）との連動
+            updateCpuPartnerAI();
+
+            if (cpu.x - cpu.radius < Net.x + 10) cpu.x = Net.x + 10 + cpu.radius;
+            if (cpu.x + cpu.radius > CANVAS_WIDTH) cpu.x = CANVAS_WIDTH - cpu.radius;
+
+            // 賢い意思決定ロジック
+            cpu.decisionTimer--;
+            if (cpu.decisionTimer <= 0) {
+                cpu.decisionTimer = 4 + Math.random() * 5; // 反応速度アップ
+
+                if (ball.side === 'right') {
+                    // 自陣にボールがあるとき
+                    if (ball.lastTouchedBy === 'cpuPartner') {
+                        // パートナーがトスを上げてくれた！
+                        // トスの最高点・落下点を瞬時に計算して移動
+                        cpu.targetX = ball.x + (ball.vx * 8) + (Math.random() - 0.5) * 10;
+                        
+                        // ボールが十分な高さにあり、落下のタイミングに合わせて大ジャンプ
+                        if (ball.y < 230 && ball.vy > -2 && cpu.isGrounded) {
+                            cpu.vy = -cpuStats.jumpForce;
+                            cpu.isGrounded = false;
+                            triggerMangaSymbol(cpu, '⚡', 45); // やる気アップ
+                            createDustEffect(cpu.x, cpu.y + cpu.radius);
+                        }
+                    } else {
+                        // ボールを拾うために落下点へ機敏に移動
+                        // 将来のボール位置を予測して移動
+                        let predictionSteps = 10;
+                        let predictedX = ball.x + (ball.vx * predictionSteps);
+                        cpu.targetX = Math.max(Net.x + 30, Math.min(CANVAS_WIDTH - 30, predictedX));
+                    }
+                } else {
+                    // 相手陣地にボールがあるとき
+                    // ブロックやフェイントを仕掛けるためにネット際でマークするか、中央に構える
+                    if (player.isSpiking) {
+                        // プレイヤーがスパイク態勢のときはネット際（ブロック位置）に寄る
+                        cpu.targetX = Net.x + 50 + (Math.random() * 40);
+                    } else {
+                        // 基本はバランスの良い位置（中央奥）に引き気味で構える
+                        cpu.targetX = 650 + (Math.random() - 0.5) * 40;
+                    }
+                }
+            }
+
+            // 実際の移動
+            let diffX = cpu.targetX - cpu.x;
+            if (Math.abs(diffX) > 8) {
+                cpu.vx = Math.sign(diffX) * cpuStats.speed;
+            } else {
+                cpu.vx = 0;
+            }
+
+            // オートスパイク・レシーブ判定 (AI用)
+            let distToBall = Math.hypot(ball.x - cpu.x, ball.y - cpu.y);
+            if (distToBall < 110 && ball.side === 'right') {
+                if (cpu.isGrounded) {
+                    cpu.isReceiving = true;
+                    cpu.receiveTimer = 5;
+                } else {
+                    cpu.isSpiking = true;
+                    cpu.spikeTimer = 5;
+                }
+            }
+
+            if (cpu.spikeTimer > 0) cpu.spikeTimer--;
+            if (cpu.spikeTimer <= 0) cpu.isSpiking = false;
+            if (cpu.receiveTimer > 0) cpu.receiveTimer--;
+            if (cpu.receiveTimer <= 0) cpu.isReceiving = false;
+
+            checkPlayerBallCollision(cpu, 'cpu');
+        }
+
+        // --- [UPGRADED] CPUパートナー AI (対戦相手セッター) ---
+        function updateCpuPartnerAI() {
+            cpuPartner.vy += GRAVITY;
+            cpuPartner.y += cpuPartner.vy;
+            cpuPartner.x += cpuPartner.vx;
+
+            if (cpuPartner.y + cpuPartner.radius > CANVAS_HEIGHT - 20) {
+                cpuPartner.y = CANVAS_HEIGHT - 20 - cpuPartner.radius;
+                cpuPartner.vy = 0;
+            }
+
+            if (cpuPartner.x - cpuPartner.radius < Net.x + 30) cpuPartner.x = Net.x + 30 + cpuPartner.radius;
+            if (cpuPartner.x + cpuPartner.radius > CANVAS_WIDTH) cpuPartner.x = CANVAS_WIDTH - cpuPartner.radius;
+
+            // ボール追尾のトリガー条件
+            if (ball.side === 'right' && (ball.lastTouchedBy === 'cpu' || ball.lastTouchedBy === null) && ball.touchCount < 2) {
+                cpuPartner.state = 'chasing';
+            } else {
+                cpuPartner.state = 'idle';
+            }
+
+            if (cpuPartner.state === 'chasing') {
+                // 落下地点予測を強化
+                let targetX = ball.x + (ball.vx * 6);
+                targetX = Math.max(Net.x + 40, Math.min(CANVAS_WIDTH - 40, targetX));
+
+                let diffX = targetX - cpuPartner.x;
+                if (Math.abs(diffX) > 8) {
+                    cpuPartner.vx = Math.sign(diffX) * 5; // 移動速度アップ
+                } else {
+                    cpuPartner.vx = 0;
+                }
+
+                // 適切な高さでジャンプトス
+                if (Math.abs(diffX) < 40 && ball.y > 140 && ball.y < 280 && cpuPartner.y === CANVAS_HEIGHT - 20 - cpuPartner.radius) {
+                    cpuPartner.vy = -6.5;
+                }
+            } else {
+                // デフォルトのセッター位置に戻る
+                let defaultX = 710;
+                let diffX = defaultX - cpuPartner.x;
+                if (Math.abs(diffX) > 10) {
+                    cpuPartner.vx = Math.sign(diffX) * 3.5;
+                } else {
+                    cpuPartner.vx = 0;
+                }
+            }
+
+            checkPartnerBallCollision(cpuPartner, 'cpuPartner');
+        }
+
+        // --- 当たり判定 & [UPGRADED] コース打ち分けシステム ---
+        function checkPlayerBallCollision(char, type) {
+            let dist = Math.hypot(ball.x - char.x, ball.y - char.y);
+            let minDist = ball.radius + char.radius;
+
+            if (dist < minDist + 15) {
+                let isPlayerSide = (type === 'player');
+
+                if (ball.lastTouchedBy && ((isPlayerSide && (ball.lastTouchedBy === 'player' || ball.lastTouchedBy === 'partner')) ||
+                    (!isPlayerSide && (ball.lastTouchedBy === 'cpu' || ball.lastTouchedBy === 'cpuPartner')))) {
+                    ball.touchCount++;
+                } else {
+                    ball.touchCount = 1;
+                }
+
+                // スパイク
+                if (char.isSpiking) {
+                    playSound('spike');
+                    startCameraShake(12, 15);
+                    createSpikeEffect(ball.x, ball.y, isPlayerSide ? '#f59e0b' : '#ef4444');
+                    
+                    if (isPlayerSide) {
+                        // プレイヤーのスパイク：角度と速度を決定
+                        ball.vx = 8.5 + Math.random() * 3.5;
+                        ball.vy = 4 + Math.random() * 4.5;
+                        createOnomatopoeia(ball.x, ball.y, "ドンッ!!!", "#ea580c");
+                        triggerMangaSymbol(char, '🔥', 60);
+                        showMessage("ナイスキー！！");
+                    } else {
+                        // 【AI強化の核】CPUのコース狙い打ち分けスパイク！
+                        // プレイヤーの位置（player.x）を見て、守備の逆を突く
+                        createOnomatopoeia(ball.x, ball.y, "ドガッ!!!", "#dc2626");
+                        triggerMangaSymbol(char, '🔥', 60);
+                        triggerMangaSymbol(player, '💦', 45);
+
+                        let spikePowerX = 8.5 + Math.random() * 3.5;
+                        let spikePowerY = 3.5 + Math.random() * 4.5;
+
+                        if (player.x < 150) {
+                            // 1. プレイヤーが奥に引っ込んでいる → ネット際に落とす「手前狙いフェイント気味アタック」
+                            ball.vx = -spikePowerX * 0.75;
+                            ball.vy = spikePowerY * 1.5; // 急角度で落とす
+                            showMessage("手前を狙ってきた！");
+                            triggerMangaSymbol(cpu, '✨', 60);
+                        } else if (player.x > 250) {
+                            // 2. プレイヤーが前に出ている → コート奥深くに突き刺す「ロングアタック」
+                            ball.vx = -spikePowerX * 1.3;
+                            ball.vy = spikePowerY * 0.7; // 奥へ滑る弾道
+                            showMessage("奥へ打ち抜かれた！");
+                        } else {
+                            // 3. 標準的な鋭いアタック
+                            ball.vx = -spikePowerX;
+                            ball.vy = spikePowerY;
+                            showMessage("強烈なスパイク！");
+                        }
+                    }
+                    ball.lastTouchedBy = type;
+                    ball.y = char.y - char.radius - ball.radius;
+                } 
+                // レシーブ
+                else {
+                    playSound('hit');
+                    let angle = Math.atan2(ball.y - char.y, ball.x - char.x);
+                    
+                    if (char.isReceiving || char.isGrounded) {
+                        ball.vy = -11;
+                        ball.vx = (isPlayerSide ? 2.5 : -2.5);
+                        createOnomatopoeia(ball.x, ball.y, "バシッ!!!", "#fef08a");
+                        triggerMangaSymbol(char, '✨', 45);
+                        showMessage(isPlayerSide ? "ナイスレシーブ！" : "拾われた！");
+                    } else {
+                        ball.vy = -6 - Math.random() * 3;
+                        ball.vx = Math.cos(angle) * 6;
+                        createOnomatopoeia(ball.x, ball.y, "ボコッ", "#ffffff");
+                    }
+                    
+                    ball.lastTouchedBy = type;
+                    ball.y = char.y - char.radius - ball.radius;
+                }
+            }
+        }
+
+        // --- パートナーヒット ---
+        function checkPartnerBallCollision(char, type) {
+            let dist = Math.hypot(ball.x - char.x, ball.y - char.y);
+            let minDist = ball.radius + char.radius;
+
+            if (dist < minDist + 12) {
+                let isPlayerSide = (type === 'partner');
+                
+                if (ball.lastTouchedBy && ((isPlayerSide && (ball.lastTouchedBy === 'player' || ball.lastTouchedBy === 'partner')) ||
+                    (!isPlayerSide && (ball.lastTouchedBy === 'cpu' || ball.lastTouchedBy === 'cpuPartner')))) {
+                    ball.touchCount++;
+                } else {
+                    ball.touchCount = 1;
+                }
+
+                playSound('toss');
+                createSpikeEffect(ball.x, ball.y, '#38bdf8');
+                createOnomatopoeia(ball.x, ball.y, "フワッ", "#38bdf8");
+
+                if (isPlayerSide) {
+                    let targetX = player.x + (player.vx * 8);
+                    let dx = targetX - ball.x;
+                    ball.vx = dx * 0.055;
+                    ball.vy = -11.5;
+                    triggerMangaSymbol(char, '✨', 45);
+                    showMessage(`${playerStats.partner}「トス、上がったぞ！」`);
+                } else {
+                    // CPUパートナー（黒尾や影山）の正確なトス：アタッカーが走り込んでいる場所にピッタリ合わせる
+                    let targetX = cpu.x + (cpu.vx * 7);
+                    let dx = targetX - ball.x;
+                    ball.vx = dx * 0.058; // 精度を少し向上
+                    ball.vy = -11.8;
+                    triggerMangaSymbol(char, '✨', 45);
+                    
+                    // まれに「速攻（クイック）」を演出するセリフ
+                    if (Math.random() < 0.3) {
+                        showMessage(`${cpuStats.partner}「速攻（クイック）だ！！」`);
+                        triggerMangaSymbol(cpu, '⚡', 60);
+                    } else {
+                        showMessage(`${cpuStats.partner}「ラスト、頼む！」`);
+                    }
+                }
+
+                ball.lastTouchedBy = type;
+                ball.y = char.y - char.radius - ball.radius;
+            }
+        }
+
+        // --- 得点判定 ---
+        function checkScoreConditions() {
+            let scored = null;
+            let subText = "";
+
+            if (ball.y + ball.radius >= CANVAS_HEIGHT - 20) {
+                if (ball.x < CANVAS_WIDTH / 2) {
+                    scored = 'cpu';
+                    subText = `${cpuStats.team}の得点！`;
+                    createSpikeEffect(ball.x, CANVAS_HEIGHT - 20, '#ef4444');
+                    createOnomatopoeia(ball.x, CANVAS_HEIGHT - 30, "ボトッ…", "#ef4444");
+                    triggerMangaSymbol(player, '💦', 90);
+                    triggerMangaSymbol(partner, '💦', 90);
+                } else {
+                    scored = 'player';
+                    subText = `${playerStats.team}の得点！`;
+                    createSpikeEffect(ball.x, CANVAS_HEIGHT - 20, '#f59e0b');
+                    createOnomatopoeia(ball.x, CANVAS_HEIGHT - 30, "シャオラァ!!!", "#f59e0b");
+                    triggerMangaSymbol(player, '🔥', 90);
+                    triggerMangaSymbol(partner, '✨', 90);
+                }
+            }
+
+            if (ball.touchCount > 3) {
+                if (ball.side === 'left') {
+                    scored = 'cpu';
+                    subText = "フォアハンド！(4回タッチ)";
+                    triggerMangaSymbol(player, '💦', 90);
+                } else {
+                    scored = 'player';
+                    subText = "相手のフォアハンド！";
+                    triggerMangaSymbol(cpu, '💦', 90);
+                }
+            }
+
+            if (scored) {
+                isRoundActive = false;
+                playSound('point');
+
+                if (scored === 'player') {
+                    scores.player++;
+                    roundStarter = 'cpu';
+                } else {
+                    scores.cpu++;
+                    roundStarter = 'player';
+                }
+
+                updateScoreUI();
+                showScoreOverlay(scored, subText);
+            }
+        }
+
+        // --- 得点演出 ---
+        function showScoreOverlay(winner, details) {
+            const overlay = document.getElementById('scoreOverlay');
+            const overlayText = document.getElementById('overlayText');
+            const overlaySub = document.getElementById('overlaySub');
+            const duiceBadge = document.getElementById('duiceBadge');
+
+            // デュースバッジ表示の有無判定
+            if (scores.player >= MATCH_POINT - 1 && scores.cpu >= MATCH_POINT - 1 && Math.abs(scores.player - scores.cpu) < 2) {
+                duiceBadge.classList.remove('hidden');
+            } else {
+                duiceBadge.classList.add('hidden');
+            }
+
+            if (winner === 'player') {
+                overlayText.innerText = "POINT !!";
+                overlayText.className = "font-anime text-5xl md:text-7xl text-orange-500 drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] uppercase";
+            } else {
+                overlayText.innerText = "DON'T MIND !!";
+                overlayText.className = "font-anime text-5xl md:text-7xl text-red-500 drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] uppercase";
+            }
+
+            overlaySub.innerText = details;
+            overlay.style.opacity = '1';
+
+            setTimeout(() => {
+                overlay.style.opacity = '0';
+                
+                // 15点先取かつ2点差がついているか
+                if ((scores.player >= MATCH_POINT || scores.cpu >= MATCH_POINT) && Math.abs(scores.player - scores.cpu) >= 2) {
+                    endGame();
+                } else {
+                    startRound();
+                }
+            }, 2000);
+        }
+
+        // --- 試合終了 ---
+        function endGame() {
+            isGameRunning = false;
+            document.getElementById('gameCanvasContainer').classList.add('hidden');
+            document.getElementById('mobileController').classList.add('hidden');
+            document.getElementById('resultScreen').classList.remove('hidden');
+
+            const resTitle = document.getElementById('resultTitle');
+            const resSub = document.getElementById('resultSub');
+            
+            document.getElementById('resPlayerScore').innerText = scores.player;
+            document.getElementById('resCpuScore').innerText = scores.cpu;
+
+            if (scores.player >= MATCH_POINT) {
+                resTitle.innerText = "完全勝利！！";
+                resTitle.className = "font-anime text-4xl text-orange-600 drop-shadow-[2px_2px_0px_#000] mb-2";
+                resSub.innerText = `見事な繋ぎで、${cpuStats.team}を打ち破った！`;
+            } else {
+                resTitle.innerText = "敗北…";
+                resTitle.className = "font-anime text-4xl text-gray-500 mb-2";
+                resSub.innerText = "次こそ繋いで、あの高い壁を乗り越えろ！";
+            }
+        }
+
+        function restartGame() {
+            document.getElementById('resultScreen').classList.add('hidden');
+            startGame();
+        }
+
+        function backToTitle() {
+            document.getElementById('resultScreen').classList.add('hidden');
+            document.getElementById('gameHeader').classList.add('hidden');
+            document.getElementById('startScreen').classList.remove('hidden');
+        }
+
+        // --- 影の描画 ---
+        function drawShadow(x, y, radius) {
+            let heightAboveGround = (CANVAS_HEIGHT - 20) - y;
+            let maxDistance = 350;
+            let factor = Math.max(0, 1 - (heightAboveGround / maxDistance));
+            if (factor <= 0) return;
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 0, 0, ' + (0.4 * factor) + ')';
+            ctx.beginPath();
+            ctx.ellipse(x, CANVAS_HEIGHT - 20, radius * factor, radius * 0.25 * factor, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // --- 漫符（マンガエフェクト）描画 ---
+        function drawMangaSymbol(x, y, symbol) {
+            ctx.save();
+            ctx.font = "bold 24px 'Noto Sans JP', sans-serif";
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#000000';
+            ctx.shadowBlur = 4;
+            
+            // 少しふわふわ上下に揺らす
+            let bounceY = Math.sin(Date.now() * 0.01) * 3;
+            ctx.fillText(symbol, x, y - 45 + bounceY);
+            ctx.restore();
+        }
+
+        // --- 描画処理 ---
+        function draw() {
+            ctx.save();
+
+            // 画面揺れ（スクリーンシェイク）の適用
+            if (shakeTime > 0) {
+                let dx = (Math.random() - 0.5) * shakeIntensity;
+                let dy = (Math.random() - 0.5) * shakeIntensity;
+                ctx.translate(dx, dy);
+            }
+
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // 漫画のコマ風の背景グラデーション（少しノスタルジック・少年漫画風に）
+            let skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+            skyGrad.addColorStop(0, '#f1f5f9'); // 明るい灰色ベースでコミック調に
+            skyGrad.addColorStop(1, '#cbd5e1');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // 漫画風の集中線・スピードライン背景演出（スパイク中など）
+            if (player.isSpiking || cpu.isSpiking) {
+                ctx.fillStyle = 'rgba(0,0,0,0.05)';
+                for (let i = 0; i < 20; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+                    ctx.lineTo(Math.random() * CANVAS_WIDTH, Math.random() * CANVAS_HEIGHT);
+                    ctx.lineTo(Math.random() * CANVAS_WIDTH, Math.random() * CANVAS_HEIGHT);
+                    ctx.fill();
+                }
+            }
+
+            // コートの床（漫画っぽいコントラスト強めの木目オレンジブラウン）
+            ctx.fillStyle = '#ea580c';
+            ctx.fillRect(0, CANVAS_HEIGHT - 20, CANVAS_WIDTH, 20);
+            
+            // コートの白い太線（コミック風に黒い縁取り）
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, CANVAS_HEIGHT - 24, CANVAS_WIDTH, 6);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, CANVAS_HEIGHT - 22, CANVAS_WIDTH, 2);
+
+            // キャラクターとボールの影を先に描画
+            drawShadow(partner.x, partner.y + partner.radius, partner.radius);
+            drawShadow(player.x, player.y + player.radius, player.radius);
+            drawShadow(cpuPartner.x, cpuPartner.y + cpuPartner.radius, cpuPartner.radius);
+            drawShadow(cpu.x, cpu.y + cpu.radius, cpu.radius);
+            drawShadow(ball.x, ball.y, ball.radius);
+
+            // ネット（手書きペン入れ風に太い黒縁）
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(Net.x - 2, Net.y, Net.width + 4, Net.height);
+            ctx.fillStyle = '#ffffff'; // 白い網
+            ctx.fillRect(Net.x, Net.y, Net.width, Net.height);
+            // ネット上部の白帯
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(Net.x - 4, Net.y, Net.width + 8, 14);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(Net.x - 2, Net.y + 2, Net.width + 4, 10);
+            // ネット支柱（黒）
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(Net.x + 3, Net.y, 4, Net.height);
+
+            // 1. パートナー
+            drawCharacter(partner, playerStats.partner, playerStats.secondary, playerStats.color, 'right');
+
+            // 2. プレイヤー
+            drawCharacter(player, playerStats.name, playerStats.color, playerStats.secondary, 'right');
+            if (player.isSpiking) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+                ctx.beginPath();
+                ctx.arc(player.x, player.y - 10, player.radius + 8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 3. CPU パートナー
+            drawCharacter(cpuPartner, cpuStats.partner, cpuStats.secondary, cpuStats.color, 'left');
+
+            // 4. CPU アタッカー
+            drawCharacter(cpu, cpuStats.name, cpuStats.color, cpuStats.secondary, 'left');
+            if (cpu.isSpiking) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+                ctx.beginPath();
+                ctx.arc(cpu.x, cpu.y - 10, cpu.radius + 8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // --- 漫符の描画 ---
+            [player, partner, cpu, cpuPartner].forEach(char => {
+                if (char.mangaSymbol) {
+                    drawMangaSymbol(char.x, char.y, char.mangaSymbol);
+                }
+            });
+
+            // --- ボール ---
+            ctx.save();
+            ctx.translate(ball.x, ball.y);
+            ctx.rotate(ball.angle);
+            ctx.beginPath();
+            ctx.arc(0, 0, ball.radius, 0, Math.PI * 2);
+            
+            // 漫画的な3重のアウトライン（強烈なペン線）
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = '#000000';
+            ctx.stroke();
+
+            let ballGrad = ctx.createRadialGradient(-4, -4, 1, 0, 0, ball.radius);
+            ballGrad.addColorStop(0, '#fef08a');
+            ballGrad.addColorStop(0.6, '#4ade80');
+            ballGrad.addColorStop(1, '#166534');
+            ctx.fillStyle = ballGrad;
+            ctx.fill();
+            
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#000000';
+            ctx.stroke();
+
+            // 漫画のタッチに合わせたスピード線
+            ctx.beginPath();
+            ctx.arc(0, 0, ball.radius * 0.6, 0.5, Math.PI - 0.5);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(0, 0, ball.radius * 0.6, Math.PI + 0.5, Math.PI * 2 - 0.5);
+            ctx.stroke();
+            ctx.restore();
+
+            // パーティクル＆擬音（描き文字）の描画
+            drawParticles();
+            drawOnomatopoeias();
+
+            ctx.restore();
+        }
+
+        // --- キャラクターレンダリング（劇画・ペン入れ・漫画風） ---
+        function drawCharacter(char, name, mainColor, subColor, faceDir) {
+            ctx.save();
+
+            ctx.translate(char.x, char.y);
+            let tilt = char.vx * 0.02;
+            ctx.rotate(tilt);
+
+            let stretch = Math.min(Math.max(char.vy * 0.015, -0.15), 0.15);
+            if (char.isReceiving) {
+                stretch = -0.15; 
+            }
+            let scaleX = 1 - stretch;
+            let scaleY = 1 + stretch;
+            ctx.scale(scaleX, scaleY);
+
+            // 手書き風に何重ものぶっといアウトラインにするためのパス描画用
+            function drawMangaOutline(pathFunc, strokeWidth) {
+                ctx.save();
+                ctx.lineWidth = strokeWidth;
+                ctx.strokeStyle = '#000000';
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                pathFunc();
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // --- 髪の毛パス定義 ---
+            const hairPath = () => {
+                ctx.beginPath();
+                if (name.includes('日向')) {
+                    ctx.moveTo(-25, -10);
+                    ctx.lineTo(-34, -24);
+                    ctx.lineTo(-18, -20);
+                    ctx.lineTo(-18, -36);
+                    ctx.lineTo(-3, -26);
+                    ctx.lineTo(2, -42);
+                    ctx.lineTo(12, -26);
+                    ctx.lineTo(28, -32);
+                    ctx.lineTo(21, -12);
+                    ctx.lineTo(28, -5);
+                    ctx.lineTo(22, 10);
+                    ctx.lineTo(-22, 10);
+                } else if (name.includes('影山')) {
+                    ctx.arc(0, -4, char.radius + 2, Math.PI, 0);
+                    ctx.lineTo(26, 12);
+                    ctx.lineTo(16, 5);
+                    ctx.lineTo(6, -2);
+                    ctx.lineTo(0, 12);
+                    ctx.lineTo(-6, -2);
+                    ctx.lineTo(-16, 5);
+                    ctx.lineTo(-26, 12);
+                } else if (name.includes('研磨')) {
+                    ctx.arc(0, -3, char.radius + 3, Math.PI - 0.2, 0.2);
+                    ctx.lineTo(28, 20); 
+                    ctx.lineTo(16, 4);
+                    ctx.lineTo(0, 0);
+                    ctx.lineTo(-16, 4);
+                    ctx.lineTo(-28, 20);
+                } else if (name.includes('黒尾')) {
+                    ctx.moveTo(-25, -2);
+                    ctx.lineTo(-26, -22);
+                    ctx.lineTo(-14, -18);
+                    ctx.lineTo(-10, -36); 
+                    ctx.lineTo(5, -20);
+                    ctx.lineTo(28, -42); 
+                    ctx.lineTo(18, -12);
+                    ctx.lineTo(30, -6);
+                    ctx.lineTo(23, 14);
+                    ctx.lineTo(-23, 14);
+                }
+                ctx.closePath();
+            };
+
+            // 髪のアウトラインを描く
+            drawMangaOutline(hairPath, 7);
+
+            // 髪の塗り
+            ctx.save();
+            hairPath();
+            if (name.includes('日向')) {
+                ctx.fillStyle = '#f97316';
+            } else if (name.includes('影山')) {
+                ctx.fillStyle = '#1e293b';
+            } else if (name.includes('研磨')) {
+                ctx.fillStyle = '#fde047';
+            } else if (name.includes('黒尾')) {
+                ctx.fillStyle = '#1e293b';
+            }
+            ctx.fill();
+            ctx.restore();
+
+            // 研磨のプリン頭（生え際の黒い影）
+            if (name.includes('研磨')) {
+                ctx.save();
+                ctx.fillStyle = '#111827';
+                ctx.beginPath();
+                ctx.arc(0, -5, char.radius * 0.8, Math.PI + 0.4, -0.4);
+                ctx.lineTo(5, -12);
+                ctx.lineTo(-5, -12);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // --- 体の丸（ベース）パス定義 ---
+            const bodyPath = () => {
+                ctx.beginPath();
+                ctx.arc(0, 0, char.radius, 0, Math.PI * 2);
+            };
+
+            // 体のアウトライン
+            drawMangaOutline(bodyPath, 7);
+
+            // 体の塗り
+            ctx.save();
+            bodyPath();
+            ctx.fillStyle = mainColor;
+            ctx.fill();
+            ctx.restore();
+
+            // ユニフォームのライン
+            ctx.fillStyle = subColor;
+            ctx.fillRect(-15, 6, 30, 8);
+
+            // --- 顔・表情（劇画・漫画風デフォルメ） ---
+            // 目のベース（白目、漫画らしく太枠で大きく）
+            let eyeX1 = (faceDir === 'right' ? 6 : -18);
+            let eyeX2 = (faceDir === 'right' ? 18 : -6);
+
+            const eyesPath = () => {
+                ctx.beginPath();
+                ctx.arc(eyeX1, -6, 5, 0, Math.PI * 2);
+                ctx.arc(eyeX2, -6, 5, 0, Math.PI * 2);
+            };
+
+            drawMangaOutline(eyesPath, 4.5);
+            ctx.save();
+            eyesPath();
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.restore();
+
+            // 黒目（強い意志を持った漫画特有の目線）
+            ctx.fillStyle = '#000000';
+            let eyeOffset = (faceDir === 'right' ? 1.5 : -1.5);
+            ctx.beginPath();
+            ctx.arc(eyeX1 + eyeOffset, -6, 2.5, 0, Math.PI * 2);
+            ctx.arc(eyeX2 + eyeOffset, -6, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 白いハイライトを入れて目を生き生きと
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(eyeX1 + eyeOffset - 1, -8, 1, 0, Math.PI * 2);
+            ctx.arc(eyeX2 + eyeOffset - 1, -8, 1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // スパイク時の劇画調の眉毛（ハの字・吊り上がり）
+            if (char.isSpiking) {
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3.5;
+                ctx.beginPath();
+                // 眉間を狭めて睨みつける
+                ctx.moveTo(eyeX1 - 6, -13);
+                ctx.lineTo(eyeX1 + 4, -9);
+                ctx.moveTo(eyeX2 + 6, -13);
+                ctx.lineTo(eyeX2 - 4, -9);
+                ctx.stroke();
+            }
+
+            // キャラクター名
+            ctx.restore(); 
+            ctx.save();
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 4;
+            ctx.font = "bold 13px 'Mochiy Pop One', sans-serif";
+            ctx.textAlign = 'center';
+            // コミック風太縁取りテキスト
+            ctx.strokeText(name.split(' ')[0], char.x, char.y - char.radius - 16);
+            ctx.fillText(name.split(' ')[0], char.x, char.y - char.radius - 16);
+
+            ctx.restore();
+        }
+
+    </script>
+</body>
+</html>

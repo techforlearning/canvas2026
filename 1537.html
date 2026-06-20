@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hawkins Modern RPG - Stranger Things Experience</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Orbitron:wght@500;700;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030308;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Sleek Modern Glassmorphism Panels */
+        .glass-panel {
+            background: rgba(10, 10, 18, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        .neon-glow-red {
+            box-shadow: 0 0 25px rgba(239, 68, 68, 0.25);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+
+        .neon-glow-purple {
+            box-shadow: 0 0 25px rgba(168, 85, 247, 0.25);
+            border: 1px solid rgba(168, 85, 247, 0.4);
+        }
+
+        /* Upside Down particle effect */
+        .upside-down-bg {
+            background: radial-gradient(circle at center, #140505 0%, #030101 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Smooth floating animations */
+        @keyframes breathe {
+            0%, 100% { transform: translateY(0px) scale(1); filter: brightness(1); }
+            50% { transform: translateY(-10px) scale(1.02); filter: brightness(1.15); }
+        }
+
+        .breathe-effect {
+            animation: breathe 5s ease-in-out infinite;
+        }
+
+        /* Screen shake animation */
+        .shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(4px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+            40%, 60% { transform: translate3d(6px, 0, 0); }
+        }
+
+        /* Flash screen animation */
+        .flash {
+            animation: flash 0.4s ease-out;
+        }
+
+        @keyframes flash {
+            0% { background-color: rgba(239, 68, 68, 0.8); }
+            100% { background-color: transparent; }
+        }
+
+        /* Floating spores simulation */
+        .spore {
+            position: absolute;
+            background: rgba(239, 68, 68, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: float-spore 10s linear infinite;
+        }
+
+        @keyframes float-spore {
+            0% { transform: translateY(105vh) translateX(0) scale(1); opacity: 0; }
+            10% { opacity: 0.7; }
+            90% { opacity: 0.7; }
+            100% { transform: translateY(-5vh) translateX(80px) scale(0.4); opacity: 0; }
+        }
+
+        /* Red lightning / vines crawling background */
+        .red-vines::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(239, 68, 68, 0.05), transparent 70%);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen justify-between select-none">
+
+    <!-- Sound Synth Module -->
+    <script>
+        class RetroAudio {
+            constructor() {
+                this.ctx = null;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playBeep() {
+                this.init(); if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(500, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(700, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.1);
+            }
+            playHit() {
+                this.init(); if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(30, this.ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.2);
+            }
+            playPsi() {
+                this.init(); if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const osc2 = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain); osc2.connect(gain); gain.connect(this.ctx.destination);
+                osc.type = 'sawtooth';
+                osc2.type = 'sine';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.6);
+                osc2.frequency.setValueAtTime(305, this.ctx.currentTime);
+                osc2.frequency.exponentialRampToValueAtTime(1210, this.ctx.currentTime + 0.6);
+                gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.6);
+                osc.start(); osc2.start();
+                osc.stop(this.ctx.currentTime + 0.6); osc2.stop(this.ctx.currentTime + 0.6);
+            }
+            playHeal() {
+                this.init(); if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const notes = [329.63, 392.00, 523.25, 659.25, 783.99];
+                notes.forEach((freq, index) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + index * 0.06);
+                    gain.gain.setValueAtTime(0.08, now + index * 0.06);
+                    gain.gain.exponentialRampToValueAtTime(0.005, now + index * 0.06 + 0.15);
+                    osc.start(now + index * 0.06);
+                    osc.stop(now + index * 0.06 + 0.16);
+                });
+            }
+            playVictory() {
+                this.init(); if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const notes = [293.66, 329.63, 349.23, 392.00, 440.00, 523.25, 587.33];
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                    gain.gain.setValueAtTime(0.08, now + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.3);
+                    osc.start(now + idx * 0.08);
+                    osc.stop(now + idx * 0.08 + 0.32);
+                });
+            }
+            playGameOver() {
+                this.init(); if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const notes = [220, 207.65, 196, 174.61, 146.83];
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.3);
+                    gain.gain.setValueAtTime(0.12, now + idx * 0.3);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.3 + 0.28);
+                    osc.start(now + idx * 0.3);
+                    osc.stop(now + idx * 0.3 + 0.3);
+                });
+            }
+        }
+        const audio = new RetroAudio();
+    </script>
+
+    <!-- Header / Title -->
+    <header class="w-full py-4 px-6 bg-slate-950/80 border-b border-red-950 flex justify-between items-center z-10 backdrop-blur-md">
+        <div class="flex items-center space-x-3">
+            <span class="text-red-500 font-orbitron text-xl md:text-2xl font-black tracking-widest uppercase" style="text-shadow: 0 0 15px rgba(239,68,68,0.8);">
+                HAWKINS UNDERGROUND
+            </span>
+        </div>
+        <div class="text-sm text-slate-400 font-orbitron">
+            STAGE: <span id="hud-stage-name" class="text-red-500 font-black">ホーキンスの森</span>
+        </div>
+    </header>
+
+    <!-- Main Game Frame -->
+    <main class="flex-grow flex items-center justify-center p-4 w-full max-w-4xl mx-auto">
+        <div id="game-container" class="w-full aspect-[4/3] max-w-3xl glass-panel neon-glow-red rounded-2xl overflow-hidden flex flex-col justify-between p-4 upside-down-bg red-vines relative transition-all duration-500">
+            
+            <!-- Spore background container -->
+            <div id="spore-container" class="absolute inset-0 z-0"></div>
+            <!-- Flash / Damage overlay -->
+            <div id="effect-overlay" class="absolute inset-0 pointer-events-none z-10 transition-all"></div>
+
+            <!-- 1. INTRO / START SCREEN -->
+            <div id="screen-start" class="absolute inset-0 flex flex-col items-center justify-center p-8 bg-slate-950/95 z-30 text-center">
+                <h1 class="text-4xl md:text-6xl font-black text-red-500 font-orbitron tracking-widest uppercase mb-4" style="text-shadow: 0 0 30px rgba(239, 68, 68, 0.8);">
+                    STRANGER<br><span class="text-slate-100">RPG</span>
+                </h1>
+                <p class="text-sm md:text-base text-slate-400 mb-8 max-w-lg leading-relaxed">
+                    1983年、インディアナ州ホーキンス。裏側の世界（Upside Down）から静かに侵食してくる巨大なマインド・フレイヤーと冥王ヴェクナの魔の手。少年少女たちの『絆の力』と強力な『超能力』を組み合わせ、ホーキンスを救い出せ！
+                </p>
+                <button id="btn-start-game" class="px-8 py-3.5 bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white font-orbitron font-extrabold tracking-widest border border-red-500/50 rounded-xl shadow-[0_0_20px_rgba(239,68,68,0.5)] transition-all transform hover:scale-105 active:scale-95 text-lg">
+                    ゲームスタート
+                </button>
+            </div>
+
+            <!-- 2. GAME PLAY & COMBAT MAIN VIEW -->
+            <div id="screen-game" class="flex-grow flex flex-col justify-between w-full h-full z-10 hidden">
+                
+                <!-- Party Stats Display (Top Row - Sleek Minimalist Cards) -->
+                <div class="grid grid-cols-4 gap-2 md:gap-4 mb-2 z-10">
+                    <!-- Mike -->
+                    <div id="status-mike" class="glass-panel border border-slate-800 p-2.5 rounded-xl text-center transition-all duration-300">
+                        <div class="text-xs font-extrabold text-indigo-400">マイク</div>
+                        <div class="text-sm font-mono mt-1 font-semibold">HP <span id="hp-mike" class="text-white">80</span></div>
+                        <div class="text-xs font-mono text-slate-400">MP <span id="mp-mike">20</span></div>
+                    </div>
+                    <!-- Eleven -->
+                    <div id="status-eleven" class="glass-panel border border-slate-800 p-2.5 rounded-xl text-center transition-all duration-300">
+                        <div class="text-xs font-extrabold text-pink-400">エル</div>
+                        <div class="text-sm font-mono mt-1 font-semibold">HP <span id="hp-eleven" class="text-white">65</span></div>
+                        <div class="text-xs font-mono text-slate-400">MP <span id="mp-eleven">45</span></div>
+                    </div>
+                    <!-- Dustin -->
+                    <div id="status-dustin" class="glass-panel border border-slate-800 p-2.5 rounded-xl text-center transition-all duration-300">
+                        <div class="text-xs font-extrabold text-emerald-400">ダスティン</div>
+                        <div class="text-sm font-mono mt-1 font-semibold">HP <span id="hp-dustin" class="text-white">95</span></div>
+                        <div class="text-xs font-mono text-slate-400">MP <span id="mp-dustin">15</span></div>
+                    </div>
+                    <!-- Lucas -->
+                    <div id="status-lucas" class="glass-panel border border-slate-800 p-2.5 rounded-xl text-center transition-all duration-300">
+                        <div class="text-xs font-extrabold text-amber-400">ルーカス</div>
+                        <div class="text-sm font-mono mt-1 font-semibold">HP <span id="hp-lucas" class="text-white">90</span></div>
+                        <div class="text-xs font-mono text-slate-400">MP <span id="mp-lucas">10</span></div>
+                    </div>
+                </div>
+
+                <!-- Battle Area (Middle - Enemy Display with breathing animations) -->
+                <div class="flex-grow flex flex-col justify-center items-center py-2 relative">
+                    <div id="enemy-sprite-container" class="transition-transform duration-200 breathe-effect">
+                        <!-- Enemy Graphic Rendered via inline high-quality SVGs -->
+                        <div id="enemy-graphic" class="w-56 h-56 flex items-center justify-center">
+                            <!-- Injected dynamically by JavaScript -->
+                        </div>
+                    </div>
+                    <!-- Enemy Stats Bubble -->
+                    <div class="mt-1 px-5 py-1.5 glass-panel border border-red-500/30 rounded-full text-xs font-orbitron tracking-widest text-red-400">
+                        <span id="enemy-name" class="font-extrabold text-white">デモドッグ</span> - HP: <span id="enemy-hp" class="text-red-500 font-bold">???</span>
+                    </div>
+                </div>
+
+                <!-- Bottom UI: Dialogue & Commands Interface -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 z-10">
+                    <!-- Dialogue Text Window -->
+                    <div id="dialogue-box" class="md:col-span-2 glass-panel border border-slate-800 p-4 h-28 overflow-y-auto text-sm leading-relaxed flex flex-col justify-between rounded-xl cursor-pointer hover:border-slate-700 transition-all">
+                        <div id="dialogue-text" class="text-slate-200 font-medium">
+                            デモドッグがあらわれた！<br>どうする？
+                        </div>
+                        <!-- Indicator for "Click to Continue" -->
+                        <div id="dialogue-prompt" class="text-right text-xs text-red-500 font-semibold animate-pulse hidden font-orbitron">
+                            CLICK TO CONTINUE <i class="fa-solid fa-caret-down"></i>
+                        </div>
+                    </div>
+
+                    <!-- Action Commands Window -->
+                    <div id="commands-box" class="glass-panel border border-slate-800 p-3 grid grid-cols-2 gap-2 h-28 text-sm rounded-xl">
+                        <button id="cmd-attack" class="flex items-center justify-center space-x-1 border border-slate-800/60 hover:border-red-500/50 hover:bg-red-950/10 rounded-lg text-slate-300 hover:text-white transition-all font-semibold"><i class="fa-solid fa-skull text-red-500"></i> <span>たたかう</span></button>
+                        <button id="cmd-skill" class="flex items-center justify-center space-x-1 border border-slate-800/60 hover:border-purple-500/50 hover:bg-purple-950/10 rounded-lg text-slate-300 hover:text-white transition-all font-semibold"><i class="fa-solid fa-wand-magic-sparkles text-purple-400"></i> <span>超能力/技</span></button>
+                        <button id="cmd-item" class="flex items-center justify-center space-x-1 border border-slate-800/60 hover:border-emerald-500/50 hover:bg-emerald-950/10 rounded-lg text-slate-300 hover:text-white transition-all font-semibold"><i class="fa-solid fa-suitcase-medical text-emerald-400"></i> <span>アイテム</span></button>
+                        <button id="cmd-defend" class="flex items-center justify-center space-x-1 border border-slate-800/60 hover:border-blue-500/50 hover:bg-blue-950/10 rounded-lg text-slate-300 hover:text-white transition-all font-semibold"><i class="fa-solid fa-shield text-blue-400"></i> <span>ぼうぎょ</span></button>
+                    </div>
+                </div>
+
+                <!-- Sub-Menus (Skill Selection, Item Selection Overlay with detail panel) -->
+                <div id="sub-menu-overlay" class="absolute inset-x-4 bottom-4 glass-panel border border-slate-700/50 p-4 z-20 rounded-xl hidden flex flex-col justify-between h-48">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                        <span id="sub-menu-title" class="text-xs font-bold font-orbitron text-red-400 tracking-widest">特技を選択</span>
+                        <button id="btn-close-submenu" class="text-xs text-slate-400 hover:text-white flex items-center space-x-1"><i class="fa-solid fa-xmark"></i> <span>戻る</span></button>
+                    </div>
+                    
+                    <!-- Middle: Selection Options -->
+                    <div id="sub-menu-options" class="grid grid-cols-2 gap-2 text-sm overflow-y-auto flex-grow my-2 pr-1">
+                        <!-- Injected dynamically by JS -->
+                    </div>
+
+                    <!-- Bottom: Dynamic Skill Details Display (Modern Upgrade) -->
+                    <div id="detail-display-box" class="bg-slate-950/90 border border-slate-800/80 p-2 rounded-lg text-xs text-slate-300 min-h-[3rem] flex items-center justify-start">
+                        <span class="text-slate-500 italic">技やアイテムにカーソルを合わせる（またはタップする）と、ここに効果が表示されます。</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 3. GAME OVER / GAME CLEAR END SCREENS -->
+            <div id="screen-end" class="absolute inset-0 flex flex-col items-center justify-center p-8 bg-slate-950/98 z-40 text-center hidden">
+                <div id="end-icon" class="w-16 h-16 rounded-full flex items-center justify-center border mb-4">
+                    <!-- Injected by JS -->
+                </div>
+                <h2 id="end-title" class="text-3xl md:text-4xl font-black font-orbitron mb-4"></h2>
+                <p id="end-desc" class="text-slate-400 text-sm max-w-md mb-8 leading-relaxed"></p>
+                <button id="btn-restart" class="px-8 py-3 bg-red-700 hover:bg-red-600 text-white font-bold font-orbitron tracking-widest border border-red-500 rounded-xl shadow-lg transition-transform transform hover:scale-105 active:scale-95 text-lg">
+                    RESTART GAME
+                </button>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full py-3 px-6 text-center text-xs text-slate-500 border-t border-slate-950 bg-black/60 backdrop-blur-sm">
+        <p>&copy; 2026 Stranger Things Modern RPG. Experience the Upside Down.</p>
+    </footer>
+
+    <!-- Game Database & Engine Logic -->
+    <script>
+        // --- 1. Sleek, Highly Detailed SVGs for Enemies ---
+        // Demodog (Stage 1) - Sleek Neon Red Outlines & Multi-layered Flesh
+        const SVG_DEMODOG = `
+        <svg viewBox="0 0 100 100" class="w-full h-full">
+            <defs>
+                <radialGradient id="demodogGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#ef4444" stop-opacity="0.4"/>
+                    <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+                </radialGradient>
+            </defs>
+            <circle cx="50" cy="50" r="45" fill="url(#demodogGlow)" />
+            <!-- Back Tail -->
+            <path d="M 22,50 Q 5,40 10,65 Q 15,70 25,58" fill="#1b1115" stroke="#ef4444" stroke-width="1.5" />
+            <!-- Four legs with metallic claws -->
+            <path d="M 32,58 L 20,80 L 15,82" stroke="#160e11" stroke-width="6" stroke-linecap="round" fill="none" />
+            <path d="M 32,58 L 20,80 L 15,82" stroke="#dc2626" stroke-width="1.5" stroke-linecap="round" fill="none" />
+            
+            <path d="M 68,58 L 80,80 L 85,82" stroke="#160e11" stroke-width="6" stroke-linecap="round" fill="none" />
+            <path d="M 68,58 L 80,80 L 85,82" stroke="#dc2626" stroke-width="1.5" stroke-linecap="round" fill="none" />
+            
+            <path d="M 40,65 L 32,86 L 28,88" stroke="#120b0d" stroke-width="5" stroke-linecap="round" fill="none" />
+            <path d="M 60,65 L 68,86 L 72,88" stroke="#120b0d" stroke-width="5" stroke-linecap="round" fill="none" />
+            
+            <!-- Sleek Body -->
+            <ellipse cx="50" cy="58" rx="26" ry="16" fill="#180f12" stroke="#dc2626" stroke-width="1.5" />
+            <ellipse cx="50" cy="58" rx="20" ry="10" fill="#0f090b" />
+            
+            <!-- Head Connection (Neck) -->
+            <path d="M 50,48 C 45,35 42,28 50,18 C 58,28 55,35 50,48" fill="#2d171d" />
+
+            <!-- Opened Demogorgon Mouth Petals (Sleek sci-fi look) -->
+            <!-- Top -->
+            <path d="M 50,22 L 50,5 L 42,14 Z" fill="#991b1b" stroke="#fca5a5" stroke-width="1" />
+            <!-- Bottom -->
+            <path d="M 50,46 L 50,62 L 58,54 Z" fill="#991b1b" stroke="#fca5a5" stroke-width="1" />
+            <!-- Left -->
+            <path d="M 38,34 L 20,34 L 28,42 Z" fill="#7f1d1d" stroke="#fca5a5" stroke-width="1" />
+            <!-- Right -->
+            <path d="M 62,34 L 80,34 L 72,26 Z" fill="#7f1d1d" stroke="#fca5a5" stroke-width="1" />
+            
+            <!-- Glowing Core Void with white hot particles -->
+            <circle cx="50" cy="34" r="10" fill="#2d060c" stroke="#fca5a5" stroke-width="1.5" />
+            <circle cx="50" cy="34" r="5" fill="#ef4444" />
+            <circle cx="49" cy="33" r="1.5" fill="#ffffff" />
+        </svg>`;
+
+        // Demogorgon (Stage 2) - Tall, Sleek Shadowy Silhouette with Glowing Spores
+        const SVG_DEMOGORGON = `
+        <svg viewBox="0 0 100 100" class="w-full h-full">
+            <defs>
+                <radialGradient id="demoGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#c084fc" stop-opacity="0.3"/>
+                    <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+                </radialGradient>
+            </defs>
+            <circle cx="50" cy="50" r="45" fill="url(#demoGlow)" />
+            <!-- Torso -->
+            <path d="M 43,45 L 57,45 L 54,75 L 46,75 Z" fill="#16151a" stroke="#a855f7" stroke-width="1.5" />
+            <!-- Ribcage Glowing Details -->
+            <path d="M 45,52 Q 50,54 55,52 M 44,58 Q 50,60 56,58 M 46,64 Q 50,66 54,64" stroke="#c084fc" stroke-width="1.5" fill="none" opacity="0.8"/>
+            
+            <!-- Slender Legs -->
+            <path d="M 46,74 L 38,96 L 30,97" stroke="#16151a" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+            <path d="M 46,74 L 38,96 L 30,97" stroke="#a855f7" stroke-width="1" stroke-linecap="round" fill="none"/>
+            
+            <path d="M 54,74 L 62,96 L 70,97" stroke="#16151a" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+            <path d="M 54,74 L 62,96 L 70,97" stroke="#a855f7" stroke-width="1" stroke-linecap="round" fill="none"/>
+
+            <!-- Long Spooky Arms -->
+            <path d="M 42,46 Q 25,50 15,65 Q 12,75 5,72" fill="none" stroke="#16151a" stroke-width="4" stroke-linecap="round" />
+            <path d="M 42,46 Q 25,50 15,65 Q 12,75 5,72" fill="none" stroke="#a855f7" stroke-width="1" stroke-linecap="round" />
+
+            <path d="M 58,46 Q 75,50 85,65 Q 88,75 95,72" fill="none" stroke="#16151a" stroke-width="4" stroke-linecap="round" />
+            <path d="M 58,46 Q 75,50 85,65 Q 88,75 95,72" fill="none" stroke="#a855f7" stroke-width="1" stroke-linecap="round" />
+
+            <!-- Giant 5-Petal Face Opening -->
+            <g transform="translate(0, -2)">
+                <circle cx="50" cy="28" r="8" fill="#000" stroke="#c084fc" stroke-width="1" />
+                <!-- 5 Sharp modern Petals -->
+                <path d="M 50,18 Q 50,2 62,8 C 54,12 52,15 50,18" fill="#701a75" stroke="#fbcfe8" stroke-width="1" />
+                <path d="M 58,23 Q 74,15 74,27 C 64,25 61,25 58,23" fill="#701a75" stroke="#fbcfe8" stroke-width="1" />
+                <path d="M 56,33 Q 68,45 58,51 C 52,43 53,39 56,33" fill="#581c87" stroke="#fbcfe8" stroke-width="1" />
+                <path d="M 44,33 Q 32,45 42,51 C 48,43 47,39 44,33" fill="#581c87" stroke="#fbcfe8" stroke-width="1" />
+                <path d="M 42,23 Q 26,15 26,27 C 36,25 39,25 42,23" fill="#701a75" stroke="#fbcfe8" stroke-width="1" />
+                
+                <!-- Inner Glowing Core Void -->
+                <circle cx="50" cy="28" r="5" fill="#1e0202" />
+                <circle cx="50" cy="28" r="2" fill="#ffffff" />
+            </g>
+        </svg>`;
+
+        // Mind Flayer Shadow (Stage 3) - Epic Storm core with floating particles and lightning
+        const SVG_MINDFLAYER = `
+        <svg viewBox="0 0 100 100" class="w-full h-full">
+            <defs>
+                <radialGradient id="mfCoreGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#ef4444" stop-opacity="0.6"/>
+                    <stop offset="60%" stop-color="#7c2d12" stop-opacity="0.2"/>
+                    <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+                </radialGradient>
+            </defs>
+            <!-- Core Aura -->
+            <circle cx="50" cy="45" r="48" fill="url(#mfCoreGlow)" />
+            
+            <!-- Glowing Red Lightning Arcs in Background -->
+            <path d="M 20,20 L 35,35 L 42,30 L 50,45" stroke="#fca5a5" stroke-width="1" fill="none" opacity="0.6" />
+            <path d="M 80,20 L 65,35 L 58,28 L 50,45" stroke="#fca5a5" stroke-width="1" fill="none" opacity="0.6" />
+
+            <!-- Main Giant Tendrils/Spiders Legs -->
+            <!-- Top Left Leg -->
+            <path d="M 40,35 Q 15,10 2,35 Q 10,48 35,40" fill="#0f0709" stroke="#ef4444" stroke-width="2" />
+            <!-- Middle Left Leg -->
+            <path d="M 38,42 Q 8,30 1,58 Q 12,62 33,45" fill="#0c0406" stroke="#ef4444" stroke-width="1.5" />
+            <!-- Bottom Left Leg -->
+            <path d="M 42,48 Q 12,60 10,88" fill="none" stroke="#0f0709" stroke-width="4.5" stroke-linecap="round" />
+            <path d="M 42,48 Q 12,60 10,88" fill="none" stroke="#b91c1c" stroke-width="1" stroke-linecap="round" />
+
+            <!-- Top Right Leg -->
+            <path d="M 60,35 Q 85,10 98,35 Q 90,48 65,40" fill="#0f0709" stroke="#ef4444" stroke-width="2" />
+            <!-- Middle Right Leg -->
+            <path d="M 62,42 Q 92,30 99,58 Q 88,62 67,45" fill="#0c0406" stroke="#ef4444" stroke-width="1.5" />
+            <!-- Bottom Right Leg -->
+            <path d="M 58,48 Q 88,60 90,88" fill="none" stroke="#0f0709" stroke-width="4.5" stroke-linecap="round" />
+            <path d="M 58,48 Q 88,60 90,88" fill="none" stroke="#b91c1c" stroke-width="1" stroke-linecap="round" />
+
+            <!-- Ominous Floating Mist/Sparks -->
+            <circle cx="32" cy="25" r="1.5" fill="#ef4444" opacity="0.8" />
+            <circle cx="68" cy="25" r="1.5" fill="#ef4444" opacity="0.8" />
+            <circle cx="50" cy="68" r="2" fill="#ef4444" opacity="0.6" />
+
+            <!-- Solid Shadow Body Core -->
+            <ellipse cx="50" cy="40" rx="15" ry="11" fill="#070102" stroke="#450a0a" stroke-width="2" />
+            <path d="M 45,30 L 50,10 L 55,30 Z" fill="#000000" />
+            
+            <!-- Eyes of the Mind Flayer (Fierce glowing red core) -->
+            <circle cx="47" cy="26" r="2" fill="#ff2222" />
+            <circle cx="47" cy="26" r="0.7" fill="#ffffff" />
+            <circle cx="53" cy="26" r="2" fill="#ff2222" />
+            <circle cx="53" cy="26" r="0.7" fill="#ffffff" />
+        </svg>`;
+
+        // Vecna (Stage 4 Final Boss) - The Creepiest Overlord with Dark Roots and Red Synapses
+        const SVG_VECNA = `
+        <svg viewBox="0 0 100 100" class="w-full h-full">
+            <defs>
+                <radialGradient id="vecnaGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#dc2626" stop-opacity="0.5"/>
+                    <stop offset="60%" stop-color="#450a0a" stop-opacity="0.2"/>
+                    <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+                </radialGradient>
+            </defs>
+            <circle cx="50" cy="50" r="48" fill="url(#vecnaGlow)" />
+            
+            <!-- Intricate Vines in Background -->
+            <path d="M 20,95 Q 35,70 42,65" fill="none" stroke="#110303" stroke-width="4" stroke-linecap="round" />
+            <path d="M 20,95 Q 35,70 42,65" fill="none" stroke="#ef4444" stroke-width="1" opacity="0.7" />
+            <path d="M 80,95 Q 65,70 58,65" fill="none" stroke="#110303" stroke-width="4" stroke-linecap="round" />
+            <path d="M 80,95 Q 65,70 58,65" fill="none" stroke="#ef4444" stroke-width="1" opacity="0.7" />
+
+            <!-- Distorted humanoid ribcage & muscular structure -->
+            <rect x="42" y="42" width="16" height="26" rx="4" fill="#2d080a" stroke="#7f1d1d" stroke-width="1.5" />
+            <!-- Muscle fibers details -->
+            <path d="M 44,46 L 56,46 M 43,51 L 57,51 M 44,56 L 56,56 M 45,61 L 55,61" stroke="#fca5a5" stroke-width="1" opacity="0.5" />
+
+            <!-- Flesh Tentacles hanging from shoulders -->
+            <path d="M 42,44 C 38,50 32,58 35,75" fill="none" stroke="#1c0304" stroke-width="3" />
+            <path d="M 42,44 C 38,50 32,58 35,75" fill="none" stroke="#b91c1c" stroke-width="0.8" />
+            <path d="M 58,44 C 62,50 68,58 65,75" fill="none" stroke="#1c0304" stroke-width="3" />
+            <path d="M 58,44 C 62,50 68,58 65,75" fill="none" stroke="#b91c1c" stroke-width="0.8" />
+
+            <!-- Menacing left claw -->
+            <path d="M 38,44 Q 25,48 18,58 Q 12,68 12,74" fill="none" stroke="#1c0304" stroke-width="4.5" stroke-linecap="round" />
+            <path d="M 12,74 L 8,78 M 12,74 L 10,81 M 12,74 L 6,73" stroke="#ef4444" stroke-width="1.5" />
+
+            <!-- Vecna Skull-like Head Face -->
+            <path d="M 43,26 C 43,15 57,15 57,26 C 57,36 54,42 50,42 C 46,42 43,36 43,26 Z" fill="#31090b" stroke="#991b1b" stroke-width="1.5" />
+            
+            <!-- Distorted Skin Patterns (Creepy lines) -->
+            <path d="M 45,21 Q 50,23 55,21 M 46,26 Q 50,28 54,26" stroke="#fca5a5" stroke-width="0.8" fill="none" />
+            
+            <!-- Dark empty sockets with tiny intense white pupil points -->
+            <rect x="45" y="24" width="3" height="2" rx="1" fill="#000" />
+            <circle cx="46.5" cy="25" r="0.6" fill="#fff" />
+            
+            <rect x="52" y="24" width="3" height="2" rx="1" fill="#000" />
+            <circle cx="53.5" cy="25" r="0.6" fill="#fff" />
+
+            <!-- Creepy nose cavity and mouth -->
+            <path d="M 49,28 L 50,27 L 51,28 Z" fill="#000" />
+            <line x1="47" y1="33" x2="53" y2="33" stroke="#000" stroke-width="1.5" />
+        </svg>`;
+
+        // --- 2. Advanced Game Stages Database ---
+        const STAGES = [
+            {
+                name: "ホーキンスの森 (STAGE 1)",
+                enemy: "デモドッグ",
+                enemyHp: 200,
+                enemyMaxHp: 200,
+                enemyAtk: 14,
+                enemyDef: 5,
+                enemyXp: 150,
+                svg: SVG_DEMODOG,
+                intro: "【ホーキンスの森】裏側の世界の影響を受け、枯れ果てた漆黒の森。ゲート周辺をうろつく凶暴な猟犬『デモドッグ』が牙をむいて襲いかかってきた！",
+                actions: ["強烈なかみつき", "引き裂く爪撃", "威嚇の遠吠え"]
+            },
+            {
+                name: "スターコート・モール廃墟 (STAGE 2)",
+                enemy: "デモゴルゴン",
+                enemyHp: 420,
+                enemyMaxHp: 420,
+                enemyAtk: 20,
+                enemyDef: 10,
+                enemyXp: 300,
+                svg: SVG_DEMOGORGON,
+                intro: "【スターコート・モール】きらびやかなネオンが崩れ落ちたショッピングモール。暗闇の奥深く、花弁のような顔を開いた恐怖の捕食者『デモゴルゴン』が立ちはだかる！",
+                actions: ["捕食の抱擁", "切り裂き乱舞", "恐怖の絶叫"]
+            },
+            {
+                name: "裏側の世界への深淵 (STAGE 3)",
+                enemy: "マインド・フレイヤーの影",
+                enemyHp: 650,
+                enemyMaxHp: 650,
+                enemyAtk: 26,
+                enemyDef: 15,
+                enemyXp: 500,
+                svg: SVG_MINDFLAYER,
+                intro: "【研究施設の地下ゲート】巨大なゲートから吹き出す冷気。天を覆う巨大な影の化身『マインド・フレイヤー』が、子供たちの精神を呑み込もうと触手を伸ばす！",
+                actions: ["影触手の強打", "マインドストーム", "絶望の重力波"]
+            },
+            {
+                name: "ヴェクナの精神領域 (STAGE 4)",
+                enemy: "冥王 ヴェクナ",
+                enemyHp: 999,
+                enemyMaxHp: 999,
+                enemyAtk: 32,
+                enemyDef: 20,
+                enemyXp: 9999,
+                svg: SVG_VECNA,
+                intro: "【精神世界のCreel House】浮かび上がる古びた大時計。すべての呪いの根源たる『ヴェクナ』が、子供たちの最も深いトラウマを呼び覚まし魂を引き裂こうと微笑む！",
+                actions: ["悪夢の縛鎖", "精神崩壊の呪い", "最凶のテレキネシス"]
+            }
+        ];
+
+        // --- 3. Party Database ---
+        let party = [
+            {
+                id: "mike",
+                name: "マイク",
+                hp: 80,
+                maxHp: 80,
+                mp: 20,
+                maxMp: 20,
+                atk: 15,
+                def: 8,
+                skills: [
+                    { name: "リーダーシップ", cost: 5, type: "buff", desc: "友情の言葉で味方全員の攻撃力を永続的に【5】上げる", value: 5 },
+                    { name: "絆の呼びかけ", cost: 8, type: "heal", desc: "仲間一人に声をかけ、HPを【35】回復させる", value: 35 }
+                ],
+                isDefending: false,
+                isDead: false
+            },
+            {
+                id: "eleven",
+                name: "エル",
+                hp: 65,
+                maxHp: 65,
+                mp: 50,
+                maxMp: 50,
+                atk: 8,
+                def: 5,
+                skills: [
+                    { name: "サイコキネシス", cost: 10, type: "damage", desc: "念動力で敵を吹き飛ばし、【45〜55】の強力な物理防御無視ダメージ", value: 50 },
+                    { name: "サイコ・クラッシュ", cost: 22, type: "damage_heavy", desc: "鼻血を出しながら念動限界を突破。【100〜120】の超極大ダメージ", value: 110 },
+                    { name: "精神シールド", cost: 8, type: "buff_def", desc: "目に見えないバリアを展開し、味方全員の防御力を【6】上げる", value: 6 }
+                ],
+                isDefending: false,
+                isDead: false
+            },
+            {
+                id: "dustin",
+                name: "ダスティン",
+                hp: 95,
+                maxHp: 95,
+                mp: 18,
+                maxMp: 18,
+                atk: 12,
+                def: 11,
+                skills: [
+                    { name: "無線機通信解析", cost: 4, type: "analyze", desc: "敵の動きを観測して弱点を発見し、敵の防御力を【4】下げる", value: 4 },
+                    { name: "プディング配り", cost: 6, type: "heal_all", desc: "自家製の好物で味方全員の緊張をほぐし、HPを【20】ずつ回復する", value: 20 }
+                ],
+                isDefending: false,
+                isDead: false
+            },
+            {
+                id: "lucas",
+                name: "ルーカス",
+                hp: 90,
+                maxHp: 90,
+                mp: 10,
+                maxMp: 10,
+                atk: 19,
+                def: 9,
+                skills: [
+                    { name: "リストロケット", cost: 4, type: "damage_crit", desc: "強力なスリングショットで弱点を精密射撃し、【30〜40】ダメージ", value: 35 },
+                    { name: "挑発作戦", cost: 3, type: "taunt", desc: "敵を煽って自分に注意を向けさせ、次ターンのみ自分の防御力を超増加", value: 0 }
+                ],
+                isDefending: false,
+                isDead: false
+            }
+        ];
+
+        // Items Inventory with rich detail descriptions
+        let inventory = [
+            { name: "チョコワッフル", count: 3, desc: "エルの大好物。仲間一人のHPを【50】回復する", type: "heal_single", value: 50 },
+            { name: "無線機の予備電池", count: 2, desc: "ハンディ無線機の乾電池。仲間一人のMPを【25】回復する", type: "heal_mp", value: 25 },
+            { name: "特製ファーストエイド", count: 1, desc: "瀕死状態(HP 0)になった仲間一人を、HP【35】で蘇生させる", type: "revive", value: 35 }
+        ];
+
+        // --- 4. Game Engine State ---
+        let currentStageIdx = 0;
+        let enemy = null;
+        let turnQueue = [];
+        let currentTurnActorIdx = 0;
+        let combatPhase = "start"; // "start", "command", "execution", "checking"
+        let currentCommandingHeroIdx = 0;
+        let battleLogs = [];
+        let isWaitingForNext = false;
+        
+        // --- 5. DOM Elements ---
+        const dText = document.getElementById('dialogue-text');
+        const dPrompt = document.getElementById('dialogue-prompt');
+        const dBox = document.getElementById('dialogue-box');
+        const cmdBox = document.getElementById('commands-box');
+        const subOverlay = document.getElementById('sub-menu-overlay');
+        const subTitle = document.getElementById('sub-menu-title');
+        const subOptions = document.getElementById('sub-menu-options');
+        const btnCloseSub = document.getElementById('btn-close-submenu');
+        const detailDisplayBox = document.getElementById('detail-display-box');
+        const enemyHpSpan = document.getElementById('enemy-hp');
+        const enemyNameSpan = document.getElementById('enemy-name');
+        const enemyGraphicDiv = document.getElementById('enemy-graphic');
+        const enemyContainer = document.getElementById('enemy-sprite-container');
+        const hudStageName = document.getElementById('hud-stage-name');
+        const screenStart = document.getElementById('screen-start');
+        const screenGame = document.getElementById('screen-game');
+        const screenEnd = document.getElementById('screen-end');
+
+        // Dynamic Spore Simulator
+        function createSpores() {
+            const container = document.getElementById('spore-container');
+            container.innerHTML = '';
+            const count = 18;
+            for (let i = 0; i < count; i++) {
+                const spore = document.createElement('div');
+                spore.className = 'spore';
+                spore.style.left = `${Math.random() * 100}%`;
+                spore.style.width = `${Math.random() * 5 + 3}px`;
+                spore.style.height = spore.style.width;
+                spore.style.animationDelay = `${Math.random() * 8}s`;
+                spore.style.animationDuration = `${Math.random() * 5 + 8}s`;
+                container.appendChild(spore);
+            }
+        }
+
+        // --- 6. Combat State Controller ---
+        function initBattleForStage(idx) {
+            currentStageIdx = idx;
+            const stageData = STAGES[idx];
+            hudStageName.innerText = stageData.name;
+
+            // Apply specific background tint styling per stage
+            const gameContainer = document.getElementById('game-container');
+            if (idx === 0) {
+                gameContainer.style.background = "radial-gradient(circle at center, #111827 0%, #030712 100%)";
+                gameContainer.className = "w-full aspect-[4/3] max-w-3xl glass-panel neon-glow-red rounded-2xl overflow-hidden flex flex-col justify-between p-4 relative";
+            } else if (idx === 1) {
+                gameContainer.style.background = "radial-gradient(circle at center, #1e1b4b 0%, #03001e 100%)";
+                gameContainer.className = "w-full aspect-[4/3] max-w-3xl glass-panel neon-glow-purple rounded-2xl overflow-hidden flex flex-col justify-between p-4 relative";
+            } else if (idx === 2) {
+                gameContainer.style.background = "radial-gradient(circle at center, #311010 0%, #050101 100%)";
+                gameContainer.className = "w-full aspect-[4/3] max-w-3xl glass-panel neon-glow-red rounded-2xl overflow-hidden flex flex-col justify-between p-4 relative";
+            } else {
+                gameContainer.style.background = "radial-gradient(circle at center, #4c0505 0%, #000000 100%)";
+                gameContainer.className = "w-full aspect-[4/3] max-w-3xl glass-panel neon-glow-red rounded-2xl overflow-hidden flex flex-col justify-between p-4 relative shadow-[0_0_40px_rgba(220,38,38,0.4)]";
+            }
+
+            // Spawn Stage Enemy
+            enemy = {
+                name: stageData.enemy,
+                hp: stageData.enemyHp,
+                maxHp: stageData.enemyMaxHp,
+                atk: stageData.enemyAtk,
+                def: stageData.enemyDef,
+                actions: stageData.actions,
+                svg: stageData.svg
+            };
+
+            // Heals some hp to live members at stage transitions
+            party.forEach(hero => {
+                hero.isDefending = false;
+                if (!hero.isDead) {
+                    hero.hp = Math.min(hero.maxHp, hero.hp + 30);
+                } else {
+                    hero.isDead = false;
+                    hero.hp = 30; // Revive
+                }
+            });
+
+            // Update UI
+            updatePartyHUD();
+            enemyHpSpan.innerText = enemy.hp;
+            enemyNameSpan.innerText = enemy.name;
+            enemyGraphicDiv.innerHTML = enemy.svg;
+
+            // Trigger Story Log
+            battleLogs = [
+                stageData.intro,
+                "作戦を立てて、行動するコマンドを選択してください。"
+            ];
+            
+            currentCommandingHeroIdx = 0;
+            combatPhase = "command";
+            isWaitingForNext = false;
+            dPrompt.classList.add('hidden');
+            
+            showNextLog();
+            showCommandWindow(true);
+        }
+
+        function updatePartyHUD() {
+            party.forEach(hero => {
+                const hpEl = document.getElementById(`hp-${hero.id}`);
+                const mpEl = document.getElementById(`mp-${hero.id}`);
+                const statusCard = document.getElementById(`status-${hero.id}`);
+                
+                hpEl.innerText = hero.hp;
+                mpEl.innerText = hero.mp;
+
+                if (hero.isDead) {
+                    hpEl.innerText = "瀕死";
+                    hpEl.className = "text-red-500 font-bold";
+                    statusCard.className = "glass-panel border-2 border-red-900/60 p-2.5 rounded-xl text-center opacity-40";
+                } else if (hero.hp < hero.maxHp * 0.3) {
+                    hpEl.className = "text-amber-500 font-bold";
+                    statusCard.className = "glass-panel border-2 border-amber-500/80 p-2.5 rounded-xl text-center shadow-[0_0_15px_rgba(245,158,11,0.2)]";
+                } else {
+                    hpEl.className = "text-white";
+                    statusCard.className = "glass-panel border border-slate-800 p-2.5 rounded-xl text-center";
+                }
+            });
+        }
+
+        function showCommandWindow(show) {
+            if (show && combatPhase === "command") {
+                cmdBox.classList.remove('pointer-events-none', 'opacity-30');
+                
+                // Highlight active commanding hero
+                party.forEach((hero, index) => {
+                    const card = document.getElementById(`status-${hero.id}`);
+                    if (index === currentCommandingHeroIdx && !hero.isDead) {
+                        card.classList.add('border-red-500', 'scale-105', 'shadow-[0_0_15px_rgba(239,68,68,0.3)]');
+                        card.classList.remove('border-slate-800');
+                    } else {
+                        card.classList.remove('border-red-500', 'scale-105', 'shadow-[0_0_15px_rgba(239,68,68,0.3)]');
+                    }
+                });
+
+                const currentHero = party[currentCommandingHeroIdx];
+                dText.innerHTML = `<span class="text-red-400 font-bold">${currentHero.name}</span> の行動手番です。<br>行動方針を選択してください。`;
+            } else {
+                cmdBox.classList.add('pointer-events-none', 'opacity-30');
+                party.forEach(hero => {
+                    document.getElementById(`status-${hero.id}`).classList.remove('border-red-500', 'scale-105', 'shadow-[0_0_15px_rgba(239,68,68,0.3)]');
+                });
+            }
+        }
+
+        // --- Log Screen Manager ---
+        function showNextLog() {
+            if (battleLogs.length > 0) {
+                const nextLog = battleLogs.shift();
+                dText.innerHTML = nextLog;
+                
+                if (battleLogs.length > 0 || combatPhase === "execution") {
+                    isWaitingForNext = true;
+                    dPrompt.classList.remove('hidden');
+                } else {
+                    isWaitingForNext = false;
+                    dPrompt.classList.add('hidden');
+                    if (combatPhase === "command") {
+                        showCommandWindow(true);
+                    }
+                }
+            } else if (combatPhase === "execution") {
+                executeNextTurn();
+            }
+        }
+
+        // Click box to advance story/battle speech bubble
+        dBox.addEventListener('click', () => {
+            audio.playBeep();
+            if (isWaitingForNext) {
+                showNextLog();
+            }
+        });
+
+        // --- Turn Execution Pipeline ---
+        let currentTurnActions = [];
+
+        function registerHeroAction(actionType, extraData = null) {
+            audio.playBeep();
+            const hero = party[currentCommandingHeroIdx];
+            
+            currentTurnActions.push({
+                actor: hero,
+                actorType: "hero",
+                type: actionType,
+                extra: extraData
+            });
+
+            moveToNextHeroCommand();
+        }
+
+        function moveToNextHeroCommand() {
+            currentCommandingHeroIdx++;
+            
+            // Skip dead heroes
+            while (currentCommandingHeroIdx < party.length && party[currentCommandingHeroIdx].isDead) {
+                currentCommandingHeroIdx++;
+            }
+
+            if (currentCommandingHeroIdx >= party.length) {
+                startTurnExecution();
+            } else {
+                showCommandWindow(true);
+            }
+        }
+
+        function startTurnExecution() {
+            showCommandWindow(false);
+            subOverlay.classList.add('hidden');
+            
+            turnQueue = [];
+
+            // Add alive heroes
+            currentTurnActions.forEach(action => {
+                if (!action.actor.isDead) {
+                    turnQueue.push(action);
+                }
+            });
+
+            // Add Enemy Action
+            if (enemy.hp > 0) {
+                const enemyAction = enemy.actions[Math.floor(Math.random() * enemy.actions.length)];
+                turnQueue.push({
+                    actor: enemy,
+                    actorType: "enemy",
+                    type: "enemy_action",
+                    actionName: enemyAction
+                });
+            }
+
+            // Shuffle turn speed simulation
+            turnQueue.sort(() => Math.random() - 0.5);
+
+            combatPhase = "execution";
+            currentTurnActorIdx = 0;
+            
+            party.forEach(h => h.isDefending = false);
+            executeNextTurn();
+        }
+
+        function executeNextTurn() {
+            if (currentTurnActorIdx >= turnQueue.length) {
+                endTurnRound();
+                return;
+            }
+
+            const action = turnQueue[currentTurnActorIdx];
+            currentTurnActorIdx++;
+
+            if (action.actor.isDead || (action.actorType === "enemy" && enemy.hp <= 0)) {
+                executeNextTurn();
+                return;
+            }
+
+            if (action.actorType === "hero") {
+                executeHeroAction(action);
+            } else {
+                executeEnemyAction(action);
+            }
+        }
+
+        function executeHeroAction(action) {
+            const hero = action.actor;
+            
+            if (action.type === "defend") {
+                hero.isDefending = true;
+                battleLogs.push(`<span class="text-blue-400 font-semibold">${hero.name}</span>は身を固めて防御の構えをとった！`);
+                showNextLog();
+                return;
+            }
+
+            if (action.type === "attack") {
+                let dmg = Math.max(5, Math.floor(hero.atk * 1.3 - enemy.def + (Math.random() * 8 - 4)));
+                enemy.hp = Math.max(0, enemy.hp - dmg);
+                enemyHpSpan.innerText = enemy.hp;
+
+                battleLogs.push(`<span class="text-indigo-300 font-semibold">${hero.name}</span>の通常物理攻撃！`);
+                battleLogs.push(`${enemy.name}に <span class="text-red-500 font-extrabold text-base">${dmg}</span> のダメージを与えた！`);
+                
+                setTimeout(() => {
+                    audio.playHit();
+                    triggerEnemyHitEffect();
+                }, 150);
+
+                if (enemy.hp <= 0) {
+                    triggerEnemyDeath();
+                    return;
+                }
+                showNextLog();
+            }
+
+            if (action.type === "skill") {
+                const skill = action.extra;
+                if (hero.mp < skill.cost) {
+                    battleLogs.push(`${hero.name}は特技を発動させようとしたが、精神力が足りない！`);
+                    showNextLog();
+                    return;
+                }
+
+                hero.mp -= skill.cost;
+                updatePartyHUD();
+
+                battleLogs.push(`<span class="text-purple-400 font-semibold">${hero.name}</span>の「<span class="text-white font-bold">${skill.name}</span>」発動！`);
+
+                if (skill.type === "damage" || skill.type === "damage_heavy" || skill.type === "damage_crit") {
+                    let multiplier = skill.type === "damage_heavy" ? 2.6 : (skill.type === "damage_crit" ? 1.7 : 1.25);
+                    let baseDmg = skill.value;
+                    let dmg = Math.max(10, Math.floor((baseDmg + (hero.atk * 0.6)) * multiplier - enemy.def + (Math.random() * 14 - 7)));
+                    
+                    enemy.hp = Math.max(0, enemy.hp - dmg);
+                    enemyHpSpan.innerText = enemy.hp;
+
+                    battleLogs.push(`${enemy.name}に崩壊の衝撃波！ <span class="text-red-500 font-extrabold text-lg">${dmg}</span> のダメージ！`);
+                    
+                    setTimeout(() => {
+                        audio.playPsi();
+                        triggerEnemyHitEffect();
+                    }, 150);
+
+                    if (enemy.hp <= 0) {
+                        triggerEnemyDeath();
+                        return;
+                    }
+                } 
+                else if (skill.type === "heal") {
+                    let target = party.filter(h => !h.isDead).sort((a,b) => (a.hp/a.maxHp) - (b.hp/b.maxHp))[0];
+                    if (target) {
+                        target.hp = Math.min(target.maxHp, target.hp + skill.value);
+                        updatePartyHUD();
+                        battleLogs.push(`<span class="text-emerald-400 font-bold">${target.name}</span>のHPが <span class="text-green-400 font-extrabold">${skill.value}</span> 回復した！`);
+                        setTimeout(() => audio.playHeal(), 150);
+                    }
+                }
+                else if (skill.type === "heal_all") {
+                    party.forEach(h => {
+                        if (!h.isDead) {
+                            h.hp = Math.min(h.maxHp, h.hp + skill.value);
+                        }
+                    });
+                    updatePartyHUD();
+                    battleLogs.push(`絆の共鳴！ 味方全員のHPが <span class="text-green-400 font-extrabold">${skill.value}</span> 回復した！`);
+                    setTimeout(() => audio.playHeal(), 150);
+                }
+                else if (skill.type === "buff") {
+                    party.forEach(h => { if(!h.isDead) h.atk += skill.value; });
+                    battleLogs.push(`勇気の波動が全員を包み込む。味方全員の攻撃力が <span class="text-yellow-400 font-bold">${skill.value}</span> 上がった！`);
+                    setTimeout(() => audio.playHeal(), 150);
+                }
+                else if (skill.type === "buff_def") {
+                    party.forEach(h => { if(!h.isDead) h.def += skill.value; });
+                    battleLogs.push(`超能力シールドが周囲を展開！ 全員の物理防御力が <span class="text-blue-400 font-bold">${skill.value}</span> 上がった！`);
+                    setTimeout(() => audio.playHeal(), 150);
+                }
+                else if (skill.type === "analyze") {
+                    enemy.def = Math.max(1, enemy.def - skill.value);
+                    battleLogs.push(`${enemy.name}の行動シークエンスを分析完了！ 防御力が <span class="text-yellow-400 font-bold">${skill.value}</span> ダウン！`);
+                    setTimeout(() => audio.playHit(), 150);
+                }
+
+                showNextLog();
+            }
+
+            if (action.type === "item") {
+                const item = action.extra;
+                battleLogs.push(`${hero.name}はバックパックから「${item.name}」を取り出して使用した！`);
+
+                if (item.type === "heal_single") {
+                    let target = party.filter(h => !h.isDead).sort((a,b) => (a.hp/a.maxHp) - (b.hp/b.maxHp))[0];
+                    target.hp = Math.min(target.maxHp, target.hp + item.value);
+                    updatePartyHUD();
+                    battleLogs.push(`${target.name}のHPが <span class="text-green-400 font-bold">${item.value}</span> 回復した。`);
+                    setTimeout(() => audio.playHeal(), 150);
+                }
+                else if (item.type === "heal_mp") {
+                    let target = party.filter(h => !h.isDead).sort((a,b) => (a.mp/a.maxMp) - (b.mp/b.maxMp))[0];
+                    target.mp = Math.min(target.maxMp, target.mp + item.value);
+                    updatePartyHUD();
+                    battleLogs.push(`${target.name}の精神的な意志(MP)が <span class="text-indigo-400 font-bold">${item.value}</span> 回復した！`);
+                    setTimeout(() => audio.playHeal(), 150);
+                }
+                else if (item.type === "revive") {
+                    let target = party.find(h => h.isDead);
+                    if (target) {
+                        target.isDead = false;
+                        target.hp = item.value;
+                        updatePartyHUD();
+                        battleLogs.push(`<span class="text-green-400 font-extrabold">${target.name}</span>は強い絆の光に導かれ蘇生した！ (HP ${item.value})`);
+                        setTimeout(() => audio.playHeal(), 150);
+                    } else {
+                        battleLogs.push("しかし、誰も倒れていなかった！アイテムは無駄になった。");
+                    }
+                }
+
+                showNextLog();
+            }
+        }
+
+        function executeEnemyAction(action) {
+            const aliveHeroes = party.filter(h => !h.isDead);
+            if (aliveHeroes.length === 0) {
+                checkPartyDefeat();
+                return;
+            }
+
+            const targetHero = aliveHeroes[Math.floor(Math.random() * aliveHeroes.length)];
+            const actName = action.actionName;
+
+            battleLogs.push(`${enemy.name}の獰猛な「<span class="text-red-500 font-bold">${actName}</span>」！`);
+
+            let rawDmg = Math.floor(enemy.atk * 1.6 - targetHero.def + (Math.random() * 10 - 5));
+            if (targetHero.isDefending) {
+                rawDmg = Math.floor(rawDmg / 2.8);
+            }
+            let dmg = Math.max(3, rawDmg);
+
+            targetHero.hp = Math.max(0, targetHero.hp - dmg);
+            updatePartyHUD();
+
+            battleLogs.push(`${targetHero.name}は強烈な一撃を受け、<span class="text-red-500 font-black text-base">${dmg}</span> ダメージ！`);
+            
+            setTimeout(() => {
+                audio.playHit();
+                triggerPlayerHitEffect();
+            }, 150);
+
+            if (targetHero.hp <= 0) {
+                targetHero.isDead = true;
+                battleLogs.push(`${targetHero.name}は戦意を喪失し、倒れ込んでしまった！`);
+            }
+
+            if (party.every(h => h.isDead)) {
+                setTimeout(triggerGameOver, 500);
+                return;
+            }
+
+            showNextLog();
+        }
+
+        function endTurnRound() {
+            currentTurnActions = [];
+            currentCommandingHeroIdx = 0;
+            
+            while (currentCommandingHeroIdx < party.length && party[currentCommandingHeroIdx].isDead) {
+                currentCommandingHeroIdx++;
+            }
+
+            if (party.every(h => h.isDead)) {
+                triggerGameOver();
+                return;
+            }
+
+            combatPhase = "command";
+            battleLogs.push("新しいターン。慎重に行動を選ぼう。");
+            showNextLog();
+        }
+
+        // --- Visual Effects ---
+        function triggerEnemyHitEffect() {
+            enemyContainer.classList.add('shake');
+            const overlay = document.getElementById('effect-overlay');
+            overlay.classList.add('flash');
+            
+            setTimeout(() => {
+                enemyContainer.classList.remove('shake');
+                overlay.classList.remove('flash');
+            }, 400);
+        }
+
+        function triggerPlayerHitEffect() {
+            const container = document.getElementById('game-container');
+            container.classList.add('shake');
+            
+            setTimeout(() => {
+                container.classList.remove('shake');
+            }, 400);
+        }
+
+        // --- Battle Outcomes (Stage win / Game Over) ---
+        function triggerEnemyDeath() {
+            cancelAnimationFrame(animationId);
+            battleLogs = [
+                `<span class="text-red-400 font-bold">${enemy.name}</span>の完全な無力化、消滅に成功した！`,
+                `少年少女たちはこの激戦から新たな英知(経験値)を獲得した。`
+            ];
+
+            setTimeout(() => {
+                audio.playVictory();
+            }, 100);
+
+            combatPhase = "checking";
+            
+            if (currentStageIdx < STAGES.length - 1) {
+                battleLogs.push("勝利を噛み締める暇はない。裏側の世界はさらに広がり続けている！ 次の深淵エリアへ進みます！");
+                isWaitingForNext = true;
+                dPrompt.classList.remove('hidden');
+                
+                const advanceStageHandler = () => {
+                    if (battleLogs.length > 0) {
+                        const log = battleLogs.shift();
+                        dText.innerHTML = log;
+                    } else {
+                        dBox.removeEventListener('click', advanceStageHandler);
+                        initBattleForStage(currentStageIdx + 1);
+                    }
+                };
+                dBox.addEventListener('click', advanceStageHandler);
+            } else {
+                setTimeout(triggerGameClear, 800);
+            }
+
+            showNextLog();
+        }
+
+        function triggerGameOver() {
+            audio.playGameOver();
+            
+            screenGame.classList.add('hidden');
+            screenEnd.classList.remove('hidden');
+
+            const endIcon = document.getElementById('end-icon');
+            const endTitle = document.getElementById('end-title');
+            const endDesc = document.getElementById('end-desc');
+
+            endIcon.className = "w-16 h-16 rounded-full flex items-center justify-center border border-red-500 text-red-500 mb-4 bg-red-950/20";
+            endIcon.innerHTML = '<i class="fa-solid fa-face-sad-tear text-2xl"></i>';
+            endTitle.className = "text-3xl font-black font-orbitron text-red-500 tracking-widest";
+            endTitle.innerText = "MISSION FAILED";
+            endDesc.innerHTML = "マインド・フレイヤーとヴェクナの影がホーキンスを覆い尽くし、すべては終わった。子供たちの意識は暗闇へと閉ざされ、二度と目覚めることはなかった...";
+        }
+
+        function triggerGameClear() {
+            screenGame.classList.add('hidden');
+            screenEnd.classList.remove('hidden');
+
+            const endIcon = document.getElementById('end-icon');
+            const endTitle = document.getElementById('end-title');
+            const endDesc = document.getElementById('end-desc');
+
+            endIcon.className = "w-16 h-16 rounded-full flex items-center justify-center border border-yellow-500 text-yellow-500 mb-4 bg-yellow-950/20 animate-bounce";
+            endIcon.innerHTML = '<i class="fa-solid fa-award text-2xl"></i>';
+            endTitle.className = "text-3xl md:text-4xl font-black font-orbitron text-yellow-400 tracking-widest";
+            endTitle.innerText = "COMPLETE SAVED !";
+            endDesc.innerHTML = "冥王ヴェクナは精神世界の彼方で絶叫と共に四散し、ホーキンスの街を蝕んでいたゲートは、エルの圧倒的な限界突破超能力により完全に封鎖された！<br><br>不気味な赤い空は消え去り、ホーキンスには懐かしくも最高の1980年代の眩しい日常が再び舞い戻った。少年少女たちの絆が紡いだ伝説の勝利である！";
+        }
+
+        // --- Commands Interface Interactions ---
+        
+        // Attack Button
+        document.getElementById('cmd-attack').addEventListener('click', () => {
+            if (combatPhase !== "command") return;
+            registerHeroAction("attack");
+        });
+
+        // Skill Sub-menu with Rich Details Preview
+        document.getElementById('cmd-skill').addEventListener('click', () => {
+            if (combatPhase !== "command") return;
+            const hero = party[currentCommandingHeroIdx];
+            
+            subTitle.innerText = `${hero.name}の特技 / 超能力`;
+            subOptions.innerHTML = '';
+            
+            // Clear prior detail texts
+            detailDisplayBox.innerHTML = `<span class="text-slate-500 italic">特技を選択、またはタップ・ホバーでここに詳細情報が表示されます。</span>`;
+
+            hero.skills.forEach(skill => {
+                const btn = document.createElement('button');
+                btn.className = "text-left py-2 px-3 border border-slate-800 hover:border-purple-500 text-xs rounded-xl bg-slate-950/95 flex justify-between items-center transition-all";
+                btn.innerHTML = `<span class="font-bold">${skill.name}</span> <span class="text-purple-400 font-mono">MP ${skill.cost}</span>`;
+                
+                // Dynamic Detail Previews
+                const showDetail = () => {
+                    detailDisplayBox.innerHTML = `
+                        <div>
+                            <p class="font-bold text-purple-400 text-xs">${skill.name} <span class="text-slate-500">(消費MP: ${skill.cost})</span></p>
+                            <p class="text-[11px] text-slate-300 mt-1 leading-relaxed">${skill.desc}</p>
+                        </div>
+                    `;
+                };
+
+                btn.onmouseenter = showDetail;
+                btn.onclick = () => {
+                    if (hero.mp < skill.cost) {
+                        detailDisplayBox.innerHTML = `<span class="text-red-500 font-bold">！ MP(精神エネルギー)が不足しています！</span>`;
+                        return;
+                    }
+                    subOverlay.classList.add('hidden');
+                    registerHeroAction("skill", skill);
+                };
+                subOptions.appendChild(btn);
+            });
+
+            subOverlay.classList.remove('hidden');
+        });
+
+        // Item Sub-menu with Rich Details Preview
+        document.getElementById('cmd-item').addEventListener('click', () => {
+            if (combatPhase !== "command") return;
+            
+            subTitle.innerText = "所持品 (バックパック)";
+            subOptions.innerHTML = '';
+            
+            // Clear prior detail texts
+            detailDisplayBox.innerHTML = `<span class="text-slate-500 italic">アイテムを選択、またはタップ・ホバーでここに効果が表示されます。</span>`;
+
+            let hasItems = false;
+            inventory.forEach(item => {
+                if (item.count > 0) {
+                    hasItems = true;
+                    const btn = document.createElement('button');
+                    btn.className = "text-left py-2 px-3 border border-slate-800 hover:border-emerald-500 text-xs rounded-xl bg-slate-950/95 flex justify-between items-center transition-all";
+                    btn.innerHTML = `<span class="font-bold">${item.name}</span> <span class="text-emerald-400 font-mono">${item.count}個</span>`;
+                    
+                    const showDetail = () => {
+                        detailDisplayBox.innerHTML = `
+                            <div>
+                                <p class="font-bold text-emerald-400 text-xs">${item.name} <span class="text-slate-500">(残量: ${item.count}個)</span></p>
+                                <p class="text-[11px] text-slate-300 mt-1 leading-relaxed">${item.desc}</p>
+                            </div>
+                        `;
+                    };
+
+                    btn.onmouseenter = showDetail;
+                    btn.onclick = () => {
+                        item.count--;
+                        subOverlay.classList.add('hidden');
+                        registerHeroAction("item", item);
+                    };
+                    subOptions.appendChild(btn);
+                }
+            });
+
+            if (!hasItems) {
+                const msg = document.createElement('div');
+                msg.className = "text-slate-500 text-xs p-4 text-center col-span-2 italic";
+                msg.innerText = "バックパックの中に使える救急アイテムはありません。";
+                subOptions.appendChild(msg);
+            }
+
+            subOverlay.classList.remove('hidden');
+        });
+
+        // Defend Button
+        document.getElementById('cmd-defend').addEventListener('click', () => {
+            if (combatPhase !== "command") return;
+            registerHeroAction("defend");
+        });
+
+        btnCloseSub.addEventListener('click', () => {
+            subOverlay.classList.add('hidden');
+        });
+
+        // --- Start & End Trigger Buttons ---
+        document.getElementById('btn-start-game').addEventListener('click', () => {
+            audio.init();
+            audio.playBeep();
+            screenStart.classList.add('hidden');
+            screenGame.classList.remove('hidden');
+            
+            createSpores();
+            initBattleForStage(0);
+        });
+
+        document.getElementById('btn-restart').addEventListener('click', () => {
+            audio.playBeep();
+            screenEnd.classList.add('hidden');
+            screenGame.classList.remove('hidden');
+            
+            // Full Reset Party Stats
+            party = [
+                {
+                    id: "mike",
+                    name: "マイク",
+                    hp: 80,
+                    maxHp: 80,
+                    mp: 20,
+                    maxMp: 20,
+                    atk: 15,
+                    def: 8,
+                    skills: [
+                        { name: "リーダーシップ", cost: 5, type: "buff", desc: "友情の言葉で味方全員の攻撃力を永続的に【5】上げる", value: 5 },
+                        { name: "絆の呼びかけ", cost: 8, type: "heal", desc: "仲間一人に声をかけ、HPを【35】回復させる", value: 35 }
+                    ],
+                    isDefending: false,
+                    isDead: false
+                },
+                {
+                    id: "eleven",
+                    name: "エル",
+                    hp: 65,
+                    maxHp: 65,
+                    mp: 50,
+                    maxMp: 50,
+                    atk: 8,
+                    def: 5,
+                    skills: [
+                        { name: "サイコキネシス", cost: 10, type: "damage", desc: "念動力で敵を吹き飛ばし、【45〜55】の強力な物理防御無視ダメージ", value: 50 },
+                        { name: "サイコ・クラッシュ", cost: 22, type: "damage_heavy", desc: "鼻血を出しながら念動限界を突破。【100〜120】の超極大ダメージ", value: 110 },
+                        { name: "精神シールド", cost: 8, type: "buff_def", desc: "目に見えないバリアを展開し、味方全員の防御力を【6】上げる", value: 6 }
+                    ],
+                    isDefending: false,
+                    isDead: false
+                },
+                {
+                    id: "dustin",
+                    name: "ダスティン",
+                    hp: 95,
+                    maxHp: 95,
+                    mp: 18,
+                    maxMp: 18,
+                    atk: 12,
+                    def: 11,
+                    skills: [
+                        { name: "無線機通信解析", cost: 4, type: "analyze", desc: "敵の動きを観測して弱点を発見し、敵の防御力を【4】下げる", value: 4 },
+                        { name: "プディング配り", cost: 6, type: "heal_all", desc: "自家製の好物で味方全員の緊張をほぐし、HPを【20】ずつ回復する", value: 20 }
+                    ],
+                    isDefending: false,
+                    isDead: false
+                },
+                {
+                    id: "lucas",
+                    name: "ルーカス",
+                    hp: 90,
+                    maxHp: 90,
+                    mp: 10,
+                    maxMp: 10,
+                    atk: 19,
+                    def: 9,
+                    skills: [
+                        { name: "リストロケット", cost: 4, type: "damage_crit", desc: "強力なスリングショットで弱点を精密射撃し、【30〜40】ダメージ", value: 35 },
+                        { name: "挑発作戦", cost: 3, type: "taunt", desc: "敵を煽って自分に注意を向けさせ、次ターンのみ自分の防御力を超増加", value: 0 }
+                    ],
+                    isDefending: false,
+                    isDead: false
+                }
+            ];
+
+            inventory = [
+                { name: "チョコワッフル", count: 3, desc: "エルの大好物。仲間一人のHPを【50】回復する", type: "heal_single", value: 50 },
+                { name: "無線機の予備電池", count: 2, desc: "ハンディ無線機の乾電池。仲間一人のMPを【25】回復する", type: "heal_mp", value: 25 },
+                { name: "特製ファーストエイド", count: 1, desc: "瀕死状態(HP 0)になった仲間一人を、HP【35】で蘇生させる", type: "revive", value: 35 }
+            ];
+
+            initBattleForStage(0);
+        });
+
+        // Loop animation trigger
+        let animationId;
+        function updateVisuals() {
+            animationId = requestAnimationFrame(updateVisuals);
+        }
+    </script>
+</body>
+</html>

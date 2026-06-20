@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Trigger - 2D Cyber Shooter</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        canvas {
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center overflow-hidden font-sans select-none">
+
+    <!-- ゲームコンテナ -->
+    <div id="game-container" class="relative w-full h-screen max-w-5xl max-h-[800px] md:h-[800px] flex flex-col md:rounded-2xl md:border md:border-cyan-500/30 md:shadow-[0_0_50px_rgba(6,182,212,0.15)] bg-slate-900 overflow-hidden">
+        
+        <!-- スタート画面 -->
+        <div id="start-screen" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 z-30 px-6 text-center">
+            <h1 class="text-5xl md:text-7xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 mb-2 drop-shadow-[0_0_20px_rgba(6,182,212,0.5)]">
+                NEON TRIGGER
+            </h1>
+            <p class="text-cyan-400 text-sm md:text-base font-semibold tracking-widest mb-8">CYBERPUNK SURVIVAL SHOOTER</p>
+            
+            <div class="max-w-md bg-slate-900/80 p-6 rounded-xl border border-slate-800 mb-8 text-left text-xs md:text-sm text-slate-300 space-y-3">
+                <p class="font-bold text-center text-pink-400 mb-2">【 操作方法 】</p>
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span class="font-semibold text-cyan-400"><i class="fa-solid fa-arrows-to-eye"></i> 移動:</span>
+                    <span>W, A, S, D キー / 矢印キー <span class="text-slate-500">(スマホ: 左パッド)</span></span>
+                </div>
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span class="font-semibold text-cyan-400"><i class="fa-solid fa-crosshairs"></i> 照準 & 射撃:</span>
+                    <span>マウス移動 & 左クリック <span class="text-slate-500">(スマホ: 右ドラッグ＆タップ)</span></span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="font-semibold text-cyan-400"><i class="fa-solid fa-arrows-rotate"></i> 武器切替:</span>
+                    <span>数字キー 1〜4 <span class="text-slate-500">(スマホ: 画面下のアイコンタップ)</span></span>
+                </div>
+            </div>
+
+            <button id="start-btn" class="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xl rounded-full shadow-[0_0_25px_rgba(6,182,212,0.4)] transition-all duration-300 transform hover:scale-105 active:scale-95">
+                ミッション開始 <i class="fa-solid fa-play ml-2"></i>
+            </button>
+        </div>
+
+        <!-- 一時停止 / ゲームオーバー画面 -->
+        <div id="overlay-screen" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 z-20 hidden px-6 text-center">
+            <h2 id="overlay-title" class="text-4xl md:text-6xl font-extrabold text-pink-500 mb-4 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]">
+                MISSION FAILED
+            </h2>
+            <p id="overlay-reason" class="text-slate-400 mb-6 max-w-sm"></p>
+            
+            <div class="flex flex-col gap-3 w-64">
+                <button id="restart-btn" class="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg transition-all">
+                    もう一度挑戦 <i class="fa-solid fa-rotate-left ml-2"></i>
+                </button>
+                <button id="resume-btn" class="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg transition-all hidden">
+                    ゲームに戻る <i class="fa-solid fa-play ml-2"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- HUD (ゲーム内ステータス表示) -->
+        <div class="absolute top-0 inset-x-0 p-4 flex justify-between items-start pointer-events-none z-10 select-none">
+            <!-- プレイヤー情報 (左上) -->
+            <div class="flex flex-col gap-2">
+                <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-700/50 backdrop-blur-sm flex flex-col gap-1 w-48 md:w-56 pointer-events-auto">
+                    <div class="flex justify-between text-xs text-slate-400 font-bold mb-1">
+                        <span>ENERGY (HP)</span>
+                        <span id="hp-text">100/100</span>
+                    </div>
+                    <div class="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800">
+                        <div id="hp-bar" class="bg-gradient-to-r from-emerald-500 to-green-400 h-full w-full transition-all duration-100 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                    </div>
+                    
+                    <div class="flex justify-between text-xs text-slate-400 font-bold mt-2 mb-1">
+                        <span>XP LEVEL <span id="level-num" class="text-cyan-400">1</span></span>
+                        <span id="xp-text">0/100</span>
+                    </div>
+                    <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                        <div id="xp-bar" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full w-0 transition-all duration-100"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- スコア & ウェーブ情報 (中央上) -->
+            <div class="flex flex-col items-center bg-slate-900/80 px-4 py-2 rounded-lg border border-slate-700/50 backdrop-blur-sm pointer-events-auto">
+                <div class="text-xs text-slate-400 font-semibold tracking-wider">SCORE</div>
+                <div id="score-val" class="text-2xl font-black text-amber-400 tracking-wider">0</div>
+                <div class="text-[10px] text-cyan-400 font-bold mt-1" id="wave-indicator">WAVE 1</div>
+            </div>
+
+            <!-- 選択中の武器情報 (右上) -->
+            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-700/50 backdrop-blur-sm flex flex-col items-end w-40 md:w-48 pointer-events-auto text-right">
+                <div class="text-xs text-slate-400 font-semibold mb-1">WEAPON</div>
+                <div id="active-weapon-name" class="text-lg font-bold text-pink-400">PLASMA PISTOL</div>
+                <div id="active-weapon-ammo" class="text-sm font-mono text-cyan-400 mt-1">∞</div>
+            </div>
+        </div>
+
+        <!-- キャンバスエリア -->
+        <div class="flex-grow w-full relative bg-slate-950 overflow-hidden">
+            <canvas id="gameCanvas" class="absolute inset-0 w-full h-full block cursor-crosshair"></style>
+        </div>
+
+        <!-- スマホ用操作パッド / 武器クイック選択 (下部) -->
+        <div class="p-4 bg-slate-950 border-t border-slate-800 flex justify-between items-center gap-4 z-10 select-none">
+            <!-- 武器セレクトスロット -->
+            <div class="flex gap-2" id="weapon-selector">
+                <button data-weapon="0" class="weapon-btn relative p-2 w-12 h-12 md:w-14 md:h-14 bg-slate-900 hover:bg-slate-800 border-2 border-cyan-500 rounded-lg flex flex-col items-center justify-center transition-all">
+                    <span class="absolute top-0 left-1 text-[8px] text-slate-500">1</span>
+                    <i class="fa-solid fa-gun text-cyan-400 text-lg"></i>
+                    <span class="text-[8px] text-slate-400 mt-1 hidden md:inline">PISTOL</span>
+                </button>
+                <button data-weapon="1" class="weapon-btn relative p-2 w-12 h-12 md:w-14 md:h-14 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg flex flex-col items-center justify-center transition-all opacity-50">
+                    <span class="absolute top-0 left-1 text-[8px] text-slate-500">2</span>
+                    <i class="fa-solid fa-burst text-pink-400 text-lg"></i>
+                    <span class="text-[8px] text-slate-400 mt-1 hidden md:inline">SMG</span>
+                </button>
+                <button data-weapon="2" class="weapon-btn relative p-2 w-12 h-12 md:w-14 md:h-14 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg flex flex-col items-center justify-center transition-all opacity-50">
+                    <span class="absolute top-0 left-1 text-[8px] text-slate-500">3</span>
+                    <i class="fa-solid fa-bullseye text-amber-400 text-lg"></i>
+                    <span class="text-[8px] text-slate-400 mt-1 hidden md:inline">SHOTGUN</span>
+                </button>
+                <button data-weapon="3" class="weapon-btn relative p-2 w-12 h-12 md:w-14 md:h-14 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg flex flex-col items-center justify-center transition-all opacity-50">
+                    <span class="absolute top-0 left-1 text-[8px] text-slate-500">4</span>
+                    <i class="fa-solid fa-bolt text-purple-400 text-lg"></i>
+                    <span class="text-[8px] text-slate-400 mt-1 hidden md:inline">RAILGUN</span>
+                </button>
+            </div>
+
+            <!-- スマホ用の射撃補助モード切り替え、またはヘルプ -->
+            <div class="flex items-center gap-2">
+                <button id="pause-btn" class="p-3 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-800">
+                    <i class="fa-solid fa-pause"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- スマートフォン用バーチャルジョイスティック (タッチデバイスでのみ表示) -->
+        <div id="touch-controls" class="absolute inset-x-0 bottom-24 flex justify-between px-8 pointer-events-none md:hidden z-10">
+            <!-- 移動用ジョイスティック -->
+            <div id="joystick-left" class="w-24 h-24 rounded-full bg-slate-800/40 border border-slate-600/40 relative pointer-events-auto flex items-center justify-center backdrop-blur-sm">
+                <div id="joystick-knob" class="w-10 h-10 rounded-full bg-cyan-500/80 shadow-[0_0_10px_rgba(6,182,212,0.5)] transition-transform duration-75"></div>
+            </div>
+            
+            <!-- 攻撃方向用バーチャルパッド -->
+            <div id="touch-shoot-area" class="w-24 h-24 rounded-full bg-slate-800/40 border border-slate-600/40 relative pointer-events-auto flex items-center justify-center backdrop-blur-sm">
+                <div class="text-slate-500 text-xs text-center"><i class="fa-solid fa-crosshairs text-pink-500 text-xl mb-1 animate-pulse"></i><br>ドラッグで<br>射撃</div>
+                <div id="shoot-knob" class="absolute w-8 h-8 rounded-full bg-pink-500/80 shadow-[0_0_10px_rgba(236,72,153,0.5)] pointer-events-none opacity-0"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 音響効果の代替としての画面シェイク設定など、ゲームエンジン内の変数から構築します -->
+    <script>
+        // --- ゲームエンジン設定 & クラス設計 ---
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameContainer = document.getElementById('game-container');
+
+        // UI要素
+        const startScreen = document.getElementById('start-screen');
+        const startBtn = document.getElementById('start-btn');
+        const overlayScreen = document.getElementById('overlay-screen');
+        const overlayTitle = document.getElementById('overlay-title');
+        const overlayReason = document.getElementById('overlay-reason');
+        const restartBtn = document.getElementById('restart-btn');
+        const resumeBtn = document.getElementById('resume-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+
+        const hpText = document.getElementById('hp-text');
+        const hpBar = document.getElementById('hp-bar');
+        const xpText = document.getElementById('xp-text');
+        const xpBar = document.getElementById('xp-bar');
+        const levelNum = document.getElementById('level-num');
+        const scoreVal = document.getElementById('score-val');
+        const waveIndicator = document.getElementById('wave-indicator');
+        const activeWeaponName = document.getElementById('active-weapon-name');
+        const activeWeaponAmmo = document.getElementById('active-weapon-ammo');
+        const weaponBtns = document.querySelectorAll('.weapon-btn');
+
+        // 仮想ジョイスティック要素
+        const joystickLeft = document.getElementById('joystick-left');
+        const joystickKnob = document.getElementById('joystick-knob');
+        const touchShootArea = document.getElementById('touch-shoot-area');
+        const shootKnob = document.getElementById('shoot-knob');
+
+        // アプリIDとFirestore設定のデフォルト設定（今回はゲーム内ローカルで稼働）
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'neon-trigger-local';
+
+        // 画面の解像度調整
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // ゲーム状態
+        let gameActive = false;
+        let isPaused = false;
+        let score = 0;
+        let wave = 1;
+        let waveTimer = 0;
+        let waveEnemyCount = 0;
+        let enemiesSpawned = 0;
+        let gameTime = 0;
+        let screenShake = 0;
+
+        // 武器設定
+        const WEAPONS = [
+            {
+                name: "PLASMA PISTOL",
+                damage: 25,
+                fireRate: 350, // ミリ秒単位
+                ammo: Infinity,
+                maxAmmo: Infinity,
+                speed: 12,
+                spread: 0,
+                bulletsPerShot: 1,
+                color: "#22d3ee", // cyan
+                icon: "fa-gun",
+                description: "安定した威力の無限弾プラズマ拳銃"
+            },
+            {
+                name: "NEON SMG",
+                damage: 15,
+                fireRate: 110,
+                ammo: 120,
+                maxAmmo: 120,
+                speed: 15,
+                spread: 0.08,
+                bulletsPerShot: 1,
+                color: "#ec4899", // pink
+                icon: "fa-burst",
+                description: "高い連射速度で制圧する機関サブマシンガン"
+            },
+            {
+                name: "CYBER SHOTGUN",
+                damage: 18, // 1ペレットあたり
+                fireRate: 800,
+                ammo: 30,
+                maxAmmo: 30,
+                speed: 10,
+                spread: 0.25,
+                bulletsPerShot: 6,
+                color: "#f59e0b", // amber
+                icon: "fa-bullseye",
+                description: "近距離で壊滅的なダメージを与える散弾銃"
+            },
+            {
+                name: "HEAVY RAILGUN",
+                damage: 120,
+                fireRate: 1200,
+                ammo: 10,
+                maxAmmo: 10,
+                speed: 25,
+                spread: 0,
+                bulletsPerShot: 1,
+                penetrating: true,
+                color: "#a855f7", // purple
+                icon: "fa-bolt",
+                description: "敵を貫通する、超高威力の荷電粒子砲"
+            }
+        ];
+
+        // プレイヤー構造体
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 16;
+                this.speed = 4.2;
+                this.vx = 0;
+                this.vy = 0;
+                this.hp = 100;
+                this.maxHp = 100;
+                this.level = 1;
+                this.xp = 0;
+                this.maxXp = 100;
+                this.activeWeaponIndex = 0;
+                this.lastShotTime = 0;
+                this.angle = 0;
+                this.invulnerable = 0; // 無敵フレーム時間
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                // 無敵状態のブレ
+                if (this.invulnerable > 0 && Math.floor(Date.now() / 50) % 2 === 0) {
+                    ctx.globalAlpha = 0.3;
+                }
+
+                // シャドウ（ネオングロー）
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = WEAPONS[this.activeWeaponIndex].color;
+
+                // メインコア
+                ctx.fillStyle = "#ffffff";
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 外郭シールドリング
+                ctx.strokeStyle = WEAPONS[this.activeWeaponIndex].color;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius + 3, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // 砲塔 / 銃口
+                ctx.fillStyle = WEAPONS[this.activeWeaponIndex].color;
+                ctx.fillRect(8, -5, 14, 10);
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(18, -3, 5, 6);
+
+                ctx.restore();
+            }
+
+            update(keys, joystick) {
+                // 移動計算
+                let dx = 0;
+                let dy = 0;
+
+                // キーボード入力
+                if (keys['w'] || keys['W'] || keys['ArrowUp']) dy -= 1;
+                if (keys['s'] || keys['S'] || keys['ArrowDown']) dy += 1;
+                if (keys['a'] || keys['A'] || keys['ArrowLeft']) dx -= 1;
+                if (keys['d'] || keys['D'] || keys['ArrowRight']) dx += 1;
+
+                // ジョイスティック入力がある場合はそちらを優先
+                if (joystick.active) {
+                    dx = joystick.x;
+                    dy = joystick.y;
+                }
+
+                // 正規化して斜め移動の速度を一定に
+                if (dx !== 0 || dy !== 0) {
+                    const length = Math.sqrt(dx * dx + dy * dy);
+                    this.vx = (dx / length) * this.speed;
+                    this.vy = (dy / length) * this.speed;
+                } else {
+                    this.vx *= 0.8; // 滑らかに減速
+                    this.vy *= 0.8;
+                    if (Math.abs(this.vx) < 0.1) this.vx = 0;
+                    if (Math.abs(this.vy) < 0.1) this.vy = 0;
+                }
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // 画面外への侵入を防ぐ
+                this.x = Math.max(this.radius + 10, Math.min(canvas.width - this.radius - 10, this.x));
+                this.y = Math.max(this.radius + 10, Math.min(canvas.height - this.radius - 10, this.y));
+
+                // 無敵時間カウントダウン
+                if (this.invulnerable > 0) this.invulnerable--;
+            }
+
+            shoot(targetX, targetY) {
+                const now = Date.now();
+                const weapon = WEAPONS[this.activeWeaponIndex];
+
+                if (now - this.lastShotTime < weapon.fireRate) return;
+                if (weapon.ammo <= 0 && weapon.maxAmmo !== Infinity) {
+                    // 弾薬切れの際にピストルに戻す
+                    this.activeWeaponIndex = 0;
+                    updateWeaponUI();
+                    return;
+                }
+
+                this.lastShotTime = now;
+
+                // 弾薬消費
+                if (weapon.maxAmmo !== Infinity) {
+                    weapon.ammo--;
+                    updateWeaponUI();
+                }
+
+                // マウス位置への角度計算
+                const angle = Math.atan2(targetY - this.y, targetX - this.x);
+                this.angle = angle;
+
+                // 射撃（弾丸の生成）
+                for (let i = 0; i < weapon.bulletsPerShot; i++) {
+                    const spreadAngle = angle + (Math.random() - 0.5) * weapon.spread;
+                    bullets.push(new Bullet(
+                        this.x + Math.cos(angle) * 20,
+                        this.y + Math.sin(angle) * 20,
+                        spreadAngle,
+                        weapon.speed,
+                        weapon.damage,
+                        weapon.color,
+                        weapon.penetrating || false
+                    ));
+                }
+
+                // 反動エフェクト
+                screenShake = Math.max(screenShake, weapon.damage * 0.1);
+
+                // マズルフラッシュマテリアルパーティクル
+                for (let i = 0; i < 5; i++) {
+                    particles.push(new Particle(
+                        this.x + Math.cos(angle) * 20,
+                        this.y + Math.sin(angle) * 20,
+                        weapon.color,
+                        (Math.random() - 0.5) * 5 + Math.cos(angle) * 3,
+                        (Math.random() - 0.5) * 5 + Math.sin(angle) * 3,
+                        Math.random() * 3 + 1,
+                        20
+                    ));
+                }
+            }
+
+            takeDamage(amount) {
+                if (this.invulnerable > 0) return;
+                this.hp -= amount;
+                this.invulnerable = 60; // 1秒間の無敵
+                screenShake = 15;
+
+                // 赤いインジケーター（被弾エフェクト）
+                for (let i = 0; i < 15; i++) {
+                    particles.push(new Particle(
+                        this.x, this.y, "#ef4444",
+                        (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8,
+                        Math.random() * 4 + 2, 40
+                    ));
+                }
+
+                updateHUD();
+
+                if (this.hp <= 0) {
+                    this.hp = 0;
+                    gameOver("エネルギーシールドが完全に消失した。");
+                }
+            }
+
+            addXp(amount) {
+                this.xp += amount;
+                if (this.xp >= this.maxXp) {
+                    this.xp -= this.maxXp;
+                    this.level++;
+                    this.maxXp = Math.floor(this.maxXp * 1.3);
+                    this.maxHp = Math.floor(this.maxHp * 1.1);
+                    this.hp = this.maxHp; // レベルアップで回復
+                    screenShake = 20;
+
+                    // レベルアップ演出
+                    floatingTexts.push(new FloatingText("LEVEL UP!", this.x, this.y - 30, "#a855f7", 30));
+                    for (let i = 0; i < 40; i++) {
+                        particles.push(new Particle(
+                            this.x, this.y, "#a855f7",
+                            (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12,
+                            Math.random() * 5 + 2, 60
+                        ));
+                    }
+                }
+                updateHUD();
+            }
+        }
+
+        // 弾丸クラス
+        class Bullet {
+            constructor(x, y, angle, speed, damage, color, penetrating = false) {
+                this.x = x;
+                this.y = y;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.radius = 4;
+                this.damage = damage;
+                this.color = color;
+                this.penetrating = penetrating;
+                this.active = true;
+                this.trail = [];
+            }
+
+            draw() {
+                // 軌跡の描画
+                if (this.trail.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                    for (let t of this.trail) {
+                        ctx.lineTo(t.x, t.y);
+                    }
+                    ctx.strokeStyle = this.color;
+                    ctx.globalAlpha = 0.4;
+                    ctx.lineWidth = this.radius * 1.5;
+                    ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+                }
+
+                ctx.save();
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = "#ffffff";
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            update() {
+                this.trail.push({x: this.x, y: this.y});
+                if (this.trail.length > 5) this.trail.shift();
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // 画面外に出たら消去
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                    this.active = false;
+                }
+            }
+        }
+
+        // エネミークラス（敵）
+        class Enemy {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.active = true;
+
+                // 敵タイプごとの能力設定
+                switch(type) {
+                    case 'drone': // 通常ドローン
+                        this.radius = 12;
+                        this.speed = 1.8;
+                        this.hp = 30;
+                        this.maxHp = 30;
+                        this.color = "#f43f5e"; // rose
+                        this.scoreValue = 100;
+                        this.damage = 10;
+                        this.shootInterval = 2000;
+                        break;
+                    case 'rusher': // 高速特攻機
+                        this.radius = 10;
+                        this.speed = 3.2;
+                        this.hp = 15;
+                        this.maxHp = 15;
+                        this.color = "#fbbf24"; // amber
+                        this.scoreValue = 150;
+                        this.damage = 15;
+                        this.shootInterval = 0; // 撃たない（突撃のみ）
+                        break;
+                    case 'tank': // 重戦車
+                        this.radius = 24;
+                        this.speed = 0.9;
+                        this.hp = 150;
+                        this.maxHp = 150;
+                        this.color = "#10b981"; // emerald
+                        this.scoreValue = 400;
+                        this.damage = 30;
+                        this.shootInterval = 2500;
+                        break;
+                    case 'boss': // ウェーブのボス
+                        this.radius = 40;
+                        this.speed = 0.7;
+                        this.hp = 500 + wave * 200;
+                        this.maxHp = this.hp;
+                        this.color = "#8b5cf6"; // violet
+                        this.scoreValue = 2000;
+                        this.damage = 40;
+                        this.shootInterval = 1500;
+                        break;
+                }
+
+                this.lastShotTime = Date.now() + Math.random() * 1000; // 射撃の初期ズレ
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // ネオングロー
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = this.color;
+
+                // HPバーの描画
+                if (this.hp < this.maxHp) {
+                    const barW = this.radius * 2;
+                    ctx.fillStyle = "rgba(15, 23, 42, 0.6)";
+                    ctx.fillRect(-barW/2, -this.radius - 12, barW, 4);
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(-barW/2, -this.radius - 12, barW * (this.hp / this.maxHp), 4);
+                }
+
+                // 敵本体の形状
+                ctx.fillStyle = this.color;
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 1.5;
+
+                if (this.type === 'drone') {
+                    // ひし形
+                    ctx.beginPath();
+                    ctx.moveTo(0, -this.radius);
+                    ctx.lineTo(this.radius, 0);
+                    ctx.lineTo(0, this.radius);
+                    ctx.lineTo(-this.radius, 0);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (this.type === 'rusher') {
+                    // 三角形（矢印型）
+                    ctx.beginPath();
+                    ctx.moveTo(this.radius * 1.5, 0);
+                    ctx.lineTo(-this.radius, -this.radius);
+                    ctx.lineTo(-this.radius / 2, 0);
+                    ctx.lineTo(-this.radius, this.radius);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (this.type === 'tank') {
+                    // 正八角形
+                    ctx.beginPath();
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (Math.PI / 4) * i;
+                        ctx.lineTo(Math.cos(angle) * this.radius, Math.sin(angle) * this.radius);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (this.type === 'boss') {
+                    // スター型（ボス）
+                    ctx.beginPath();
+                    for (let i = 0; i < 10; i++) {
+                        const angle = (Math.PI / 5) * i;
+                        const r = i % 2 === 0 ? this.radius : this.radius / 2;
+                        ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+
+            update(playerX, playerY) {
+                // プレイヤーに向かって進む
+                const angle = Math.atan2(playerY - this.y, playerX - this.x);
+                this.x += Math.cos(angle) * this.speed;
+                this.y += Math.sin(angle) * this.speed;
+
+                // 射撃処理 (drone, tank, bossが弾を撃つ)
+                if (this.shootInterval > 0) {
+                    const now = Date.now();
+                    if (now - this.lastShotTime > this.shootInterval) {
+                        this.lastShotTime = now;
+                        this.shootBullet(angle);
+                    }
+                }
+            }
+
+            shootBullet(baseAngle) {
+                if (this.type === 'boss') {
+                    // ボスは3方向弾
+                    const spread = 0.3;
+                    for (let i = -1; i <= 1; i++) {
+                        enemyBullets.push(new EnemyBullet(
+                            this.x, this.y,
+                            baseAngle + i * spread,
+                            5, this.damage / 2, this.color
+                        ));
+                    }
+                } else {
+                    // 通常の射撃
+                    enemyBullets.push(new EnemyBullet(
+                        this.x, this.y,
+                        baseAngle,
+                        6, this.damage / 2, this.color
+                    ));
+                }
+            }
+
+            takeDamage(amount) {
+                this.hp -= amount;
+                
+                // 被弾パーティクル
+                for (let i = 0; i < 5; i++) {
+                    particles.push(new Particle(
+                        this.x, this.y, this.color,
+                        (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6,
+                        Math.random() * 3 + 1, 25
+                    ));
+                }
+
+                if (this.hp <= 0) {
+                    this.active = false;
+                    score += this.scoreValue;
+                    updateHUD();
+
+                    // 爆発エフェクト
+                    explode(this.x, this.y, this.color, this.radius);
+
+                    // 経験値ジェムか回復アイテムを確率でドロップ
+                    const roll = Math.random();
+                    if (roll < 0.15 && this.type !== 'rusher') {
+                        // 15%の確率で回復キット
+                        drops.push(new DropItem(this.x, this.y, 'heal', 25));
+                    } else if (roll < 0.4) {
+                        // 25%の確率で弾薬補給
+                        const weaponIndex = Math.floor(Math.random() * 3) + 1; // SMG, Shotgun, Railgunのいずれか
+                        drops.push(new DropItem(this.x, this.y, 'ammo', weaponIndex));
+                    } else {
+                        // それ以外は経験値ジェム
+                        const xpAmount = this.type === 'boss' ? 100 : (this.type === 'tank' ? 30 : 10);
+                        drops.push(new DropItem(this.x, this.y, 'xp', xpAmount));
+                    }
+                }
+            }
+        }
+
+        // 敵の弾丸クラス
+        class EnemyBullet {
+            constructor(x, y, angle, speed, damage, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.radius = 5;
+                this.damage = damage;
+                this.color = color;
+                this.active = true;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                    this.active = false;
+                }
+            }
+        }
+
+        // ドロップアイテムクラス（経験値、回復、弾薬）
+        class DropItem {
+            constructor(x, y, type, value) {
+                this.x = x;
+                this.y = y;
+                this.type = type; // 'xp', 'heal', 'ammo'
+                this.value = value;
+                this.radius = 8;
+                this.active = true;
+                this.pulseTime = 0;
+            }
+
+            draw() {
+                this.pulseTime += 0.05;
+                const size = this.radius + Math.sin(this.pulseTime) * 2;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                let color = "#10b981"; // heal
+                if (this.type === 'xp') color = "#a855f7"; // purple for xp
+                if (this.type === 'ammo') color = "#f59e0b"; // amber for ammo
+
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = color;
+                ctx.fillStyle = color;
+
+                if (this.type === 'heal') {
+                    // 十字架
+                    ctx.fillRect(-size/2, -size/6, size, size/3);
+                    ctx.fillRect(-size/6, -size/2, size/3, size);
+                } else if (this.type === 'xp') {
+                    // 五角形
+                    ctx.beginPath();
+                    for (let i = 0; i < 5; i++) {
+                        const angle = (Math.PI / 2.5) * i - Math.PI / 2;
+                        ctx.lineTo(Math.cos(angle) * size, Math.sin(angle) * size);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                } else if (this.type === 'ammo') {
+                    // 弾薬筒型
+                    ctx.fillRect(-size/2, -size/3, size, size*0.7);
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(-size/4, -size/3 - 2, size/2, 2);
+                }
+
+                ctx.restore();
+            }
+
+            update(playerX, playerY) {
+                // プレイヤーが近づくとマグネットで吸い寄せられる
+                const dist = Math.hypot(playerX - this.x, playerY - this.y);
+                if (dist < 120) {
+                    const angle = Math.atan2(playerY - this.y, playerX - this.x);
+                    this.x += Math.cos(angle) * 6;
+                    this.y += Math.sin(angle) * 6;
+                }
+            }
+        }
+
+        // パーティクルクラス（光の火花、爆発など）
+        class Particle {
+            constructor(x, y, color, vx, vy, size, life) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.size = size;
+                this.initialLife = life;
+                this.life = life;
+                this.color = color;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.life / this.initialLife;
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 6;
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vx *= 0.95; // 減速
+                this.vy *= 0.95;
+                this.life--;
+            }
+        }
+
+        // フローティングテキスト（ダメージ数値やレベルアップ通知）
+        class FloatingText {
+            constructor(text, x, y, color, size = 16) {
+                this.text = text;
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = size;
+                this.life = 40; // フレーム数
+                this.vy = -1;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.font = `bold ${this.size}px monospace`;
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 4;
+                ctx.shadowColor = this.color;
+                ctx.globalAlpha = this.life / 40;
+                ctx.textAlign = "center";
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.restore();
+            }
+
+            update() {
+                this.y += this.vy;
+                this.life--;
+            }
+        }
+
+
+        // --- インスタンスのリスト格納 ---
+        let player = new Player(canvas.width / 2, canvas.height / 2);
+        let bullets = [];
+        let enemies = [];
+        let enemyBullets = [];
+        let particles = [];
+        let drops = [];
+        let floatingTexts = [];
+
+        // 操作状態の監視
+        const keys = {};
+        let mouseX = canvas.width / 2;
+        let mouseY = canvas.height / 2;
+        let isMouseDown = false;
+
+        // タッチ操作用ジョイスティック状態
+        const leftJoystick = { x: 0, y: 0, active: false, startX: 0, startY: 0 };
+        const rightJoystick = { x: 0, y: 0, active: false, startX: 0, startY: 0 };
+
+        // キーボードリスナー
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            
+            // 武器のクイック選択 (1〜4)
+            if (e.key >= '1' && e.key <= '4') {
+                selectWeapon(parseInt(e.key) - 1);
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // マウスリスナー
+        window.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 0) isMouseDown = true;
+        });
+
+        window.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+
+        // スマホ用タッチイベントの設定
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+        });
+
+        // 左ジョイスティック（移動用）タッチ処理
+        joystickLeft.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = joystickLeft.getBoundingClientRect();
+            leftJoystick.startX = rect.left + rect.width / 2;
+            leftJoystick.startY = rect.top + rect.height / 2;
+            leftJoystick.active = true;
+        });
+
+        joystickLeft.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!leftJoystick.active) return;
+            const touch = Array.from(e.touches).find(t => t.target === joystickLeft || joystickLeft.contains(t.target));
+            if (!touch) return;
+
+            const dx = touch.clientX - leftJoystick.startX;
+            const dy = touch.clientY - leftJoystick.startY;
+            const dist = Math.hypot(dx, dy);
+            const maxDist = 40; // 可動範囲の限界
+
+            if (dist > maxDist) {
+                leftJoystick.x = dx / dist;
+                leftJoystick.y = dy / dist;
+                joystickKnob.style.transform = `translate(${leftJoystick.x * maxDist}px, ${leftJoystick.y * maxDist}px)`;
+            } else {
+                leftJoystick.x = dx / maxDist;
+                leftJoystick.y = dy / maxDist;
+                joystickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+            }
+        });
+
+        joystickLeft.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            leftJoystick.active = false;
+            leftJoystick.x = 0;
+            leftJoystick.y = 0;
+            joystickKnob.style.transform = 'translate(0px, 0px)';
+        });
+
+        // 右側タッチ射撃エリアの処理
+        touchShootArea.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = touchShootArea.getBoundingClientRect();
+            rightJoystick.startX = rect.left + rect.width / 2;
+            rightJoystick.startY = rect.top + rect.height / 2;
+            rightJoystick.active = true;
+            shootKnob.style.opacity = '1';
+            isMouseDown = true;
+        });
+
+        touchShootArea.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!rightJoystick.active) return;
+            const touch = Array.from(e.touches).find(t => t.target === touchShootArea || touchShootArea.contains(t.target));
+            if (!touch) return;
+
+            const dx = touch.clientX - rightJoystick.startX;
+            const dy = touch.clientY - rightJoystick.startY;
+            const dist = Math.hypot(dx, dy);
+            const maxDist = 40;
+
+            if (dist > 10) { // デッドゾーン
+                const angle = Math.atan2(dy, dx);
+                // プレイヤーの向きと射撃方向を同期
+                mouseX = player.x + Math.cos(angle) * 200;
+                mouseY = player.y + Math.sin(angle) * 200;
+
+                const moveX = dist > maxDist ? Math.cos(angle) * maxDist : dx;
+                const moveY = dist > maxDist ? Math.sin(angle) * maxDist : dy;
+                shootKnob.style.transform = `translate(${moveX}px, ${moveY}px)`;
+            }
+        });
+
+        touchShootArea.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            rightJoystick.active = false;
+            isMouseDown = false;
+            shootKnob.style.opacity = '0';
+            shootKnob.style.transform = 'translate(0px, 0px)';
+        });
+
+
+        // --- ヘルパー関数 ---
+
+        // 爆発エフェクト
+        function explode(x, y, color, size) {
+            screenShake = Math.max(screenShake, size * 0.4);
+            const pCount = size * 1.5;
+            for (let i = 0; i < pCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 8 + 2;
+                particles.push(new Particle(
+                    x, y, color,
+                    Math.cos(angle) * speed, Math.sin(angle) * speed,
+                    Math.random() * 4 + 1,
+                    Math.random() * 30 + 15
+                ));
+            }
+        }
+
+        // 武器の選択・切り替え
+        function selectWeapon(index) {
+            if (index < 0 || index >= WEAPONS.length) return;
+            
+            // 弾薬切れの武器は選べない
+            if (WEAPONS[index].ammo <= 0 && WEAPONS[index].maxAmmo !== Infinity) {
+                floatingTexts.push(new FloatingText("OUT OF AMMO", player.x, player.y - 20, "#ef4444", 14));
+                return;
+            }
+
+            player.activeWeaponIndex = index;
+            updateWeaponUI();
+            
+            // 切り替え時の軽いエフェクト
+            floatingTexts.push(new FloatingText(WEAPONS[index].name, player.x, player.y - 20, WEAPONS[index].color, 14));
+        }
+
+        // UI情報の更新
+        function updateHUD() {
+            // HP
+            hpText.textContent = `${player.hp}/${player.maxHp}`;
+            hpBar.style.width = `${(player.hp / player.maxHp) * 100}%`;
+            
+            // 経験値
+            xpText.textContent = `${player.xp}/${player.maxXp}`;
+            xpBar.style.width = `${(player.xp / player.maxXp) * 100}%`;
+            levelNum.textContent = player.level;
+
+            // スコア
+            scoreVal.textContent = score;
+            waveIndicator.textContent = `WAVE ${wave}`;
+        }
+
+        function updateWeaponUI() {
+            const activeWeapon = WEAPONS[player.activeWeaponIndex];
+            activeWeaponName.textContent = activeWeapon.name;
+            activeWeaponName.style.color = activeWeapon.color;
+            activeWeaponAmmo.textContent = activeWeapon.maxAmmo === Infinity ? "∞" : `${activeWeapon.ammo} / ${activeWeapon.maxAmmo}`;
+            activeWeaponAmmo.style.color = activeWeapon.color;
+
+            weaponBtns.forEach((btn, idx) => {
+                const w = WEAPONS[idx];
+                if (idx === player.activeWeaponIndex) {
+                    btn.classList.add('border-cyan-500');
+                    btn.classList.remove('border-slate-800', 'opacity-50');
+                    btn.style.borderColor = w.color;
+                } else {
+                    btn.style.borderColor = '';
+                    btn.classList.remove('border-cyan-500');
+                    btn.classList.add('border-slate-800');
+                    
+                    // 弾薬切れはさらに薄く
+                    if (w.ammo <= 0 && w.maxAmmo !== Infinity) {
+                        btn.classList.add('opacity-20');
+                        btn.classList.remove('opacity-50');
+                    } else {
+                        btn.classList.add('opacity-50');
+                        btn.classList.remove('opacity-20');
+                    }
+                }
+            });
+        }
+
+        // スマホ武器切り替えボタンにイベントを紐付ける
+        weaponBtns.forEach(btn => {
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const idx = parseInt(btn.getAttribute('data-weapon'));
+                selectWeapon(idx);
+            });
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.getAttribute('data-weapon'));
+                selectWeapon(idx);
+            });
+        });
+
+
+        // --- ウェーブシステム ---
+
+        function startNextWave() {
+            wave++;
+            waveTimer = 0;
+            // 敵の出現数を増加
+            waveEnemyCount = 10 + wave * 5;
+            enemiesSpawned = 0;
+            
+            floatingTexts.push(new FloatingText(`WAVE ${wave} START`, canvas.width/2, canvas.height/3, "#f43f5e", 36));
+            
+            // ボス戦の警告
+            if (wave % 5 === 0) {
+                floatingTexts.push(new FloatingText("WARNING: BOSS INCOMING", canvas.width/2, canvas.height/3 + 40, "#a855f7", 20));
+            }
+
+            updateHUD();
+        }
+
+        function spawnEnemy() {
+            if (enemiesSpawned >= waveEnemyCount) return;
+
+            // 画面外のランダムな位置にスポーンさせる
+            let x, y;
+            const border = 50;
+            const side = Math.floor(Math.random() * 4); // 0: 上, 1: 右, 2: 下, 3: 左
+
+            switch (side) {
+                case 0:
+                    x = Math.random() * canvas.width;
+                    y = -border;
+                    break;
+                case 1:
+                    x = canvas.width + border;
+                    y = Math.random() * canvas.height;
+                    break;
+                case 2:
+                    x = Math.random() * canvas.width;
+                    y = canvas.height + border;
+                    break;
+                case 3:
+                    x = -border;
+                    y = Math.random() * canvas.height;
+                    break;
+            }
+
+            // 敵タイプの決定
+            let type = 'drone';
+            const rand = Math.random();
+
+            if (wave % 5 === 0 && enemiesSpawned === 0) {
+                type = 'boss'; // 5ウェーブごとにボスが出現
+            } else if (wave >= 3 && rand < 0.25) {
+                type = 'rusher'; // ウェーブ3以降に高速突撃機が参入
+            } else if (wave >= 5 && rand < 0.4) {
+                type = 'tank'; // ウェーブ5以降に重戦車が参入
+            }
+
+            enemies.push(new Enemy(x, y, type));
+            enemiesSpawned++;
+        }
+
+
+        // --- ゲームループ & アップデート ---
+
+        function update() {
+            if (!gameActive || isPaused) return;
+
+            gameTime++;
+
+            // 画面揺れの減衰
+            if (screenShake > 0) screenShake *= 0.9;
+
+            // プレイヤーの移動
+            player.update(keys, leftJoystick);
+
+            // プレイヤーの向きを設定（PCの場合はマウス位置、タッチ端末は右スティック）
+            if (!rightJoystick.active) {
+                player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+            }
+
+            // 射撃処理（クリック中またはタッチ中）
+            if (isMouseDown) {
+                player.shoot(mouseX, mouseY);
+            }
+
+            // 弾丸の更新
+            bullets.forEach(bullet => bullet.update());
+            bullets = bullets.filter(bullet => bullet.active);
+
+            // 敵の弾丸更新
+            enemyBullets.forEach(eb => eb.update());
+            enemyBullets = enemyBullets.filter(eb => eb.active);
+
+            // 敵の出現管理
+            if (gameTime % Math.max(20, 100 - wave * 5) === 0 && enemiesSpawned < waveEnemyCount) {
+                spawnEnemy();
+            }
+
+            // 敵の更新
+            enemies.forEach(enemy => {
+                enemy.update(player.x, player.y);
+
+                // プレイヤーと敵の当たり判定
+                const dist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+                if (dist < player.radius + enemy.radius) {
+                    player.takeDamage(enemy.damage);
+                    if (enemy.type === 'rusher') {
+                        // 突撃機は自爆
+                        enemy.takeDamage(100);
+                    }
+                }
+            });
+
+            // 弾丸と敵の衝突判定
+            bullets.forEach(bullet => {
+                enemies.forEach(enemy => {
+                    const dist = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
+                    if (dist < bullet.radius + enemy.radius) {
+                        enemy.takeDamage(bullet.damage);
+                        
+                        // ダメージ数字のポップアップ表示
+                        floatingTexts.push(new FloatingText(bullet.damage.toString(), enemy.x, enemy.y - 15, bullet.color, 14));
+
+                        if (!bullet.penetrating) {
+                            bullet.active = false;
+                        }
+                    }
+                });
+            });
+
+            // 敵の弾丸とプレイヤーの衝突判定
+            enemyBullets.forEach(eb => {
+                const dist = Math.hypot(eb.x - player.x, eb.y - player.y);
+                if (dist < eb.radius + player.radius) {
+                    player.takeDamage(eb.damage);
+                    eb.active = false;
+                }
+            });
+
+            // デッド敵の除外
+            enemies = enemies.filter(enemy => enemy.active);
+
+            // アイテムの更新と回収判定
+            drops.forEach(drop => {
+                drop.update(player.x, player.y);
+
+                const dist = Math.hypot(drop.x - player.x, drop.y - player.y);
+                if (dist < drop.radius + player.radius) {
+                    drop.active = false;
+
+                    // 回収エフェクト
+                    explode(drop.x, drop.y, "#ffffff", 8);
+
+                    if (drop.type === 'xp') {
+                        player.addXp(drop.value);
+                        floatingTexts.push(new FloatingText(`+${drop.value} XP`, player.x, player.y - 30, "#a855f7", 14));
+                    } else if (drop.type === 'heal') {
+                        player.hp = Math.min(player.maxHp, player.hp + drop.value);
+                        floatingTexts.push(new FloatingText(`+${drop.value} HP`, player.x, player.y - 30, "#10b981", 14));
+                        updateHUD();
+                    } else if (drop.type === 'ammo') {
+                        const targetWeapon = WEAPONS[drop.value];
+                        targetWeapon.ammo = Math.min(targetWeapon.maxAmmo, targetWeapon.ammo + Math.floor(targetWeapon.maxAmmo * 0.4));
+                        floatingTexts.push(new FloatingText(`+AMMO (${targetWeapon.name})`, player.x, player.y - 30, "#f59e0b", 14));
+                        updateWeaponUI();
+                    }
+                }
+            });
+            drops = drops.filter(drop => drop.active);
+
+            // パーティクル＆テキストの更新
+            particles.forEach(p => p.update());
+            particles = particles.filter(p => p.life > 0);
+
+            floatingTexts.forEach(t => t.update());
+            floatingTexts = floatingTexts.filter(t => t.life > 0);
+
+            // 全てのエネミーを倒し、次のウェーブへの移行チェック
+            if (enemies.length === 0 && enemiesSpawned >= waveEnemyCount) {
+                startNextWave();
+            }
+        }
+
+        // --- 描画処理 ---
+
+        function draw() {
+            // 画面クリア（少し残像をのこすため、不透明度の低い黒で塗る）
+            ctx.save();
+            ctx.fillStyle = "rgba(2, 6, 23, 0.35)"; // サイバー感のある残像
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.restore();
+
+            // 画面シェイクエフェクト
+            ctx.save();
+            if (screenShake > 0) {
+                const dx = (Math.random() - 0.5) * screenShake;
+                const dy = (Math.random() - 0.5) * screenShake;
+                ctx.translate(dx, dy);
+            }
+
+            // 背景にサイバー空間のグリッドを描画
+            drawGrid();
+
+            // ドロップアイテムの描画
+            drops.forEach(drop => drop.draw());
+
+            // 弾丸の描画
+            bullets.forEach(bullet => bullet.draw());
+            enemyBullets.forEach(eb => eb.draw());
+
+            // 敵キャラクターの描画
+            enemies.forEach(enemy => enemy.draw());
+
+            // パーティクルの描画
+            particles.forEach(p => p.draw());
+
+            // プレイヤーの描画
+            player.draw();
+
+            // フローティングテキストの描画
+            floatingTexts.forEach(t => t.draw());
+
+            ctx.restore();
+        }
+
+        // 背景グリッドパターン
+        function drawGrid() {
+            const gridSize = 60;
+            ctx.save();
+            ctx.strokeStyle = "rgba(6, 182, 212, 0.05)"; // 微かなブルー
+            ctx.lineWidth = 1;
+
+            // 縦線
+            for (let x = 0; x < canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+
+            // 横線
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        // --- ゲームループの稼働 ---
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+
+        // --- ゲーム管理関数 ---
+
+        function initGame() {
+            score = 0;
+            wave = 1;
+            gameTime = 0;
+            enemiesSpawned = 0;
+            waveEnemyCount = 12;
+
+            // 各種武器の弾薬を初期状態に
+            WEAPONS[0].ammo = Infinity;
+            WEAPONS[1].ammo = WEAPONS[1].maxAmmo;
+            WEAPONS[2].ammo = WEAPONS[2].maxAmmo;
+            WEAPONS[3].ammo = WEAPONS[3].maxAmmo;
+
+            player = new Player(canvas.width / 2, canvas.height / 2);
+            bullets = [];
+            enemies = [];
+            enemyBullets = [];
+            particles = [];
+            drops = [];
+            floatingTexts = [];
+
+            updateHUD();
+            updateWeaponUI();
+        }
+
+        function startGame() {
+            initGame();
+            startScreen.classList.add('hidden');
+            overlayScreen.classList.add('hidden');
+            gameActive = true;
+            isPaused = false;
+        }
+
+        function gameOver(reason) {
+            gameActive = false;
+            overlayTitle.textContent = "MISSION FAILED";
+            overlayTitle.className = "text-4xl md:text-6xl font-extrabold text-pink-500 mb-4 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]";
+            overlayReason.innerHTML = `${reason}<br><br><span class="text-sm text-slate-400">最終ウェーブ: ${wave}</span><br><span class="text-xl font-bold text-amber-400">最終スコア: ${score} XP</span>`;
+            resumeBtn.classList.add('hidden');
+            restartBtn.classList.remove('hidden');
+            overlayScreen.classList.remove('hidden');
+        }
+
+        function togglePause() {
+            if (!gameActive) return;
+            isPaused = !isPaused;
+            if (isPaused) {
+                overlayTitle.textContent = "SYSTEM PAUSED";
+                overlayTitle.className = "text-4xl md:text-6xl font-extrabold text-cyan-400 mb-4 drop-shadow-[0_0_15px_rgba(6,182,212,0.5)]";
+                overlayReason.textContent = "エネルギーチャージ中... 安全を確保してください。";
+                restartBtn.classList.add('hidden');
+                resumeBtn.classList.remove('hidden');
+                overlayScreen.classList.remove('hidden');
+            } else {
+                overlayScreen.classList.add('hidden');
+            }
+        }
+
+        // イベントバインド
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', startGame);
+        resumeBtn.addEventListener('click', () => {
+            isPaused = false;
+            overlayScreen.classList.add('hidden');
+        });
+        pauseBtn.addEventListener('click', togglePause);
+
+        // Escapeキーでのポーズ
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                togglePause();
+            }
+        });
+
+        // 描画ループ起動
+        window.onload = function() {
+            loop();
+        }
+    </script>
+</body>
+</html>

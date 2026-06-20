@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>クッキング・マママスター！おいしく可愛く作っちゃおう♪</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Murecho:wght@400;700;900&family=Fredoka+One&family=Kosugi+Maru&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kosugi Maru', 'Murecho', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .font-fancy {
+            font-family: 'Fredoka One', 'Kosugi Maru', sans-serif;
+        }
+        /* ふわふわ浮かぶアニメーション */
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-8px) rotate(2deg); }
+        }
+        .animate-float {
+            animation: float 2.5s ease-in-out infinite;
+        }
+        /* ジュージュー・トントン調理アニメーション */
+        @keyframes cook-wiggle {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.05) rotate(-3deg); }
+            75% { transform: scale(1.05) rotate(3deg); }
+        }
+        .animate-cook {
+            animation: cook-wiggle 0.2s ease-in-out infinite;
+        }
+        /* 湯気（スチーム）アニメーション */
+        @keyframes steam {
+            0% { transform: translateY(10px) scale(0.6); opacity: 0; }
+            50% { opacity: 0.6; }
+            100% { transform: translateY(-30px) scale(1.1); opacity: 0; }
+        }
+        .steam-particle {
+            animation: steam 1.2s ease-out infinite;
+        }
+        /* ハートや星が飛び散るエフェクト用 */
+        .sparkle-particle {
+            position: absolute;
+            pointer-events: none;
+            animation: fly-away 1s ease-out forwards;
+        }
+        @keyframes fly-away {
+            0% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(0) rotate(var(--tr)); opacity: 0; }
+        }
+        /* ママの吹き出しの三角 */
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 24px;
+            border-width: 8px 8px 0;
+            border-style: solid;
+            border-color: #ffffff transparent;
+            display: block;
+            width: 0;
+        }
+    </style>
+</head>
+<body id="game-body" class="bg-pink-50 text-slate-700 min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- ヘッダー -->
+    <header id="game-header" class="bg-gradient-to-r from-pink-400 via-rose-400 to-pink-400 text-white shadow-md p-4 flex justify-between items-center z-10 border-b-4 border-pink-300">
+        <div class="flex items-center gap-2">
+            <span class="text-3xl animate-bounce">👩‍🍳</span>
+            <h1 class="text-xl md:text-2xl font-black tracking-wider font-fancy">COOKING MAMA-MASTER</h1>
+        </div>
+        <div class="flex gap-2 items-center">
+            <div class="bg-pink-600/50 px-3 py-1.5 rounded-full text-xs md:text-sm font-bold flex items-center gap-1 border border-pink-300">
+                <span class="text-yellow-300 text-sm">💖</span>
+                <span>ときめき: <span id="header-score" class="font-fancy text-sm md:text-base text-yellow-200">0</span></span>
+            </div>
+            <button id="btn-help" class="text-white hover:text-pink-100 transition text-xl p-1">
+                <i class="fa-regular fa-circle-question"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- メインコンテンツエリア -->
+    <main class="flex-grow flex flex-col justify-center items-center p-3 md:p-4 max-w-4xl mx-auto w-full relative">
+        
+        <!-- キらきらエフェクトコンテナ -->
+        <div id="effect-overlay" class="absolute inset-0 pointer-events-none z-30 overflow-hidden"></div>
+
+        <!-- ================= スタート画面 ================= -->
+        <div id="screen-start" class="w-full max-w-md bg-white rounded-3xl p-6 md:p-8 shadow-xl text-center border-4 border-pink-400 relative">
+            <div class="absolute -top-10 -left-6 text-5xl animate-float" style="animation-delay: 0.5s">🍓</div>
+            <div class="absolute -bottom-6 -right-6 text-5xl animate-float">🧸</div>
+            
+            <div class="text-7xl mb-3 animate-float inline-block">👩‍🍳✨</div>
+            <h2 class="text-2xl md:text-3xl font-black text-rose-500 mb-1 font-fancy">クッキング・マママスター</h2>
+            <p class="text-rose-400 text-xs font-bold tracking-wider mb-6">〜 ママと一緒に、ハッピーお料理タイム！ 〜</p>
+
+            <div class="space-y-3 mb-6 text-left bg-pink-50/70 p-4 rounded-2xl text-xs md:text-sm border border-pink-100">
+                <h3 class="font-bold text-rose-600 text-sm mb-1.5 flex items-center gap-1">
+                    <span>🍳</span> ママコックからのアドバイス
+                </h3>
+                <p class="text-slate-600">お料理に合わせて、<strong>「トントンたたく」「ぐるぐるまわす」「パタパタあおぐ」</strong>の2つの調理を順番を行うよ！</p>
+                <p class="text-slate-600">最後に、トッピングを自由にお皿にのせて<strong>じぶんで盛り付け（デコレーション）</strong>をしてね！</p>
+                <p class="text-rose-600 font-bold border-t border-pink-200/50 pt-2 mt-2">制限時間はたっぷり「120秒（2分）」あるから、じっくり作ってね！⏰</p>
+            </div>
+
+            <button id="btn-start" class="w-full py-4 bg-gradient-to-r from-pink-400 to-rose-500 hover:from-pink-500 hover:to-rose-600 active:scale-95 text-white font-black text-xl rounded-2xl shadow-lg transition-all duration-150 border-b-4 border-rose-700">
+                ママと一緒につくる！🍳
+            </button>
+        </div>
+
+        <!-- ================= ゲーム本編画面 ================= -->
+        <div id="screen-game" class="hidden w-full flex flex-col gap-3 md:gap-4">
+            
+            <!-- 上部ステータス（タイマーと注文） -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
+                <!-- タイマー -->
+                <div class="bg-white px-4 py-3 rounded-2xl shadow flex items-center justify-between border-2 border-pink-100">
+                    <span class="text-xs md:text-sm font-bold text-pink-500 flex items-center gap-1">
+                        <span>⏰</span> のこり時間
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <div class="w-20 md:w-24 bg-pink-100 rounded-full h-3 overflow-hidden">
+                            <div id="timer-bar" class="bg-pink-400 h-full w-full transition-all duration-1000"></div>
+                        </div>
+                        <span id="timer-text" class="font-fancy font-bold text-lg md:text-2xl text-rose-500 tracking-wider">02:00</span>
+                    </div>
+                </div>
+
+                <!-- スコア -->
+                <div class="bg-white px-4 py-3 rounded-2xl shadow flex items-center justify-between border-2 border-pink-100">
+                    <span class="text-xs md:text-sm font-bold text-pink-500 flex items-center gap-1">
+                        <span>💖</span> ときめき
+                    </span>
+                    <span id="game-score" class="font-fancy font-bold text-xl text-pink-600">0</span>
+                </div>
+
+                <!-- 現在作っている料理名 -->
+                <div id="dish-banner" class="bg-gradient-to-r from-rose-400 to-pink-400 text-white p-4 py-3 rounded-2xl shadow flex items-center justify-between">
+                    <span class="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full">オーダー</span>
+                    <span id="current-dish-name" class="font-bold text-sm md:text-base">くまさんオムライス</span>
+                    <span id="current-dish-icon" class="text-2xl animate-float">🧸</span>
+                </div>
+            </div>
+
+            <!-- メインゲームエリア (調理台と工程) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 w-full">
+                
+                <!-- 左側：現在のレシピ要件 & 進行状況 (4/12) -->
+                <div class="lg:col-span-4 bg-white p-4 rounded-3xl shadow-lg border-2 border-pink-100 flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-rose-500 border-b pb-2 mb-3 flex items-center justify-between text-sm md:text-base">
+                            <span class="flex items-center gap-1">📖 ママのレシピノート</span>
+                            <span id="step-badge" class="bg-pink-400 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">STEP 1/4</span>
+                        </h3>
+                        
+                        <!-- 工程ガイドテキスト -->
+                        <div class="bg-pink-50 p-3 rounded-xl mb-3 border border-pink-100">
+                            <p id="step-instruction" class="text-xs md:text-sm text-pink-800 font-bold">1. 必要な具材をトントンボウルに入れよう！</p>
+                        </div>
+
+                        <!-- 必要な具材リスト -->
+                        <div class="space-y-2 mb-4">
+                            <p class="text-[10px] font-bold text-pink-400 uppercase tracking-wider">必要なもの：</p>
+                            <div id="recipe-ingredients-list" class="flex flex-wrap gap-1.5">
+                                <!-- JSで動的生成 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 進捗ステップインジケーター (4STEPに対応) -->
+                    <div class="pt-3 border-t border-pink-50 mt-4">
+                        <div class="flex justify-between text-[8px] md:text-[9px] font-bold text-pink-300 mb-1.5 gap-1 text-center">
+                            <span id="indicator-step1" class="text-rose-400 shrink-0">1.したごしらえ</span>
+                            <span id="indicator-step2" class="shrink-0">2.ファースト</span>
+                            <span id="indicator-step3" class="shrink-0">3.セカンド</span>
+                            <span id="indicator-step4" class="shrink-0">4.デコレーション</span>
+                        </div>
+                        <div class="w-full bg-pink-50 rounded-full h-2">
+                            <div id="cooking-progress-bar" class="bg-gradient-to-r from-pink-400 to-rose-400 h-2 rounded-full w-1/4 transition-all duration-300"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右側：調理ビジュアル ＆ 操作エリア (8/12) -->
+                <div id="game-stage-card" class="lg:col-span-8 bg-white p-4 md:p-6 rounded-3xl shadow-lg border-2 border-pink-100 flex flex-col items-center justify-between min-h-[400px] relative">
+                    
+                    <!-- ママの表情と吹き出し -->
+                    <div class="absolute top-2 left-2 md:left-4 flex items-end gap-2 z-20">
+                        <div class="flex flex-col items-center">
+                            <div id="mama-avatar" class="w-14 h-14 bg-pink-100 rounded-full flex items-center justify-center border-2 border-pink-300 shadow text-3xl transition-all duration-300 animate-float">
+                                👩‍🍳
+                            </div>
+                            <span id="mama-name-tag" class="text-[9px] bg-rose-400 text-white px-1.5 py-0.5 rounded-full font-bold mt-1 shadow-sm">ママ</span>
+                        </div>
+                        <!-- 吹き出し -->
+                        <div class="bg-white border-2 border-pink-200 rounded-2xl p-2 px-3 shadow-md max-w-[150px] md:max-w-[200px] text-xs relative speech-bubble mb-6">
+                            <p id="mama-speech" class="text-pink-700 font-bold leading-tight">いっしょにがんばろうね！💕</p>
+                        </div>
+                    </div>
+
+                    <!-- フローティングメッセージ -->
+                    <div id="floating-feedback" class="absolute top-20 left-1/2 -translate-x-1/2 bg-yellow-300 text-slate-800 font-black px-5 py-2 rounded-full shadow-lg transform scale-0 opacity-0 transition-all duration-200 z-20 text-xs md:text-sm border-2 border-white">
+                        たいへんよくできました！💮
+                    </div>
+
+                    <!-- 調理ビジュアル表示エリア -->
+                    <div class="w-full flex-grow flex items-center justify-center relative min-h-[240px] mt-12">
+                        <!-- 背景のキッチン演出 -->
+                        <div class="absolute inset-0 bg-pink-50/30 rounded-2xl opacity-80 border-2 border-dashed border-pink-200"></div>
+                        
+                        <!-- 湯気エフェクト -->
+                        <div id="steam-container" class="absolute top-1/4 flex gap-4 hidden z-10">
+                            <span class="steam-particle text-pink-200 opacity-70 text-xl">☁️</span>
+                            <span class="steam-particle text-pink-200 opacity-70 text-2xl" style="animation-delay: 0.3s">☁️</span>
+                            <span class="steam-particle text-pink-200 opacity-70 text-xl" style="animation-delay: 0.6s">☁️</span>
+                        </div>
+
+                        <!-- 料理ビジュアルコア -->
+                        <div id="cooking-stage-visual" class="relative z-10 text-center w-full h-full flex flex-col items-center justify-center">
+                            
+                            <!-- 切るアクション用のガイドスライサー(トントンエリア) -->
+                            <div id="interactive-cut-area" class="hidden flex-col items-center justify-center relative cursor-pointer w-48 h-48 bg-white/40 border-4 border-dashed border-pink-300 rounded-full animate-pulse">
+                                <span class="text-[10px] text-pink-500 font-bold mb-1">ここをタップしてカット！</span>
+                                <span id="cut-target-emoji" class="text-6xl transition-transform duration-100">🍅</span>
+                                <span class="absolute -top-4 right-2 text-3xl animate-bounce">🔪</span>
+                                <div class="mt-2 bg-rose-400 text-white text-xs px-2 py-0.5 rounded-full font-bold">
+                                    あと <span id="cut-count" class="font-fancy">10</span> 回！
+                                </div>
+                            </div>
+
+                            <!-- 混ぜるアクション用のぐるぐるボウル -->
+                            <div id="interactive-mix-area" class="hidden flex-col items-center justify-center relative cursor-grab w-48 h-48 bg-pink-100/50 border-4 border-dashed border-pink-300 rounded-full">
+                                <span class="text-[9px] text-pink-500 font-bold mb-1 absolute top-4">ぐるぐる円を描いてまぜて！</span>
+                                <div id="mix-bowl" class="text-7xl transition-transform duration-150">🥣</div>
+                                <span class="absolute -top-4 right-2 text-3xl animate-bounce">🥄</span>
+                                <div class="absolute bottom-4 left-4 right-4 bg-slate-200 h-3 rounded-full overflow-hidden">
+                                    <div id="mix-progress-bar" class="bg-gradient-to-r from-pink-400 to-rose-400 h-full w-0"></div>
+                                </div>
+                            </div>
+
+                            <!-- デコレーション用インタラクティブプレート (STEP 4) -->
+                            <div id="plating-canvas" class="hidden relative w-56 h-56 bg-white/80 border-4 border-pink-200 rounded-full cursor-crosshair shadow-md flex items-center justify-center overflow-hidden">
+                                <span id="plating-dish-base" class="text-9xl block transition-transform duration-300 animate-float">🍛</span>
+                                <div id="plating-decorations-container" class="absolute inset-0 pointer-events-none"></div>
+                                <div class="absolute bottom-1 bg-pink-100/90 text-[9px] px-2 py-0.5 rounded-full text-pink-600 font-bold">
+                                    お皿をタップしてトッピングを置いてね！
+                                </div>
+                            </div>
+
+                            <!-- 基本のコンテナ表示（STEP 1） -->
+                            <div id="default-visual-container" class="relative inline-block">
+                                <span id="main-container-emoji" class="text-8xl block transition-transform duration-150 animate-float">🥣</span>
+                                <div id="ingredients-inside" class="absolute inset-0 flex flex-wrap justify-center items-center content-center p-4 gap-1">
+                                    <!-- ボウルの中に入った具材のミニアイコン -->
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- パタパタアクション (焼く/茹でるの火加減調整) -->
+                        <div id="action-gauge-container" class="absolute bottom-2 left-2 right-2 bg-white/95 border-2 border-pink-200 text-slate-700 p-3 rounded-2xl shadow-xl hidden flex-col items-center z-10">
+                            <span id="gauge-label" class="text-xs font-bold mb-1 text-pink-500 flex items-center gap-1">
+                                <span>🔥</span> うちわであおいで！ベスト温度をキープしてね！
+                            </span>
+                            <div class="w-full bg-pink-50 h-5 rounded-full overflow-hidden relative border border-pink-200">
+                                <div id="gauge-target-zone" class="absolute top-0 bottom-0 bg-pink-400 opacity-80" style="left: 45%; width: 20%;"></div>
+                                <div id="gauge-great-zone" class="absolute top-0 bottom-0 bg-yellow-200 opacity-70" style="left: 35%; width: 40%;"></div>
+                                <div id="gauge-pointer" class="absolute top-0 bottom-0 w-2 bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.8)] left-0 transition-all duration-100"></div>
+                            </div>
+                            <div class="flex justify-between w-full text-[9px] text-pink-400 font-bold mt-1 px-1">
+                                <span>火がよわい💦（あおいで！）</span>
+                                <span class="text-rose-500">ベスト温度！💖</span>
+                                <span>こげちゃう💦（まって！）</span>
+                            </div>
+                            <div class="mt-2 bg-rose-400 text-white text-xs px-3 py-0.5 rounded-full font-bold">
+                                あと <span id="bake-timer" class="font-fancy">5</span> 秒キープ！
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 操作インターフェースエリア -->
+                    <div class="w-full mt-3 pt-3 border-t border-pink-100 min-h-[110px] flex items-center justify-center">
+                        
+                        <!-- STEP 1用: 具材棚 -->
+                        <div id="control-ingredients" class="w-full">
+                            <p class="text-xs font-bold text-pink-400 text-center mb-2">いるものをタップして、ボウルにあつめよう♪</p>
+                            <div id="ingredients-shelf" class="flex justify-center gap-2 flex-wrap">
+                                <!-- JSで動的生成 -->
+                            </div>
+                        </div>
+
+                        <!-- STEP 2 & 3用: パタパタあおぐボタン -->
+                        <div id="control-action" class="w-full hidden text-center">
+                            <button id="btn-action-trigger" class="px-8 py-3 bg-gradient-to-r from-orange-400 to-rose-500 hover:from-orange-500 hover:to-rose-600 active:scale-95 text-white font-black text-lg rounded-2xl shadow-lg border-b-4 border-rose-700 transition duration-100 flex items-center gap-2 mx-auto">
+                                <span>🪭</span>
+                                <span id="action-btn-text">パタパタあおぐ！</span>
+                            </button>
+                        </div>
+
+                        <!-- STEP 4用: フリーデコレーション操作パネル -->
+                        <div id="control-plating" class="w-full hidden text-center flex flex-col items-center">
+                            <p class="text-xs font-bold text-pink-400 mb-2">トッピングを選んでお皿をタップしてね♪</p>
+                            
+                            <!-- トッピング選択パレット -->
+                            <div id="topping-palette" class="flex justify-center gap-2 flex-wrap mb-4">
+                                <!-- 動的生成 -->
+                            </div>
+
+                            <div class="flex gap-3">
+                                <button onclick="clearDecorations()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold rounded-xl transition text-xs shadow">
+                                    🔄 やりなおす
+                                </button>
+                                <button onclick="finishPlating()" class="px-6 py-2.5 bg-gradient-to-r from-pink-400 to-rose-500 hover:from-pink-500 hover:to-rose-600 active:scale-95 text-white font-black rounded-xl shadow-md transition text-xs md:text-sm flex items-center gap-1 border-b-2 border-rose-600">
+                                    ✨ できたよ！ママに見せる 👩‍🍳🍳
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- ================= リザルト画面 ================= -->
+        <div id="screen-result" class="hidden w-full max-w-md bg-white rounded-3xl p-6 md:p-8 shadow-xl text-center border-4 border-pink-400 relative">
+            <div class="absolute -top-10 -left-6 text-5xl animate-float">🧁</div>
+            <div class="absolute -bottom-6 -right-6 text-5xl animate-float" style="animation-delay: 0.8s">🍒</div>
+
+            <div class="text-7xl mb-3 animate-bounce">👩‍🍳🎉</div>
+            <h2 class="text-2xl md:text-3xl font-black text-rose-500 mb-1">おつかれさまでした！</h2>
+            <p class="text-slate-500 text-xs md:text-sm mb-4">今日のごはん、とってもおいしそう！</p>
+
+            <!-- 得られたときめきスコア -->
+            <div class="bg-pink-50 rounded-2xl p-5 mb-6 border border-pink-100">
+                <p class="text-pink-400 text-[10px] font-bold uppercase tracking-wider mb-1">ときめきポイント</p>
+                <div id="result-score" class="font-fancy text-4xl md:text-5xl text-rose-500 font-black">0</div>
+                
+                <div class="mt-4 pt-3 border-t border-pink-200/40 grid grid-cols-2 gap-2 text-xs text-slate-600">
+                    <div>作ったおりょうり: <span id="result-cooked-count" class="font-bold text-rose-500">0皿</span></div>
+                    <div>はなまる(満点): <span id="result-perfect-count" class="font-bold text-amber-500">0回</span></div>
+                </div>
+            </div>
+
+            <!-- 称号 -->
+            <div class="mb-6 bg-amber-50/50 p-4 rounded-xl border border-amber-200">
+                <p class="text-[10px] text-amber-600 font-bold">🌸 ママからのしんさ 🌸</p>
+                <h3 id="chef-title" class="text-base md:text-lg font-black text-pink-500 mt-1">ちびっこコックさん 🐣</h3>
+                <p id="chef-desc" class="text-xs text-slate-500 mt-1 px-2 leading-relaxed">いっしょにつくれて楽しかったよ！またすぐにママと美味しいもの作ろうね♪</p>
+            </div>
+
+            <button id="btn-restart" class="w-full py-3.5 bg-gradient-to-r from-pink-400 to-rose-500 hover:from-pink-500 hover:to-rose-600 active:scale-95 text-white font-black text-lg rounded-2xl shadow-lg transition duration-150 border-b-4 border-rose-700">
+                もういっかい遊ぶ！🧸
+            </button>
+        </div>
+
+    </main>
+
+    <!-- ヘルプモーダル -->
+    <div id="modal-help" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl relative border-4 border-pink-300">
+            <button id="btn-close-help" class="absolute top-4 right-4 text-pink-400 hover:text-pink-600 text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-lg font-bold text-rose-500 mb-3 flex items-center gap-2 border-b-2 border-pink-100 pb-2">
+                👩‍🍳 ママのクッキング教室
+            </h3>
+            <div class="space-y-3 text-xs md:text-sm text-slate-600">
+                <p class="font-bold text-pink-600">じょうずに作るコツ：</p>
+                <ul class="list-disc pl-5 space-y-1.5">
+                    <li><strong>1.したごしらえ:</strong> レシピに書いてある具材だけを棚から選ぼう！</li>
+                    <li><strong>2.ファースト調理 ＆ 3.セカンド調理:</strong> お料理に合わせた2段階のステップをこなそう！</li>
+                    <li><strong>トントンきざむ:</strong> まな板の上を「トントン！」と素早く10回タップしてね！</li>
+                    <li><strong>ぐるぐるまぜる:</strong> ボウルを指やマウスでぐるぐると円を描うなぞって混ぜよう！</li>
+                    <li><strong>パタパタあおぐ:</strong> ゲージの針がピンク色のエリアをキープできるように、ボタンを上手に調整してね！</li>
+                    <li><strong>4.デコレーション:</strong> お皿の上をタップして、好きなトッピングを3個以上のせてママに見せよう！</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- フッター -->
+    <footer class="bg-pink-100/50 py-3 text-center text-[10px] text-pink-400 border-t border-pink-100">
+        <p>© 2026 クッキング・マママスター / Cooking Mama-Master 💕</p>
+    </footer>
+
+    <!-- ゲームロジック用スクリプト -->
+    <script>
+        // --- ゲーム定数 & 具材データ ---
+        const INGREDIENTS = {
+            noodle: { name: 'つるつるめん', icon: '🍜', emoji: '🍜' },
+            soup: { name: 'ひでんのスープ', icon: '🧂', emoji: '🧂' },
+            chashu: { name: 'チャーシュー', icon: '🥩', emoji: '🥓' },
+            egg: { name: 'ゆでたまご', icon: '🥚', emoji: '🥚' },
+            rice: { name: 'ぴかぴかごはん', icon: '🍚', emoji: '🍚' },
+            ketchup: { name: 'あまいケチャップ', icon: '🍅', emoji: '🥫' },
+            egg_fry: { name: 'ふわとろたまご', icon: '🍳', emoji: '🍳' },
+            bear_cheese: { name: 'くまさんチーズ', icon: '🧀', emoji: '🧀' },
+            strawberry: { name: 'あかいイチゴ', icon: '🍓', emoji: '🍓' },
+            whip: { name: 'あまいホイップ', icon: '🍦', emoji: '🍥' },
+            ice: { name: 'バニラアイス', icon: '🍨', emoji: '🍨' },
+            cookie: { name: 'うさぎクッキー', icon: '🍪', emoji: '🍪' },
+            pancake_mix: { name: 'パンケーキのもと', icon: '🥞', emoji: '🥣' },
+            butter: { name: 'とろけるバター', icon: '🧈', emoji: '🧈' },
+            honey: { name: 'あまいはちみつ', icon: '🍯', emoji: '🍯' },
+            meat: { name: 'ジューシーひきにく', icon: '🥩', emoji: '🥩' },
+            onion: { name: 'おねぎ', icon: '🌱', emoji: '🌱' },
+            cabbage: { name: 'キャベツ', icon: '🥬', emoji: '🥬' },
+            flour: { name: 'ギョーザのかわ', icon: '⚪', emoji: '🥟' },
+            fish: { name: 'まぐろネタ', icon: '🐟', emoji: '🐟' },
+            cream: { name: 'なまクリーム', icon: '🧁', emoji: '🧁' },
+            chocolate: { name: '板チョコ', icon: '🍫', emoji: '🍫' }
+        };
+
+        // --- レシピデータ (全7種) ---
+        const RECIPES = [
+            {
+                id: 'omurice',
+                name: 'くまさんオムライス 🐻',
+                icon: '🧸',
+                ingredients: ['rice', 'ketchup', 'egg_fry', 'bear_cheese'],
+                action1: { type: 'mix', label: 'ごはんをフライパンでぐるぐる炒めよう！' },
+                action2: { type: 'bake', label: 'たまごをパタパタあおいでふんわり焼こう！' },
+                stageVisuals: { step1: '🥣', step2: '🍳', step3: '🍳', step4: '🍛' },
+                toppings: [
+                    { name: 'ケチャップハート', emoji: '💖' },
+                    { name: 'おすましパセリ', emoji: '🌿' },
+                    { name: 'ミニはた', emoji: '🚩' },
+                    { name: 'おほしさま', emoji: '🌟' }
+                ]
+            },
+            {
+                id: 'gyoza',
+                name: 'お花のパリパリギョーザ 🥟',
+                icon: '🥟',
+                ingredients: ['meat', 'onion', 'cabbage', 'flour'],
+                action1: { type: 'cut', label: 'キャベツをまな板でトントン刻もう！' },
+                action2: { type: 'mix', label: 'ひきにくと具材をボウルでぐるぐる混ぜよう！' },
+                stageVisuals: { step1: '🥣', step2: '🥬', step3: '🥣', step4: '🥟' },
+                toppings: [
+                    { name: 'おいしいタレ', emoji: '🤎' },
+                    { name: 'ピリカララー油', emoji: '🌶️' },
+                    { name: 'ぱらぱらゴマ', emoji: '✨' },
+                    { name: 'ちいさな葉っぱ', emoji: '🌱' }
+                ]
+            },
+            {
+                id: 'cake',
+                name: '夢色デコレーションケーキ 🎂',
+                icon: '🎂',
+                ingredients: ['pancake_mix', 'cream', 'strawberry', 'chocolate'],
+                action1: { type: 'mix', label: 'ケーキの生地をぐるぐる混ぜ合わせよう！' },
+                action2: { type: 'bake', label: 'スポンジをオーブンでふっくら焼こう！' },
+                stageVisuals: { step1: '🥣', step2: '🥣', step3: '🧁', step4: '🍰' },
+                toppings: [
+                    { name: 'ホイップクリーム', emoji: '🍦' },
+                    { name: 'あかいイチゴ', emoji: '🍓' },
+                    { name: 'チョコスター', emoji: '⭐' },
+                    { name: 'ブルーベリー', emoji: '🫐' }
+                ]
+            },
+            {
+                id: 'parfait',
+                name: '恋するいちごパフェ 🍓',
+                icon: '🍧',
+                ingredients: ['strawberry', 'whip', 'ice', 'cookie'],
+                action1: { type: 'cut', label: 'いちごをトントンきれいにカットしよう！' },
+                action2: { type: 'mix', label: 'クリームとアイスをぐるぐる混ぜ合わせよう！' },
+                stageVisuals: { step1: '🍨', step2: '🍓', step3: '🍧', step4: '🍨' },
+                toppings: [
+                    { name: 'あかいイチゴ', emoji: '🍓' },
+                    { name: 'さくらんぼ', emoji: '🍒' },
+                    { name: 'カラフルスプレー', emoji: '✨' },
+                    { name: 'ミントのハパ', emoji: '🌿' }
+                ]
+            },
+            {
+                id: 'pancake',
+                name: '極厚はちみつパンケーキ 🥞',
+                icon: '🥞',
+                ingredients: ['pancake_mix', 'butter', 'honey'],
+                action1: { type: 'mix', label: 'パンケーキのもとをぐるぐる混ぜよう！' },
+                action2: { type: 'bake', label: 'フライパンでふっくら両面を焼こう！' },
+                stageVisuals: { step1: '🥣', step2: '🥣', step3: '🍳', step4: '🥞' },
+                toppings: [
+                    { name: 'ブルーベリー', emoji: '🫐' },
+                    { name: 'あまいバナナ', emoji: '🍌' },
+                    { name: 'クリームホイップ', emoji: '🍦' },
+                    { name: 'とろけるバター', emoji: '🧈' }
+                ]
+            },
+            {
+                id: 'ramen',
+                name: 'お子さまラーメン 🍜',
+                icon: '🍜',
+                ingredients: ['noodle', 'soup', 'chashu', 'egg'],
+                action1: { type: 'cut', label: 'チャーシューをトントン刻んでね！' },
+                action2: { type: 'bake', label: 'お鍋のめんをつるつる茹でよう！' },
+                stageVisuals: { step1: '🥣', step2: '🥩', step3: '🍲', step4: '🍜' },
+                toppings: [
+                    { name: 'おっきいのり', emoji: '⬛' },
+                    { name: 'ナルトぐるぐる', emoji: '🍥' },
+                    { name: 'あまいコーン', emoji: '🌽' },
+                    { name: 'おねぎぱらぱら', emoji: '🌱' }
+                ]
+            },
+            {
+                id: 'sushi',
+                name: 'てまりお寿司 🍣',
+                icon: '🍣',
+                ingredients: ['rice', 'fish', 'egg'],
+                action1: { type: 'cut', label: 'お寿司のネタをトントン切ろう！' },
+                action2: { type: 'mix', label: 'ネタとシャリをぐるぐるにぎにぎしよう！' },
+                stageVisuals: { step1: '🥣', step2: '🐟', step3: '🍣', step4: '🍣' },
+                toppings: [
+                    { name: 'お醤油ぽとり', emoji: '🟤' },
+                    { name: 'あまいたまご', emoji: '🥚' },
+                    { name: 'おすしガリ', emoji: '💮' },
+                    { name: 'ピリッとワサビ', emoji: '🟢' }
+                ]
+            }
+        ];
+
+        // --- ママの応援セリフ集 ---
+        const MAMA_SPEECHES = {
+            start: [
+                'いっしょにおいしいもの、いっぱいつくろうね！💕',
+                'ママがそばで見守っているから大丈夫よ！🎵',
+                '今日のメニューはなにかな？わくわくしちゃうわ！✨'
+            ],
+            step1_start: [
+                'まずは、ボウルに具材をあつめてね！🌟',
+                'レシピ帳にかいてある具材をいれてね！',
+                'いるものをタップして、ボウルにいれましょう♪'
+            ],
+            step1_correct: [
+                'わぁ！ばっちりね！感動しちゃう！💖',
+                'そう、その調子！さすがママの子ね！💮',
+                'おいしくなりそうな予感がするわ！🌸'
+            ],
+            step1_wrong: [
+                'あらら？それはレシピとちがうみたい…💦',
+                'あわてなくていいのよ、よく見てみてね！👀',
+                'うふふ、ちょっとお茶目な具材が入っちゃった？🍀'
+            ],
+            step2_start_cut: [
+                'トントンまな板をタップして刻んでね！🔪',
+                '素早くトントン！リズミカルにいこう！🎵'
+            ],
+            step2_start_mix: [
+                'ぐるぐるーってなぞって美味しく混ぜてね！🥣',
+                'しっかりぐるぐる！まぜまぜタイムだよ♪'
+            ],
+            step2_start_bake: [
+                'うちわをパタパタして火加減をキープしてね！🔥',
+                '熱すぎず、冷たすぎず、ちょうどいい温度にしてね！'
+            ],
+            step2_perfect: [
+                'きゃーっ！天才的！たいへんよくできました！💮',
+                'すごすぎるわ！ママより上手かもしれない！✨',
+                'パーフェクト！はなまるをあげちゃうわ！💮'
+            ],
+            step2_good: [
+                'とってもじょうず！おいしそうにできたわ！🌸',
+                'よくできました♪ ママもにっこりよ！',
+                'いい感じ、いい感じ！はやく食べたいな〜！😋'
+            ],
+            step2_bad: [
+                'あらら…ちょっぴり失敗しちゃったけど大丈夫！💖',
+                'どんまいどんまい！次はうまくいくわよ！⭐',
+                'ママが手伝ってあげるから、気にしないでね！'
+            ],
+            step3_start: [
+                'さいごはお皿をタップしてトッピングをのせてね！✨',
+                '可愛く盛り付けて、ママをびっくりさせてね！🍰',
+                '好きなデコレーションをたくさんのせてね！わくわく！'
+            ]
+        };
+
+        const TOTAL_TIME_LIMIT = 120; // 制限時間：120秒
+
+        // --- ゲーム状態管理 ---
+        let gameState = {
+            score: 0,
+            cookedCount: 0,
+            perfectCount: 0,
+            timeLeft: TOTAL_TIME_LIMIT,
+            timerId: null,
+            currentRecipe: null,
+            currentStep: 1, 
+            selectedIngredients: [],
+            
+            // アクション管理
+            actionCount: 0, 
+            mixAngle: 0,    
+            lastAngle: null,
+            bakeGauge: 20,   
+            bakeSeconds: 5,  
+            actionIntervalId: null,
+            decayIntervalId: null, 
+            isBakePerfect: true, 
+
+            // デコレーション管理
+            selectedTopping: null, 
+            decorationsCount: 0
+        };
+
+        // かぶり防止用
+        let playedRecipeIds = [];
+
+        // --- DOM要素用の変数定義（ロード後に安全に取得するため） ---
+        let screenStart, screenGame, screenResult, modalHelp;
+        let btnStart, btnRestart, btnHelp, btnCloseHelp;
+        let headerScore, gameScore, timerBar, timerText;
+        let currentDishName, currentDishIcon, stepInstruction, recipeIngredientsList, stepBadge;
+        let indicatorStep1, indicatorStep2, indicatorStep3, indicatorStep4, cookingProgressBar;
+        let mainContainerEmoji, ingredientsInside, steamContainer;
+        let defaultVisualContainer, interactiveCutArea, cutTargetEmoji, cutCountText;
+        let interactiveMixArea, mixBowl, mixProgressBar;
+        let platingCanvas, platingDishBase, platingDecorationsContainer, toppingPalette;
+        let controlIngredients, controlAction, controlPlating, ingredientsShelf;
+        let btnActionTrigger, actionBtnText;
+        let actionGaugeContainer, gaugePointer, bakeTimerText, floatingFeedback;
+        let mamaAvatar, mamaSpeech, effectOverlay, gameBody, gameHeader, gameStageCard;
+        let resultScore, resultCookedCount, resultPerfectCount, chefTitle, chefDesc;
+
+        // --- 音声効果 (自動再生制限回避のため遅延初期化) ---
+        let audioCtx = null;
+        
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            initAudio();
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'select') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now); 
+                osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.12); 
+                gainNode.gain.setValueAtTime(0.2, now);
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.12);
+                osc.start(now);
+                osc.stop(now + 0.12);
+            } else if (type === 'pop') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(900, now + 0.15);
+                gainNode.gain.setValueAtTime(0.25, now);
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'chop') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(80, now + 0.08);
+                gainNode.gain.setValueAtTime(0.3, now);
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            } else if (type === 'woosh') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(450, now + 0.15);
+                gainNode.gain.setValueAtTime(0.1, now);
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'fan') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(120, now);
+                osc.frequency.exponentialRampToValueAtTime(180, now + 0.1);
+                gainNode.gain.setValueAtTime(0.2, now);
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.08);
+                osc.frequency.setValueAtTime(783.99, now + 0.16);
+                osc.frequency.setValueAtTime(1046.50, now + 0.24);
+                osc.frequency.setValueAtTime(1318.51, now + 0.32);
+                gainNode.gain.setValueAtTime(0.25, now);
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.45);
+                osc.start(now);
+                osc.stop(now + 0.45);
+            } else if (type === 'perfect') {
+                const osc2 = audioCtx.createOscillator();
+                const gainNode2 = audioCtx.createGain();
+                osc2.connect(gainNode2);
+                gainNode2.connect(audioCtx.destination);
+
+                osc.type = 'sine';
+                osc2.type = 'triangle';
+                
+                osc.frequency.setValueAtTime(523.25, now);
+                osc2.frequency.setValueAtTime(659.25, now);
+                
+                osc.frequency.setValueAtTime(783.99, now + 0.1);
+                osc2.frequency.setValueAtTime(987.77, now + 0.1);
+                
+                osc.frequency.setValueAtTime(1046.50, now + 0.2);
+                osc2.frequency.setValueAtTime(1318.51, now + 0.2);
+
+                gainNode.gain.setValueAtTime(0.2, now);
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.5);
+                gainNode2.gain.setValueAtTime(0.15, now);
+                gainNode2.gain.linearRampToValueAtTime(0, now + 0.5);
+
+                osc.start(now);
+                osc2.start(now);
+                osc.stop(now + 0.5);
+                osc2.stop(now + 0.5);
+            } else if (type === 'bad') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(329.63, now);
+                osc.frequency.linearRampToValueAtTime(220.00, now + 0.2);
+                gainNode.gain.setValueAtTime(0.25, now);
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'sizzle') {
+                const bufferSize = audioCtx.sampleRate * 0.3;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+                
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 1200;
+
+                noise.connect(filter);
+                filter.connect(gainNode);
+                gainNode.gain.setValueAtTime(0.08, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.005, now + 0.3);
+                
+                noise.start(now);
+                noise.stop(now + 0.3);
+            }
+        }
+
+        // --- ママの感情とセリフのアップデート関数 ---
+        function updateMama(emotion, speechType) {
+            let face = '👩‍🍳';
+            if (emotion === 'happy') {
+                face = '👩‍🍳✨';
+                if (mamaAvatar) mamaAvatar.classList.add('scale-110', 'rotate-6');
+                setTimeout(() => {
+                    if (mamaAvatar) mamaAvatar.classList.remove('scale-110', 'rotate-6');
+                }, 400);
+            } else if (emotion === 'love') {
+                face = '👩‍🍳💖';
+                if (mamaAvatar) mamaAvatar.classList.add('animate-bounce');
+                setTimeout(() => {
+                    if (mamaAvatar) mamaAvatar.classList.remove('animate-bounce');
+                }, 1000);
+            } else if (emotion === 'surprise') {
+                face = '👩‍🍳😮';
+            } else if (emotion === 'worried') {
+                face = '👩‍🍳💦';
+            }
+
+            if (mamaAvatar) mamaAvatar.textContent = face;
+
+            if (speechType && MAMA_SPEECHES[speechType]) {
+                const list = MAMA_SPEECHES[speechType];
+                const randomIndex = Math.floor(Math.random() * list.length);
+                if (mamaSpeech) mamaSpeech.textContent = list[randomIndex];
+            }
+        }
+
+        // --- きらきら演出 ---
+        function spawnSparkles(isPerfect) {
+            const symbols = isPerfect ? ['💖', '✨', '⭐', '💮', '🌈'] : ['⭐', '✨', '🌸'];
+            const count = isPerfect ? 24 : 12;
+
+            for (let i = 0; i < count; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'sparkle-particle text-xl md:text-2xl';
+                particle.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 120 + 40;
+                const tx = Math.cos(angle) * distance;
+                const ty = Math.sin(angle) * distance;
+                const tr = Math.random() * 360 + 180;
+
+                particle.style.setProperty('--tx', `${tx}px`);
+                particle.style.setProperty('--ty', `${ty}px`);
+                particle.style.setProperty('--tr', `${tr}deg`);
+
+                const rect = platingCanvas.getBoundingClientRect();
+                const parentRect = effectOverlay.getBoundingClientRect();
+                const x = rect.left + rect.width / 2 - parentRect.left;
+                const y = rect.top + rect.height / 2 - parentRect.top;
+
+                particle.style.left = `${x}px`;
+                particle.style.top = `${y}px`;
+
+                effectOverlay.appendChild(particle);
+
+                setTimeout(() => {
+                    particle.remove();
+                }, 1000);
+            }
+        }
+
+        // --- タイマークリアの仕組み (重要バグ対策) ---
+        function clearCookingTimers() {
+            if (gameState.actionIntervalId) {
+                clearInterval(gameState.actionIntervalId);
+                gameState.actionIntervalId = null;
+            }
+            if (gameState.decayIntervalId) {
+                clearInterval(gameState.decayIntervalId);
+                gameState.decayIntervalId = null;
+            }
+        }
+
+        // --- フィードバックテキストを表示する関数 (追加：エラー解消用) ---
+        function showFeedback(text, type) {
+            if (!floatingFeedback) return;
+            floatingFeedback.textContent = text;
+            
+            if (type === 'perfect') {
+                floatingFeedback.className = "absolute top-16 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-300 via-pink-300 to-yellow-300 text-slate-800 font-black px-6 py-2.5 rounded-full shadow-lg transform scale-100 opacity-100 transition-all duration-200 z-20 text-sm md:text-base border-2 border-white animate-bounce";
+            } else if (type === 'good') {
+                floatingFeedback.className = "absolute top-16 left-1/2 -translate-x-1/2 bg-rose-400 text-white font-bold px-5 py-2 rounded-full shadow-lg transform scale-100 opacity-100 transition-all duration-200 z-20 text-xs md:text-sm border-2 border-white";
+            } else {
+                floatingFeedback.className = "absolute top-16 left-1/2 -translate-x-1/2 bg-sky-400 text-white font-bold px-5 py-2 rounded-full shadow-lg transform scale-100 opacity-100 transition-all duration-200 z-20 text-xs border-2 border-white";
+            }
+
+            setTimeout(() => {
+                if (floatingFeedback) {
+                    floatingFeedback.classList.remove('scale-100', 'opacity-100', 'animate-bounce');
+                    floatingFeedback.classList.add('scale-0', 'opacity-0');
+                }
+            }, 1200);
+        }
+
+        // --- 初期化 & ナビゲーション ---
+        window.addEventListener('DOMContentLoaded', () => {
+            // 全てのDOM要素をパース後に安全に一括ロードします
+            screenStart = document.getElementById('screen-start');
+            screenGame = document.getElementById('screen-game');
+            screenResult = document.getElementById('screen-result');
+            modalHelp = document.getElementById('modal-help');
+
+            btnStart = document.getElementById('btn-start');
+            btnRestart = document.getElementById('btn-restart');
+            btnHelp = document.getElementById('btn-help');
+            btnCloseHelp = document.getElementById('btn-close-help');
+
+            headerScore = document.getElementById('header-score');
+            gameScore = document.getElementById('game-score');
+            timerBar = document.getElementById('timer-bar');
+            timerText = document.getElementById('timer-text');
+
+            currentDishName = document.getElementById('current-dish-name');
+            currentDishIcon = document.getElementById('current-dish-icon');
+            stepInstruction = document.getElementById('step-instruction');
+            recipeIngredientsList = document.getElementById('recipe-ingredients-list');
+            stepBadge = document.getElementById('step-badge');
+
+            indicatorStep1 = document.getElementById('indicator-step1');
+            indicatorStep2 = document.getElementById('indicator-step2');
+            indicatorStep3 = document.getElementById('indicator-step3');
+            indicatorStep4 = document.getElementById('indicator-step4');
+            cookingProgressBar = document.getElementById('cooking-progress-bar');
+
+            mainContainerEmoji = document.getElementById('main-container-emoji');
+            ingredientsInside = document.getElementById('ingredients-inside');
+            steamContainer = document.getElementById('steam-container');
+
+            defaultVisualContainer = document.getElementById('default-visual-container');
+            interactiveCutArea = document.getElementById('interactive-cut-area');
+            cutTargetEmoji = document.getElementById('cut-target-emoji');
+            cutCountText = document.getElementById('cut-count');
+
+            interactiveMixArea = document.getElementById('interactive-mix-area');
+            mixBowl = document.getElementById('mix-bowl');
+            mixProgressBar = document.getElementById('mix-progress-bar');
+
+            platingCanvas = document.getElementById('plating-canvas');
+            platingDishBase = document.getElementById('plating-dish-base');
+            platingDecorationsContainer = document.getElementById('plating-decorations-container');
+            toppingPalette = document.getElementById('topping-palette');
+
+            controlIngredients = document.getElementById('control-ingredients');
+            controlAction = document.getElementById('control-action');
+            controlPlating = document.getElementById('control-plating');
+            ingredientsShelf = document.getElementById('ingredients-shelf');
+
+            btnActionTrigger = document.getElementById('btn-action-trigger');
+            actionBtnText = document.getElementById('action-btn-text');
+
+            actionGaugeContainer = document.getElementById('action-gauge-container');
+            gaugePointer = document.getElementById('gauge-pointer');
+            bakeTimerText = document.getElementById('bake-timer');
+            floatingFeedback = document.getElementById('floating-feedback');
+
+            mamaAvatar = document.getElementById('mama-avatar');
+            mamaSpeech = document.getElementById('mama-speech');
+            effectOverlay = document.getElementById('effect-overlay');
+            gameBody = document.getElementById('game-body');
+            gameHeader = document.getElementById('game-header');
+            gameStageCard = document.getElementById('game-stage-card');
+
+            resultScore = document.getElementById('result-score');
+            resultCookedCount = document.getElementById('result-cooked-count');
+            resultPerfectCount = document.getElementById('result-perfect-count');
+            chefTitle = document.getElementById('chef-title');
+            chefDesc = document.getElementById('chef-desc');
+
+            // イベントリスナーの登録
+            initEventListeners();
+            initInteractiveEvents();
+        });
+
+        function initEventListeners() {
+            if (btnStart) btnStart.addEventListener('click', startGame);
+            if (btnRestart) btnRestart.addEventListener('click', () => {
+                showScreen('start');
+            });
+            if (btnHelp) btnHelp.addEventListener('click', () => { if (modalHelp) modalHelp.classList.remove('hidden'); });
+            if (btnCloseHelp) btnCloseHelp.addEventListener('click', () => { if (modalHelp) modalHelp.classList.add('hidden'); });
+
+            if (btnActionTrigger) {
+                btnActionTrigger.addEventListener('click', () => {
+                    playSound('fan');
+                    gameState.bakeGauge = Math.min(100, gameState.bakeGauge + 15);
+                    updateBakeGaugeUI();
+                });
+            }
+
+            if (platingCanvas) platingCanvas.addEventListener('click', handlePlatingCanvasClick);
+        }
+
+        function initInteractiveEvents() {
+            if (interactiveCutArea) interactiveCutArea.addEventListener('click', handleCutTap);
+
+            const handleMixMove = (e) => {
+                const action = getActiveAction();
+                if (!action || action.type !== 'mix') return;
+                
+                const rect = interactiveMixArea.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                const dx = clientX - centerX;
+                const dy = clientY - centerY;
+                const angle = Math.atan2(dy, dx);
+
+                if (gameState.lastAngle !== null) {
+                    let diff = angle - gameState.lastAngle;
+                    if (diff > Math.PI) diff -= Math.PI * 2;
+                    if (diff < -Math.PI) diff += Math.PI * 2;
+
+                    gameState.mixAngle += Math.abs(diff);
+                    if (mixBowl) mixBowl.style.transform = `rotate(${gameState.mixAngle * 30}deg)`;
+
+                    const progress = Math.min(100, (gameState.mixAngle / (Math.PI * 10)) * 100);
+                    if (mixProgressBar) mixProgressBar.style.width = `${progress}%`;
+
+                    if (gameState.mixAngle % 2 < 0.1) {
+                        playSound('woosh');
+                    }
+
+                    if (progress >= 100) {
+                        finishMixAction();
+                    }
+                }
+                gameState.lastAngle = angle;
+            };
+
+            const resetAngle = () => {
+                gameState.lastAngle = null;
+            };
+
+            if (interactiveMixArea) {
+                interactiveMixArea.addEventListener('mousemove', handleMixMove);
+                interactiveMixArea.addEventListener('touchmove', handleMixMove);
+                interactiveMixArea.addEventListener('mouseleave', resetAngle);
+                interactiveMixArea.addEventListener('mouseup', resetAngle);
+                interactiveMixArea.addEventListener('touchend', resetAngle);
+            }
+        }
+
+        // 現在実行中の調理アクション定義を取得
+        function getActiveAction() {
+            if (gameState.currentStep === 2) return gameState.currentRecipe.action1;
+            if (gameState.currentStep === 3) return gameState.currentRecipe.action2;
+            return null;
+        }
+
+        function showScreen(screen) {
+            if (screenStart) screenStart.classList.add('hidden');
+            if (screenGame) screenGame.classList.add('hidden');
+            if (screenResult) screenResult.classList.add('hidden');
+
+            if (screen === 'start') {
+                if (screenStart) screenStart.classList.remove('hidden');
+            } else if (screen === 'game') {
+                if (screenGame) screenGame.classList.remove('hidden');
+            } else if (screen === 'result') {
+                if (screenResult) screenResult.classList.remove('hidden');
+            }
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // --- ゲーム開始 ---
+        function startGame() {
+            initAudio(); // ユーザーの操作でオーディオコンテキストをアクティブにする
+            showScreen('game');
+            gameState.score = 0;
+            gameState.cookedCount = 0;
+            gameState.perfectCount = 0;
+            gameState.timeLeft = TOTAL_TIME_LIMIT; 
+            playedRecipeIds = []; 
+            clearCookingTimers();
+            
+            updateScoreUI();
+            startTimer();
+            updateMama('love', 'start');
+            nextDish();
+        }
+
+        function startTimer() {
+            if (gameState.timerId) clearInterval(gameState.timerId);
+            
+            if (timerBar) timerBar.style.width = '100%';
+            if (timerText) timerText.textContent = formatTime(gameState.timeLeft);
+
+            gameState.timerId = setInterval(() => {
+                gameState.timeLeft--;
+                if (timerText) timerText.textContent = formatTime(gameState.timeLeft); 
+                
+                const percent = (gameState.timeLeft / TOTAL_TIME_LIMIT) * 100;
+                if (timerBar) timerBar.style.width = `${percent}%`;
+
+                if (gameState.timeLeft <= 15) {
+                    if (timerBar) {
+                        timerBar.classList.remove('bg-pink-400');
+                        timerBar.classList.add('bg-rose-500', 'animate-pulse');
+                    }
+                    if (timerText) timerText.classList.add('animate-pulse');
+                    
+                    if (gameState.timeLeft % 3 === 0) {
+                        updateMama('surprise', null);
+                        if (mamaSpeech) mamaSpeech.textContent = 'わわ！時間がなくなっちゃうよ！がんばって！💦';
+                    }
+                } else {
+                    if (timerBar) {
+                        timerBar.classList.remove('bg-rose-500', 'animate-pulse');
+                        timerBar.classList.add('bg-pink-400');
+                    }
+                    if (timerText) timerText.classList.remove('animate-pulse');
+                }
+
+                if (gameState.timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            clearInterval(gameState.timerId);
+            clearCookingTimers();
+            showScreen('result');
+            
+            if (resultScore) resultScore.textContent = gameState.score;
+            if (resultCookedCount) resultCookedCount.textContent = `${gameState.cookedCount}皿`;
+            if (resultPerfectCount) resultPerfectCount.textContent = `${gameState.perfectCount}回`;
+
+            let rank = 'ちびっこコックさん 🐣';
+            let desc = 'いっしょにつくれて楽しかったよ！またすぐにママと美味しいもの作ろうね♪';
+
+            if (gameState.score >= 1200) {
+                rank = '🌸 伝説のはなまる大天使シェフ 🌟';
+                desc = 'すごすぎるわ！もう言うことなし of パーフェクトコックさん！ママのじまんの子よ！💕';
+            } else if (gameState.score >= 800) {
+                rank = '💮 ママもびっくり超一流コックさん 👩‍🍳';
+                desc = '素晴らしい腕前ね！手際も盛り付けもぜんぶ完璧！おいしくってほっぺたが落ちちゃう！';
+            } else if (gameState.score >= 500) {
+                rank = '🍳 じょうずなプチシェフ 🍓';
+                desc = 'とってもじょうずによくできました！ママ、あなたの作ったお料理がだいすきよ！';
+            } else if (gameState.score >= 200) {
+                rank = '🌱 クッキングいっぽめ 🧸';
+                desc = 'お料理の手順、ちゃ〜んと覚えられたね！次はもっともっと上手につくれるよ！';
+            }
+
+            if (chefTitle) chefTitle.textContent = rank;
+            if (chefDesc) chefDesc.textContent = desc;
+        }
+
+        // --- 料理切り替え ---
+        function nextDish() {
+            clearCookingTimers(); 
+
+            let availableRecipes = RECIPES.filter(r => !playedRecipeIds.includes(r.id));
+
+            if (availableRecipes.length === 0) {
+                playedRecipeIds = [];
+                availableRecipes = RECIPES;
+                updateMama('love', null);
+                if (mamaSpeech) mamaSpeech.textContent = 'すごーい！ぜんぶの種類のおりょうりを作ったよ！💮 もういっかい最初からつくろう♪';
+            }
+
+            const randomIndex = Math.floor(Math.random() * availableRecipes.length);
+            gameState.currentRecipe = availableRecipes[randomIndex];
+            playedRecipeIds.push(gameState.currentRecipe.id);
+
+            gameState.currentStep = 1;
+            gameState.selectedIngredients = [];
+
+            if (currentDishName) currentDishName.textContent = gameState.currentRecipe.name;
+            if (currentDishIcon) currentDishIcon.textContent = gameState.currentRecipe.icon;
+
+            setupStep1();
+        }
+
+        function updateStepProgressUI() {
+            const step = gameState.currentStep;
+            if (stepBadge) stepBadge.textContent = `STEP ${step}/4`;
+
+            if (indicatorStep1) indicatorStep1.className = (step >= 1) ? "text-rose-500 font-bold shrink-0" : "text-pink-300 shrink-0";
+            if (indicatorStep2) indicatorStep2.className = (step >= 2) ? "text-rose-500 font-bold shrink-0" : "text-pink-300 shrink-0";
+            if (indicatorStep3) indicatorStep3.className = (step >= 3) ? "text-rose-500 font-bold shrink-0" : "text-pink-300 shrink-0";
+            if (indicatorStep4) indicatorStep4.className = (step >= 4) ? "text-rose-500 font-bold shrink-0" : "text-pink-300 shrink-0";
+
+            let percent = '25%';
+            if (step === 1) percent = '25%';
+            else if (step === 2) percent = '50%';
+            else if (step === 3) percent = '75%';
+            else if (step === 4) percent = '100%';
+            if (cookingProgressBar) cookingProgressBar.style.width = percent;
+        }
+
+        // --- STEP 1: したごしらえ ---
+        function setupStep1() {
+            clearCookingTimers(); 
+            
+            gameState.currentStep = 1;
+            updateStepProgressUI();
+            if (stepInstruction) stepInstruction.textContent = "1. 必要な具材をトントンボウルに入れよう！";
+            
+            if (defaultVisualContainer) defaultVisualContainer.classList.remove('hidden');
+            if (interactiveCutArea) interactiveCutArea.classList.add('hidden');
+            if (interactiveMixArea) interactiveMixArea.classList.add('hidden');
+            if (platingCanvas) platingCanvas.classList.add('hidden');
+
+            if (mainContainerEmoji) {
+                mainContainerEmoji.textContent = gameState.currentRecipe.stageVisuals.step1;
+                mainContainerEmoji.className = 'text-8xl block transition-transform duration-150 animate-float';
+            }
+            if (ingredientsInside) ingredientsInside.innerHTML = '';
+            if (steamContainer) steamContainer.classList.add('hidden');
+
+            updateMama('happy', 'step1_start');
+
+            if (recipeIngredientsList) {
+                recipeIngredientsList.innerHTML = '';
+                gameState.currentRecipe.ingredients.forEach(key => {
+                    const item = INGREDIENTS[key];
+                    const badge = document.createElement('span');
+                    badge.className = 'bg-pink-100 text-rose-700 text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1 border border-pink-200 shadow-sm';
+                    badge.id = `req-${key}`;
+                    badge.innerHTML = `<span>${item.icon}</span> ${item.name}`;
+                    recipeIngredientsList.appendChild(badge);
+                });
+            }
+
+            setupIngredientsShelf();
+
+            if (controlIngredients) controlIngredients.classList.remove('hidden');
+            if (controlAction) controlAction.classList.add('hidden');
+            if (controlPlating) controlPlating.classList.add('hidden');
+            if (actionGaugeContainer) actionGaugeContainer.classList.add('hidden');
+        }
+
+        function setupIngredientsShelf() {
+            if (!ingredientsShelf) return;
+            ingredientsShelf.innerHTML = '';
+            const recipeSet = new Set(gameState.currentRecipe.ingredients);
+            const allKeys = Object.keys(INGREDIENTS);
+            
+            const wrongKeys = allKeys.filter(k => !recipeSet.has(k));
+            const shuffledWrong = wrongKeys.sort(() => 0.5 - Math.random()).slice(0, 4);
+            const combinedList = [...gameState.currentRecipe.ingredients, ...shuffledWrong];
+            
+            combinedList.sort(() => 0.5 - Math.random());
+
+            combinedList.forEach(key => {
+                const item = INGREDIENTS[key];
+                const btn = document.createElement('button');
+                btn.className = 'bg-white hover:bg-pink-50 active:scale-90 border-2 border-pink-100 hover:border-pink-400 px-4 py-3 rounded-2xl shadow-sm transition-all flex flex-col items-center gap-1 min-w-[75px]';
+                btn.innerHTML = `
+                    <span class="text-3xl">${item.icon}</span>
+                    <span class="text-[10px] font-bold text-slate-600">${item.name}</span>
+                `;
+                btn.onclick = () => selectIngredient(key, btn);
+                ingredientsShelf.appendChild(btn);
+            });
+        }
+
+        // 具材選択
+        function selectIngredient(key, buttonEl) {
+            playSound('select');
+            buttonEl.classList.add('animate-bounce');
+            setTimeout(() => { if (buttonEl) buttonEl.classList.remove('animate-bounce'); }, 300);
+
+            const isRequired = gameState.currentRecipe.ingredients.includes(key);
+
+            if (isRequired) {
+                if (!gameState.selectedIngredients.includes(key)) {
+                    gameState.selectedIngredients.push(key);
+                    
+                    const reqBadge = document.getElementById(`req-${key}`);
+                    if (reqBadge) {
+                        reqBadge.classList.remove('bg-pink-100', 'text-rose-700');
+                        reqBadge.classList.add('bg-rose-100', 'text-rose-800', 'border-rose-300');
+                        reqBadge.innerHTML = `<i class="fa-solid fa-heart text-rose-500"></i> ${INGREDIENTS[key].name}`;
+                    }
+
+                    const emojiEl = document.createElement('span');
+                    emojiEl.className = 'text-2xl absolute transition-all duration-300 transform scale-0';
+                    emojiEl.textContent = INGREDIENTS[key].emoji;
+                    
+                    const rx = Math.random() * 40 + 30;
+                    const ry = Math.random() * 30 + 20;
+                    emojiEl.style.left = `${rx}%`;
+                    emojiEl.style.top = `${ry}%`;
+                    
+                    if (ingredientsInside) {
+                        ingredientsInside.appendChild(emojiEl);
+                        setTimeout(() => emojiEl.classList.remove('scale-0'), 50);
+                    }
+
+                    if (Math.random() < 0.5) {
+                        updateMama('happy', 'step1_correct');
+                    }
+
+                    if (gameState.selectedIngredients.length === gameState.currentRecipe.ingredients.length) {
+                        setTimeout(() => {
+                            playSound('correct');
+                            setupStep2(); 
+                        }, 600);
+                    }
+                }
+            } else {
+                showFeedback('ちがう具材だよ！ -20 💦', 'bad');
+                gameState.score = Math.max(0, gameState.score - 20);
+                updateScoreUI();
+                playSound('bad');
+                updateMama('worried', 'step1_wrong');
+                
+                buttonEl.classList.add('border-rose-300', 'bg-rose-50');
+                setTimeout(() => { if (buttonEl) buttonEl.classList.remove('border-rose-300', 'bg-rose-50'); }, 500);
+            }
+        }
+
+        // --- STEP 2: ファースト調理アクション ---
+        function setupStep2() {
+            clearCookingTimers(); 
+            gameState.currentStep = 2;
+            updateStepProgressUI();
+            
+            if (controlIngredients) controlIngredients.classList.add('hidden');
+            const action = gameState.currentRecipe.action1;
+            if (stepInstruction) stepInstruction.textContent = `2. 【前半】${action.label}`;
+
+            setupCookingInterface(action, gameState.currentRecipe.stageVisuals.step2);
+        }
+
+        // --- STEP 3: セカンド調理アクション ---
+        function setupStep3() {
+            clearCookingTimers(); 
+            gameState.currentStep = 3;
+            updateStepProgressUI();
+            
+            if (controlIngredients) controlIngredients.classList.add('hidden');
+            const action = gameState.currentRecipe.action2;
+            if (stepInstruction) stepInstruction.textContent = `3. 【後半】${action.label}`;
+
+            setupCookingInterface(action, gameState.currentRecipe.stageVisuals.step3);
+        }
+
+        function setupCookingInterface(action, stageVisualEmoji) {
+            if (defaultVisualContainer) defaultVisualContainer.classList.add('hidden');
+            if (interactiveCutArea) interactiveCutArea.classList.add('hidden');
+            if (interactiveMixArea) interactiveMixArea.classList.add('hidden');
+            if (platingCanvas) platingCanvas.classList.add('hidden');
+            if (actionGaugeContainer) actionGaugeContainer.classList.add('hidden');
+            if (controlAction) controlAction.classList.add('hidden');
+
+            gameState.actionCount = 0;
+            gameState.mixAngle = 0;
+            gameState.lastAngle = null;
+            gameState.bakeGauge = 30; 
+            gameState.bakeSeconds = 5;
+            gameState.isBakePerfect = true;
+
+            if (action.type === 'cut') {
+                if (interactiveCutArea) interactiveCutArea.classList.remove('hidden');
+                gameState.actionCount = 10;
+                if (cutCountText) cutCountText.textContent = gameState.actionCount;
+                if (cutTargetEmoji) cutTargetEmoji.textContent = stageVisualEmoji;
+                updateMama('happy', 'step2_start_cut');
+
+            } else if (action.type === 'mix') {
+                if (interactiveMixArea) interactiveMixArea.classList.remove('hidden');
+                if (mixProgressBar) mixProgressBar.style.width = '0%';
+                if (mixBowl) mixBowl.textContent = stageVisualEmoji;
+                updateMama('happy', 'step2_start_mix');
+
+            } else if (action.type === 'bake') {
+                if (defaultVisualContainer) defaultVisualContainer.classList.remove('hidden');
+                if (mainContainerEmoji) mainContainerEmoji.textContent = stageVisualEmoji;
+                if (steamContainer) steamContainer.classList.remove('hidden');
+
+                if (controlAction) controlAction.classList.remove('hidden');
+                if (actionGaugeContainer) actionGaugeContainer.classList.remove('hidden');
+
+                updateMama('happy', 'step2_start_bake');
+                startBakeGame();
+            }
+        }
+
+        // --- 「きざむ」処理 ---
+        function handleCutTap() {
+            const action = getActiveAction();
+            if (!action || action.type !== 'cut') return;
+
+            gameState.actionCount--;
+            if (cutCountText) cutCountText.textContent = gameState.actionCount;
+            playSound('chop');
+
+            if (cutTargetEmoji) cutTargetEmoji.style.transform = 'scale(0.8) rotate(-15deg)';
+            setTimeout(() => {
+                if (cutTargetEmoji) cutTargetEmoji.style.transform = 'scale(1) rotate(0deg)';
+            }, 80);
+
+            if (gameState.actionCount === 7) {
+                showFeedback('トントン！🌸', 'good');
+            } else if (gameState.actionCount === 4) {
+                showFeedback('いいかんじ！✨', 'good');
+            } else if (gameState.actionCount === 1) {
+                showFeedback('あとちょっと！💖', 'perfect');
+            }
+
+            if (gameState.actionCount <= 0) {
+                finishCutAction();
+            }
+        }
+
+        function finishCutAction() {
+            clearCookingTimers(); 
+            playSound('perfect');
+            gameState.perfectCount++;
+
+            let pPoints = 150;
+            showFeedback('おみごと！💮 +150', 'perfect');
+            updateMama('love', 'step2_perfect');
+            spawnSparkles(true);
+            
+            proceedToNextStep(pPoints);
+        }
+
+        // --- 「まぜる」処理 ---
+        function finishMixAction() {
+            clearCookingTimers(); 
+            playSound('perfect');
+            gameState.perfectCount++;
+
+            let pPoints = 150;
+            showFeedback('きれいに混ざったよ！💮 +150', 'perfect');
+            updateMama('love', 'step2_perfect');
+            spawnSparkles(true);
+
+            proceedToNextStep(pPoints);
+        }
+
+        // --- 「焼く」あおぎ処理 ---
+        function startBakeGame() {
+            clearCookingTimers(); 
+
+            gameState.bakeGauge = 30;
+            gameState.bakeSeconds = 5;
+            gameState.isBakePerfect = true;
+            if (bakeTimerText) bakeTimerText.textContent = gameState.bakeSeconds;
+
+            if (mainContainerEmoji) mainContainerEmoji.classList.add('animate-cook');
+            updateBakeGaugeUI();
+
+            gameState.actionIntervalId = setInterval(() => {
+                gameState.bakeSeconds--;
+                if (bakeTimerText) bakeTimerText.textContent = gameState.bakeSeconds;
+
+                const inPerfectZone = (gameState.bakeGauge >= 45 && gameState.bakeGauge <= 65);
+
+                if (!inPerfectZone) {
+                    gameState.isBakePerfect = false;
+                }
+
+                if (gameState.bakeGauge > 75) {
+                    playSound('sizzle');
+                }
+
+                if (gameState.bakeSeconds <= 0) {
+                    finishBakeAction();
+                }
+            }, 1000);
+
+            gameState.decayIntervalId = setInterval(() => {
+                const action = getActiveAction();
+                if (!action || action.type !== 'bake') {
+                    clearInterval(gameState.decayIntervalId);
+                    gameState.decayIntervalId = null;
+                    return;
+                }
+                gameState.bakeGauge = Math.max(0, gameState.bakeGauge - 1.2);
+                updateBakeGaugeUI();
+            }, 50);
+        }
+
+        function updateBakeGaugeUI() {
+            if (gaugePointer) gaugePointer.style.left = `${gameState.bakeGauge}%`;
+        }
+
+        function finishBakeAction() {
+            clearCookingTimers(); 
+            if (mainContainerEmoji) mainContainerEmoji.classList.remove('animate-cook');
+
+            let scoreGain = 0;
+            if (gameState.isBakePerfect) {
+                scoreGain = 150;
+                gameState.perfectCount++;
+                showFeedback('パーフェクトな焼き加減！💮 +150', 'perfect');
+                playSound('perfect');
+                updateMama('love', 'step2_perfect');
+                spawnSparkles(true);
+            } else if (gameState.bakeGauge >= 35 && gameState.bakeGauge <= 75) {
+                scoreGain = 80;
+                showFeedback('ふっくら美味しく焼けたよ♪🌸 +80', 'good');
+                playSound('correct');
+                updateMama('happy', 'step2_good');
+                spawnSparkles(false);
+            } else {
+                scoreGain = 10;
+                showFeedback('ちょっぴり難しかったね💦 +10', 'bad');
+                playSound('bad');
+                updateMama('worried', 'step2_bad');
+            }
+
+            proceedToNextStep(scoreGain);
+        }
+
+        function proceedToNextStep(scoreGain) {
+            gameState.score += scoreGain;
+            updateScoreUI();
+
+            setTimeout(() => {
+                if (gameState.currentStep === 2) {
+                    setupStep3(); 
+                } else if (gameState.currentStep === 3) {
+                    setupStep4(); 
+                }
+            }, 1200);
+        }
+
+        // --- STEP 4: じぶんでデコレーション ---
+        function setupStep4() {
+            gameState.currentStep = 4;
+            updateStepProgressUI();
+            if (stepInstruction) stepInstruction.textContent = "4. お皿をタップして、トッピングを可愛くのせよう！";
+
+            if (steamContainer) steamContainer.classList.add('hidden');
+            if (actionGaugeContainer) actionGaugeContainer.classList.add('hidden');
+
+            if (defaultVisualContainer) defaultVisualContainer.classList.add('hidden');
+            if (interactiveCutArea) interactiveCutArea.classList.add('hidden');
+            if (interactiveMixArea) interactiveMixArea.classList.add('hidden');
+            
+            if (platingCanvas) platingCanvas.classList.remove('hidden');
+            if (platingDishBase) platingDishBase.textContent = gameState.currentRecipe.stageVisuals.step4;
+            clearDecorations(); 
+
+            if (controlAction) controlAction.classList.add('hidden');
+            if (controlPlating) controlPlating.classList.remove('hidden');
+
+            generateToppingPalette();
+            updateMama('happy', 'step3_start');
+        }
+
+        function generateToppingPalette() {
+            if (!toppingPalette) return;
+            toppingPalette.innerHTML = '';
+            const toppings = gameState.currentRecipe.toppings;
+
+            toppings.forEach((top, idx) => {
+                const btn = document.createElement('button');
+                btn.className = `px-3 py-2 bg-pink-100 hover:bg-pink-200 border-2 rounded-2xl flex items-center gap-1 text-[10px] font-bold transition-all ${idx === 0 ? 'border-rose-400 bg-pink-200' : 'border-pink-200'}`;
+                btn.innerHTML = `<span class="text-lg">${top.emoji}</span> ${top.name}`;
+                
+                if (idx === 0) {
+                    gameState.selectedTopping = top.emoji;
+                }
+
+                btn.onclick = () => {
+                    playSound('select');
+                    Array.from(toppingPalette.children).forEach(c => {
+                        c.classList.remove('border-rose-400', 'bg-pink-200');
+                        c.classList.add('border-pink-200', 'bg-pink-100');
+                    });
+                    btn.classList.add('border-rose-400', 'bg-pink-200');
+                    btn.classList.remove('border-pink-200', 'bg-pink-100');
+                    gameState.selectedTopping = top.emoji;
+                };
+
+                toppingPalette.appendChild(btn);
+            });
+        }
+
+        function handlePlatingCanvasClick(e) {
+            if (gameState.currentStep !== 4 || !gameState.selectedTopping || !platingCanvas) return;
+
+            const rect = platingCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const radius = rect.width / 2;
+            const distFromCenter = Math.sqrt(Math.pow(x - radius, 2) + Math.pow(y - radius, 2));
+            if (distFromCenter > radius - 20) {
+                return; 
+            }
+
+            const toppingEl = document.createElement('span');
+            toppingEl.className = 'absolute text-3xl select-none transition-transform duration-150 transform scale-0 pointer-events-none';
+            toppingEl.textContent = gameState.selectedTopping;
+            
+            toppingEl.style.left = `${(x / rect.width) * 100}%`;
+            toppingEl.style.top = `${(y / rect.height) * 100}%`;
+            toppingEl.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 30 - 15}deg)`;
+
+            if (platingDecorationsContainer) {
+                platingDecorationsContainer.appendChild(toppingEl);
+                gameState.decorationsCount++;
+                setTimeout(() => toppingEl.classList.remove('scale-0'), 20);
+            }
+
+            playSound('pop');
+
+            const clickSparkle = document.createElement('div');
+            clickSparkle.className = 'sparkle-particle text-lg';
+            clickSparkle.textContent = '✨';
+            clickSparkle.style.setProperty('--tx', `${Math.random() * 40 - 20}px`);
+            clickSparkle.style.setProperty('--ty', `${Math.random() * 40 - 20}px`);
+            clickSparkle.style.setProperty('--tr', '180deg');
+            clickSparkle.style.left = `${(x / rect.width) * 100}%`;
+            clickSparkle.style.top = `${(y / rect.height) * 100}%`;
+            if (platingDecorationsContainer) {
+                platingDecorationsContainer.appendChild(clickSparkle);
+                setTimeout(() => clickSparkle.remove(), 1000);
+            }
+
+            if (gameState.decorationsCount === 1) {
+                updateMama('happy', null);
+                if (mamaSpeech) mamaSpeech.textContent = 'わぁ、のってきたね！どんどん飾っちゃおう！🍰';
+            } else if (gameState.decorationsCount === 4) {
+                updateMama('love', null);
+                if (mamaSpeech) mamaSpeech.textContent = 'カラフルでとっても美味しそうになってきたわ！🥺💖';
+            }
+        }
+
+        function clearDecorations() {
+            playSound('select');
+            if (platingDecorationsContainer) platingDecorationsContainer.innerHTML = '';
+            gameState.decorationsCount = 0;
+            if (gameState.currentStep === 4) {
+                updateMama('happy', null);
+                if (mamaSpeech) mamaSpeech.textContent = '新しくやりなおすのね！真っ白なお皿からつくろう♪';
+            }
+        }
+
+        // デコレーション完成・お披露目
+        function finishPlating() {
+            let scoreGain = 0;
+            const count = gameState.decorationsCount;
+
+            if (count >= 3) {
+                scoreGain = 120;
+                showFeedback('ママも大絶賛！💮 +120', 'perfect');
+                playSound('perfect');
+                updateMama('love', null);
+                if (mamaSpeech) mamaSpeech.textContent = 'まぁ！なんて素敵なセンスなの！食べるのがもったいないくらい可愛いわ！🥺💖';
+                spawnSparkles(true);
+            } else if (count > 0) {
+                scoreGain = 70;
+                showFeedback('かわいくできたよ！🌸 +70', 'good');
+                playSound('correct');
+                updateMama('happy', null);
+                if (mamaSpeech) mamaSpeech.textContent = 'きれいにのせられたね！とってもおいしそう！✨';
+                spawnSparkles(false);
+            } else {
+                scoreGain = 30;
+                showFeedback('シンプル盛り付け！⭐ +30', 'good');
+                playSound('correct');
+                updateMama('happy', null);
+                if (mamaSpeech) mamaSpeech.textContent = 'シンプルだけどそれも素敵ね！ありがとう！⭐';
+            }
+
+            gameState.score += scoreGain;
+            gameState.cookedCount++;
+            updateScoreUI();
+
+            if (controlPlating) controlPlating.classList.add('hidden');
+            
+            setTimeout(() => {
+                nextDish();
+            }, 2500);
+        }
+
+        function updateScoreUI() {
+            if (headerScore) headerScore.textContent = gameState.score;
+            if (gameScore) gameScore.textContent = gameState.score;
+        }
+
+        // --- 関数のグローバルスコープ（window）への明示的バインド（エラー防止） ---
+        window.clearDecorations = clearDecorations;
+        window.finishPlating = finishPlating;
+
+    </script>
+</body>
+</html>

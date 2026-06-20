@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TETRIS - Stage Master</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* ネオンエフェクトとカスタムスタイルの定義 */
+        .neon-border {
+            box-shadow: 0 0 10px rgba(147, 51, 234, 0.5), inset 0 0 10px rgba(147, 51, 234, 0.3);
+        }
+        .neon-text {
+            text-shadow: 0 0 5px rgba(168, 85, 247, 0.8), 0 0 10px rgba(168, 85, 247, 0.4);
+        }
+        .grid-cell {
+            box-shadow: inset 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+        /* スムーズなトランジション */
+        .btn-active:active {
+            transform: scale(0.95);
+        }
+        /* スクロールバー非表示 */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col justify-between items-center overflow-x-hidden font-sans select-none pb-4">
+
+    <!-- ヘッダー -->
+    <header class="w-full max-w-md px-4 pt-4 flex justify-between items-center">
+        <h1 class="text-2xl font-extrabold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 neon-text">
+            TETRIS <span class="text-xs text-purple-300 font-normal">STAGES</span>
+        </h1>
+        <div class="flex gap-2">
+            <button id="sound-toggle-btn" class="p-2 bg-slate-800 rounded-lg border border-slate-700 hover:bg-slate-700 transition" title="音量をミュート/解除">
+                <svg id="sound-icon" class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M12 18.75V5.25L7.75 9.5H4.5v5h3.25L12 18.75z" />
+                </svg>
+            </button>
+            <button id="info-btn" class="p-2 bg-slate-800 rounded-lg border border-slate-700 hover:bg-slate-700 transition">
+                <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- メインゲームエリア -->
+    <main class="w-full max-w-md px-4 flex flex-col items-center flex-grow justify-center mt-2">
+        <div class="grid grid-cols-12 gap-3 w-full">
+            
+            <!-- 左サイドバー: HOLD と STATS -->
+            <div class="col-span-3 flex flex-col gap-3">
+                <!-- HOLD エリア -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-2 flex flex-col items-center">
+                    <span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">HOLD</span>
+                    <div class="w-12 h-12 flex items-center justify-center bg-slate-950 rounded-lg border border-slate-800/50">
+                        <canvas id="hold-canvas" width="48" height="48"></canvas>
+                    </div>
+                </div>
+
+                <!-- スコアとレベルなどのステータス -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-2 flex flex-col gap-2 flex-grow justify-center">
+                    <div class="text-center">
+                        <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">SCORE</span>
+                        <span id="score" class="text-lg font-bold text-purple-400">0</span>
+                    </div>
+                    <div class="text-center border-t border-slate-800/50 pt-2">
+                        <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">TARGET</span>
+                        <span id="target-score" class="text-lg font-bold text-yellow-400">1000</span>
+                    </div>
+                    <div class="text-center border-t border-slate-800/50 pt-2">
+                        <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">STAGE</span>
+                        <span id="level" class="text-lg font-bold text-teal-400">1</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 中央: メインボード -->
+            <div class="col-span-6 relative flex justify-center">
+                <div class="relative bg-slate-900/90 border-2 border-purple-900/80 rounded-2xl overflow-hidden neon-border aspect-[1/2] w-full max-w-[240px]">
+                    <canvas id="game-canvas" class="w-full h-full block"></canvas>
+                    
+                    <!-- 開始/ゲームオーバー/ポーズのオーバーレイ -->
+                    <div id="overlay" class="absolute inset-0 bg-slate-950/85 backdrop-blur-sm flex flex-col items-center justify-center text-center p-4 transition-all duration-300">
+                        <h2 id="overlay-title" class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-2 neon-text">READY?</h2>
+                        <p id="overlay-desc" class="text-xs text-slate-400 mb-6 px-2">ブロックを積み上げてラインを消そう！</p>
+                        <button id="start-btn" class="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-full font-bold text-sm tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition">
+                            PLAY
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右サイドバー: NEXT ブロック -->
+            <div class="col-span-3 flex flex-col gap-3">
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-2 flex flex-col items-center">
+                    <span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">NEXT</span>
+                    <div class="w-12 h-12 flex items-center justify-center bg-slate-950 rounded-lg border border-slate-800/50 mb-1">
+                        <canvas id="next1-canvas" width="48" height="48"></canvas>
+                    </div>
+                    <div class="w-10 h-10 flex items-center justify-center bg-slate-950/50 rounded-lg border border-slate-800/30 mb-1 opacity-70">
+                        <canvas id="next2-canvas" width="40" height="40"></canvas>
+                    </div>
+                    <div class="w-8 h-8 flex items-center justify-center bg-slate-950/30 rounded-lg border border-slate-800/20 opacity-40">
+                        <canvas id="next3-canvas" width="32" height="32"></canvas>
+                    </div>
+                </div>
+
+                <button id="pause-btn" class="py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-xl flex flex-col items-center justify-center text-[10px] font-bold text-slate-400 tracking-wider transition">
+                    <svg class="w-4 h-4 mb-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    PAUSE
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- モバイルコントローラー -->
+    <section class="w-full max-w-md px-4 mt-4 grid grid-cols-5 gap-2 items-center">
+        <!-- 左端: HOLD と HARD -->
+        <div class="col-span-1 flex flex-col gap-2">
+            <button id="ctrl-hold" class="aspect-square bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-2xl flex flex-col items-center justify-center text-xs font-bold text-indigo-400 active:scale-90 transition btn-active">
+                <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                HOLD
+            </button>
+            <button id="ctrl-drop" class="aspect-square bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-2xl flex flex-col items-center justify-center text-xs font-bold text-pink-400 active:scale-90 transition btn-active">
+                <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+                HARD
+            </button>
+        </div>
+
+        <!-- 中央: 移動 (十字キー風) -->
+        <div class="col-span-3 grid grid-cols-3 gap-2 relative">
+            <div></div>
+            <!-- 上：空きスペース -->
+            <div class="opacity-10 pointer-events-none"></div>
+            <div></div>
+
+            <!-- 左 -->
+            <button id="ctrl-left" class="aspect-square bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-2xl flex items-center justify-center active:scale-90 transition btn-active">
+                <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <!-- 下 (ソフトドロップ) -->
+            <button id="ctrl-soft" class="aspect-square bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-2xl flex items-center justify-center active:scale-90 transition btn-active">
+                <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+            <!-- 右 -->
+            <button id="ctrl-right" class="aspect-square bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-2xl flex items-center justify-center active:scale-90 transition btn-active">
+                <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- 右端: 左回転(8) と 右回転(7) -->
+        <div class="col-span-1 flex flex-col gap-2">
+            <!-- 左回転 -->
+            <button id="ctrl-rot-l" class="aspect-square bg-gradient-to-br from-purple-900 to-indigo-950 border border-purple-700/50 hover:from-purple-800 hover:to-indigo-900 rounded-2xl flex flex-col items-center justify-center text-[10px] font-bold text-purple-200 active:scale-90 transition btn-active">
+                <svg class="w-5 h-5 mb-0.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 4v5h-5.582m-15.356 2A8.001 8.001 0 112.79 16H7" />
+                </svg>
+                ROT L (8)
+            </button>
+            <!-- 右回転 -->
+            <button id="ctrl-rot-r" class="aspect-square bg-gradient-to-br from-purple-900 to-indigo-950 border border-purple-700/50 hover:from-purple-800 hover:to-indigo-900 rounded-2xl flex flex-col items-center justify-center text-[10px] font-bold text-purple-200 active:scale-90 transition btn-active">
+                <svg class="w-5 h-5 mb-0.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17" />
+                </svg>
+                ROT R (7)
+            </button>
+        </div>
+    </section>
+
+    <!-- ヘルプダイアログ (モーダル) -->
+    <div id="info-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-xs w-full text-center relative">
+            <h3 class="text-lg font-bold text-purple-400 mb-4">操作方法</h3>
+            <div class="text-left text-sm text-slate-300 space-y-2 mb-6">
+                <div class="flex justify-between border-b border-slate-800 pb-1">
+                    <span>左 / 右 移動</span>
+                    <span class="font-bold text-white">← / → または A / D</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-800 pb-1 text-teal-300 font-semibold">
+                    <span>左回転 (反時計)</span>
+                    <span class="font-bold text-white">8 キー</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-800 pb-1 text-pink-300 font-semibold">
+                    <span>右回転 (時計回り)</span>
+                    <span class="font-bold text-white">7 キー (または ↑ / W)</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-800 pb-1">
+                    <span>ソフトドロップ</span>
+                    <span class="font-bold text-white">↓ または S</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-800 pb-1 text-yellow-300 font-semibold">
+                    <span>ハードドロップ</span>
+                    <span class="font-bold text-white">9 キー</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-800 pb-1">
+                    <span>ホールド</span>
+                    <span class="font-bold text-white">Shift / C キー</span>
+                </div>
+                <div class="flex justify-between pb-1">
+                    <span>ポーズ</span>
+                    <span class="font-bold text-white">P キー</span>
+                </div>
+            </div>
+            <button id="modal-close-btn" class="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-semibold transition">
+                閉じる
+            </button>
+        </div>
+    </div>
+
+    <!-- ゲームエンジン＆スクリプト -->
+    <script>
+        // --- サウンドシステム (Web Audio API) ---
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playMove() {
+                if (this.muted || !this.ctx) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.05);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.05);
+            }
+
+            playRotate() {
+                if (this.muted || !this.ctx) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(350, this.ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.08);
+            }
+
+            playHold() {
+                if (this.muted || !this.ctx) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(450, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playLineClear() {
+                if (this.muted || !this.ctx) return;
+                this.init();
+                const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.03);
+                    gain.gain.setValueAtTime(0.06, this.ctx.currentTime + idx * 0.03);
+                    gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.25 + idx * 0.03);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + idx * 0.03);
+                    osc.stop(this.ctx.currentTime + 0.3 + idx * 0.03);
+                });
+            }
+
+            playStageClear() {
+                if (this.muted || !this.ctx) return;
+                this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.08);
+                    gain.gain.setValueAtTime(0.1, this.ctx.currentTime + idx * 0.08);
+                    gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.4 + idx * 0.08);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + idx * 0.08);
+                    osc.stop(this.ctx.currentTime + 0.5 + idx * 0.08);
+                });
+            }
+
+            playGameComplete() {
+                if (this.muted || !this.ctx) return;
+                this.init();
+                const melody = [523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77, 1046.50];
+                melody.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.12);
+                    gain.gain.setValueAtTime(0.12, this.ctx.currentTime + idx * 0.12);
+                    gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.3 + idx * 0.12);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + idx * 0.12);
+                    osc.stop(this.ctx.currentTime + 0.4 + idx * 0.12);
+                });
+            }
+
+            playGameOver() {
+                if (this.muted || !this.ctx) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(80, this.ctx.currentTime + 0.6);
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.6);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.6);
+            }
+
+            playDrop() {
+                if (this.muted || !this.ctx) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(50, this.ctx.currentTime + 0.05);
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.08);
+            }
+        }
+
+        const sfx = new SoundEffects();
+
+        // 音量ボタンの切り替え
+        const soundToggleBtn = document.getElementById('sound-toggle-btn');
+        const soundIcon = document.getElementById('sound-icon');
+        soundToggleBtn.addEventListener('click', () => {
+            sfx.init();
+            sfx.muted = !sfx.muted;
+            if (sfx.muted) {
+                soundIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />`;
+                soundIcon.classList.add('text-slate-500');
+                soundIcon.classList.remove('text-purple-400');
+            } else {
+                soundIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M12 18.75V5.25L7.75 9.5H4.5v5h3.25L12 18.75z" />`;
+                soundIcon.classList.remove('text-slate-500');
+                soundIcon.classList.add('text-purple-400');
+            }
+        });
+
+        // --- ゲーム定義＆定数 ---
+        const GRID_COLS = 10;
+        const GRID_ROWS = 20;
+
+        // ステージ目標スコアの設定
+        const STAGE_TARGETS = {
+            1: 1000,
+            2: 2500,
+            3: 5000,
+            4: 8000,
+            5: 12000 // 最終ステージ
+        };
+
+        const MAX_STAGE = 5;
+
+        // テトリミノの定義
+        const SHAPES = {
+            'I': [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]],
+            'O': [[1,1], [1,1]],
+            'T': [[0,1,0], [1,1,1], [0,0,0]],
+            'S': [[0,1,1], [1,1,0], [0,0,0]],
+            'Z': [[1,1,0], [0,1,1], [0,0,0]],
+            'J': [[1,0,0], [1,1,1], [0,0,0]],
+            'L': [[0,0,1], [1,1,1], [0,0,0]]
+        };
+
+        const COLORS = {
+            'I': { main: '#38bdf8', glow: 'rgba(56,189,248,0.5)', dark: '#0369a1' },
+            'O': { main: '#facc15', glow: 'rgba(250,204,21,0.5)', dark: '#a16207' },
+            'T': { main: '#c084fc', glow: 'rgba(192,132,252,0.5)', dark: '#6b21a8' },
+            'S': { main: '#4ade80', glow: 'rgba(74,222,128,0.5)', dark: '#15803d' },
+            'Z': { main: '#f87171', glow: 'rgba(248,113,113,0.5)', dark: '#b91c1c' },
+            'J': { main: '#60a5fa', glow: 'rgba(96,165,250,0.5)', dark: '#1d4ed8' },
+            'L': { main: '#fb923c', glow: 'rgba(251,146,60,0.5)', dark: '#c2410c' }
+        };
+
+        // --- UI要素の取得 ---
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const holdCanvas = document.getElementById('hold-canvas');
+        const next1Canvas = document.getElementById('next1-canvas');
+        const next2Canvas = document.getElementById('next2-canvas');
+        const next3Canvas = document.getElementById('next3-canvas');
+
+        const scoreEl = document.getElementById('score');
+        const targetScoreEl = document.getElementById('target-score');
+        const levelEl = document.getElementById('level');
+
+        const overlay = document.getElementById('overlay');
+        const overlayTitle = document.getElementById('overlay-title');
+        const overlayDesc = document.getElementById('overlay-desc');
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+
+        // モーダル関連
+        const infoBtn = document.getElementById('info-btn');
+        const infoModal = document.getElementById('info-modal');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        infoBtn.addEventListener('click', () => infoModal.classList.remove('hidden'));
+        modalCloseBtn.addEventListener('click', () => infoModal.classList.add('hidden'));
+
+        // Canvasのサイズ設定
+        function resizeCanvas() {
+            const width = canvas.parentElement.clientWidth;
+            const height = canvas.parentElement.clientHeight;
+            canvas.width = width * window.devicePixelRatio;
+            canvas.height = height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+
+        // --- ゲーム状態管理 ---
+        let board = Array(GRID_ROWS).fill().map(() => Array(GRID_COLS).fill(0));
+        let score = 0;
+        let lines = 0;
+        let currentStage = 1;
+        let gameOver = false;
+        let isPaused = false;
+        let gameStarted = false;
+        let stageCleared = false;
+        let isGameComplete = false;
+
+        let currentPiece = null;
+        let nextQueue = [];
+        let holdPiece = null;
+        let canHold = true;
+
+        let dropCounter = 0;
+        let dropInterval = 1000; // ms
+        let lastTime = 0;
+
+        let clearingRows = [];
+        let clearingAnimTimer = 0;
+
+        // --- クラス定義: テトリミノ ---
+        class Piece {
+            constructor(type) {
+                this.type = type;
+                this.matrix = JSON.parse(JSON.stringify(SHAPES[type]));
+                this.color = COLORS[type];
+                this.x = Math.floor((GRID_COLS - this.matrix[0].length) / 2);
+                this.y = this.type === 'I' ? -1 : 0;
+            }
+
+            // 回転処理 (dir = 1 は右回転, dir = -1 は左回転)
+            rotate(dir = 1) {
+                const len = this.matrix.length;
+                const temp = Array(len).fill().map(() => Array(len).fill(0));
+                
+                for (let r = 0; r < len; r++) {
+                    for (let c = 0; c < len; c++) {
+                        if (dir === 1) {
+                            temp[c][len - 1 - r] = this.matrix[r][c]; // 右回転
+                        } else {
+                            temp[len - 1 - c][r] = this.matrix[r][c]; // 左回転
+                        }
+                    }
+                }
+                const oldMatrix = this.matrix;
+                this.matrix = temp;
+
+                let offset = 1;
+                while (checkCollision(this)) {
+                    this.x += offset;
+                    offset = -(offset + (offset > 0 ? 1 : -1));
+                    if (Math.abs(offset) > this.matrix[0].length) {
+                        this.matrix = oldMatrix;
+                        return false;
+                    }
+                }
+                sfx.playRotate();
+                return true;
+            }
+        }
+
+        function refillQueue() {
+            const list = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+            for (let i = list.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [list[i], list[j]] = [list[j], list[i]];
+            }
+            nextQueue = nextQueue.concat(list);
+        }
+
+        function getNextPiece() {
+            if (nextQueue.length < 5) {
+                refillQueue();
+            }
+            const nextType = nextQueue.shift();
+            return new Piece(nextType);
+        }
+
+        // --- ゲームコア関数 ---
+
+        function initGame() {
+            board = Array(GRID_ROWS).fill().map(() => Array(GRID_COLS).fill(0));
+            score = 0;
+            lines = 0;
+            currentStage = 1;
+            calculateSpeed();
+            gameOver = false;
+            isPaused = false;
+            gameStarted = true;
+            stageCleared = false;
+            isGameComplete = false;
+            holdPiece = null;
+            canHold = true;
+            nextQueue = [];
+            
+            refillQueue();
+            currentPiece = getNextPiece();
+            
+            updateScores();
+            overlay.classList.add('hidden');
+            pauseBtn.innerHTML = `
+                <svg class="w-4 h-4 mb-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                PAUSE
+            `;
+            
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 速度の計算
+        function calculateSpeed() {
+            dropInterval = Math.max(100, 1000 - (currentStage - 1) * 200);
+        }
+
+        function togglePause() {
+            if (!gameStarted || gameOver || stageCleared || isGameComplete) return;
+            isPaused = !isPaused;
+            if (isPaused) {
+                overlayTitle.textContent = "PAUSED";
+                overlayDesc.textContent = "ゲーム一時停止中。再開するにはボタンを押してください";
+                startBtn.textContent = "RESUME";
+                overlay.classList.remove('hidden');
+                pauseBtn.innerHTML = `
+                    <svg class="w-4 h-4 mb-1 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    </svg>
+                    RESUME
+                `;
+            } else {
+                overlay.classList.add('hidden');
+                pauseBtn.innerHTML = `
+                    <svg class="w-4 h-4 mb-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    PAUSE
+                `;
+                lastTime = performance.now();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // 衝突判定
+        function checkCollision(piece, offsetX = 0, offsetY = 0) {
+            const matrix = piece.matrix;
+            for (let r = 0; r < matrix.length; r++) {
+                for (let c = 0; c < matrix[r].length; c++) {
+                    if (matrix[r][c]) {
+                        const targetX = piece.x + c + offsetX;
+                        const targetY = piece.y + r + offsetY;
+
+                        if (targetX < 0 || targetX >= GRID_COLS || targetY >= GRID_ROWS) {
+                            return true;
+                        }
+
+                        if (targetY >= 0 && board[targetY][targetX]) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // ボードに現在のピースを固定する
+        function lockPiece() {
+            const matrix = currentPiece.matrix;
+            for (let r = 0; r < matrix.length; r++) {
+                for (let c = 0; c < matrix[r].length; c++) {
+                    if (matrix[r][c]) {
+                        const targetY = currentPiece.y + r;
+                        const targetX = currentPiece.x + c;
+                        
+                        if (targetY >= 0) {
+                            board[targetY][targetX] = currentPiece.type;
+                        } else {
+                            triggerGameOver();
+                            return;
+                        }
+                    }
+                }
+            }
+
+            sfx.playDrop();
+            checkLineClears();
+            
+            checkStageProgress();
+
+            if (!stageCleared && !isGameComplete) {
+                currentPiece = getNextPiece();
+                canHold = true;
+
+                if (checkCollision(currentPiece)) {
+                    triggerGameOver();
+                }
+            }
+        }
+
+        // ライン消去確認
+        function checkLineClears() {
+            let cleared = 0;
+            clearingRows = [];
+
+            for (let r = GRID_ROWS - 1; r >= 0; r--) {
+                if (board[r].every(val => val !== 0)) {
+                    clearingRows.push(r);
+                }
+            }
+
+            if (clearingRows.length > 0) {
+                cleared = clearingRows.length;
+                clearingAnimTimer = 8;
+                sfx.playLineClear();
+
+                const lineScores = [0, 100, 300, 500, 800];
+                score += lineScores[cleared] * currentStage;
+                lines += cleared;
+            }
+        }
+
+        // ライン消去演出の完了
+        function finishLineClear() {
+            clearingRows.sort((a, b) => a - b).forEach(r => {
+                board.splice(r, 1);
+                board.unshift(Array(GRID_COLS).fill(0));
+            });
+            clearingRows = [];
+            updateScores();
+            checkStageProgress();
+        }
+
+        // ステージクリアおよびコンプリートのチェック
+        function checkStageProgress() {
+            const target = STAGE_TARGETS[currentStage];
+            if (score >= target) {
+                if (currentStage === MAX_STAGE) {
+                    triggerGameComplete();
+                } else {
+                    triggerStageClear();
+                }
+            }
+        }
+
+        // ステージクリア
+        function triggerStageClear() {
+            stageCleared = true;
+            sfx.playStageClear();
+            overlayTitle.textContent = `STAGE ${currentStage} CLEAR!`;
+            overlayDesc.innerHTML = `おめでとう！目標の ${STAGE_TARGETS[currentStage]}点を突破しました！<br>次のステージはさらにスピードが上がります。`;
+            startBtn.textContent = "NEXT STAGE";
+            overlay.classList.remove('hidden');
+        }
+
+        // 次のステージに進む
+        function nextStage() {
+            currentStage++;
+            stageCleared = false;
+            calculateSpeed();
+            updateScores();
+            overlay.classList.add('hidden');
+            
+            currentPiece = getNextPiece();
+            canHold = true;
+
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 全ステージ完全クリア
+        function triggerGameComplete() {
+            isGameComplete = true;
+            sfx.playGameComplete();
+            overlayTitle.innerHTML = `<span class="text-yellow-400">👑 GAME COMPLETE!</span>`;
+            overlayDesc.innerHTML = `素晴らしい！すべてのステージをクリアしてゲームを完全制覇しました！<br>最終スコア: <span class="font-bold text-pink-400 text-lg">${score}</span>`;
+            startBtn.textContent = "PLAY AGAIN";
+            overlay.classList.remove('hidden');
+        }
+
+        function triggerGameOver() {
+            gameOver = true;
+            sfx.playGameOver();
+            overlayTitle.textContent = "GAME OVER";
+            overlayDesc.textContent = `ステージ ${currentStage} で終了してしまいました。あきらめずに挑戦しよう！ (スコア: ${score})`;
+            startBtn.textContent = "RETRY";
+            overlay.classList.remove('hidden');
+        }
+
+        function updateScores() {
+            scoreEl.textContent = score;
+            targetScoreEl.textContent = STAGE_TARGETS[currentStage] || 'CLEAR!';
+            levelEl.textContent = currentStage;
+        }
+
+        // ホールド機能
+        function performHold() {
+            if (!canHold || gameOver || isPaused || stageCleared || isGameComplete || clearingRows.length > 0) return;
+            sfx.playHold();
+            
+            if (holdPiece === null) {
+                holdPiece = currentPiece.type;
+                currentPiece = getNextPiece();
+            } else {
+                const temp = holdPiece;
+                holdPiece = currentPiece.type;
+                currentPiece = new Piece(temp);
+            }
+            canHold = false;
+            drawSideCanvases();
+        }
+
+        // クイック/ハードドロップ
+        function performHardDrop() {
+            if (gameOver || isPaused || stageCleared || isGameComplete || clearingRows.length > 0) return;
+            let droppedDist = 0;
+            while (!checkCollision(currentPiece, 0, 1)) {
+                currentPiece.y++;
+                droppedDist++;
+            }
+            score += droppedDist * 2;
+            lockPiece();
+        }
+
+        // 落下処理
+        function drop() {
+            if (checkCollision(currentPiece, 0, 1)) {
+                lockPiece();
+            } else {
+                currentPiece.y++;
+            }
+        }
+
+        // ゴーストの位置を計算
+        function getGhostY() {
+            let ghostY = currentPiece.y;
+            while (!checkCollision(currentPiece, 0, ghostY - currentPiece.y + 1)) {
+                ghostY++;
+            }
+            return ghostY;
+        }
+
+        // --- メインゲームループ ---
+        function gameLoop(time = 0) {
+            if (gameOver || isPaused || stageCleared || isGameComplete) return;
+
+            const deltaTime = time - lastTime;
+            lastTime = time;
+
+            if (clearingRows.length > 0) {
+                clearingAnimTimer--;
+                if (clearingAnimTimer <= 0) {
+                    finishLineClear();
+                }
+            } else {
+                dropCounter += deltaTime;
+                if (dropCounter >= dropInterval) {
+                    drop();
+                    dropCounter = 0;
+                }
+            }
+
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- グラフィックス描画関数 ---
+
+        function getCellSize() {
+            return {
+                w: canvas.width / window.devicePixelRatio / GRID_COLS,
+                h: canvas.height / window.devicePixelRatio / GRID_ROWS
+            };
+        }
+
+        function draw() {
+            const size = getCellSize();
+            const w = size.w;
+            const h = size.h;
+
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+            ctx.lineWidth = 1;
+            for (let c = 1; c < GRID_COLS; c++) {
+                ctx.beginPath();
+                ctx.moveTo(c * w, 0);
+                ctx.lineTo(c * w, canvas.height);
+                ctx.stroke();
+            }
+            for (let r = 1; r < GRID_ROWS; r++) {
+                ctx.beginPath();
+                ctx.moveTo(0, r * h);
+                ctx.lineTo(canvas.width, r * h);
+                ctx.stroke();
+            }
+
+            for (let r = 0; r < GRID_ROWS; r++) {
+                for (let c = 0; c < GRID_COLS; c++) {
+                    const blockType = board[r][c];
+                    if (blockType) {
+                        if (clearingRows.includes(r) && Math.floor(clearingAnimTimer / 2) % 2 === 0) {
+                            drawBlock(ctx, c, r, w, h, '#ffffff', 'rgba(255,255,255,0.8)');
+                        } else {
+                            const config = COLORS[blockType];
+                            drawBlock(ctx, c, r, w, h, config.main, config.glow, config.dark);
+                        }
+                    }
+                }
+            }
+
+            if (currentPiece && clearingRows.length === 0) {
+                const ghostY = getGhostY();
+                if (ghostY !== currentPiece.y) {
+                    const matrix = currentPiece.matrix;
+                    for (let r = 0; r < matrix.length; r++) {
+                        for (let c = 0; c < matrix[r].length; c++) {
+                            if (matrix[r][c]) {
+                                const targetY = ghostY + r;
+                                if (targetY >= 0) {
+                                    drawGhostBlock(ctx, currentPiece.x + c, targetY, w, h, currentPiece.color.main);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (currentPiece && clearingRows.length === 0) {
+                const matrix = currentPiece.matrix;
+                for (let r = 0; r < matrix.length; r++) {
+                    for (let c = 0; c < matrix[r].length; c++) {
+                        if (matrix[r][c]) {
+                            const targetY = currentPiece.y + r;
+                            if (targetY >= 0) {
+                                drawBlock(ctx, currentPiece.x + c, targetY, w, h, currentPiece.color.main, currentPiece.color.glow, currentPiece.color.dark);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function drawBlock(context, x, y, w, h, color, glowColor, darkColor) {
+            const radius = 4;
+            const px = x * w + 1.5;
+            const py = y * h + 1.5;
+            const pw = w - 3;
+            const ph = h - 3;
+
+            context.save();
+            
+            if (glowColor) {
+                context.shadowColor = glowColor;
+                context.shadowBlur = 6;
+            }
+
+            context.fillStyle = color;
+            context.beginPath();
+            context.roundRect(px, py, pw, ph, radius);
+            context.fill();
+
+            context.shadowBlur = 0;
+            if (darkColor) {
+                context.strokeStyle = darkColor;
+                context.lineWidth = 1.5;
+                context.beginPath();
+                context.roundRect(px + 1, py + 1, pw - 2, ph - 2, radius - 1);
+                context.stroke();
+            }
+
+            const grad = context.createLinearGradient(px, py, px, py + ph / 2);
+            grad.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+            grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            context.fillStyle = grad;
+            context.beginPath();
+            context.roundRect(px + 1, py + 1, pw - 2, ph / 2, [radius, radius, 0, 0]);
+            context.fill();
+
+            context.restore();
+        }
+
+        function drawGhostBlock(context, x, y, w, h, color) {
+            const px = x * w + 2;
+            const py = y * h + 2;
+            const pw = w - 4;
+            const ph = h - 4;
+            const radius = 3;
+
+            context.save();
+            context.strokeStyle = color;
+            context.lineWidth = 1.5;
+            context.setLineDash([4, 2]);
+            context.beginPath();
+            context.roundRect(px, py, pw, ph, radius);
+            context.stroke();
+            context.restore();
+        }
+
+        // ミニキャンバスにピースを描画する
+        function drawPieceToCanvas(canvasObj, type) {
+            const cCtx = canvasObj.getContext('2d');
+            cCtx.clearRect(0, 0, canvasObj.width, canvasObj.height);
+            if (!type) return;
+
+            const matrix = SHAPES[type];
+            const size = matrix.length;
+            const cellSize = Math.min(canvasObj.width, canvasObj.height) / 4;
+            
+            let offsetX = (canvasObj.width - size * cellSize) / 2;
+            let offsetY = (canvasObj.height - size * cellSize) / 2;
+
+            if (type === 'I') {
+                offsetY = (canvasObj.height - 4 * cellSize) / 2;
+            }
+
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (matrix[r][c]) {
+                        const px = offsetX + c * cellSize + 1;
+                        const py = offsetY + r * cellSize + 1;
+                        const pw = cellSize - 2;
+                        const ph = cellSize - 2;
+                        const color = COLORS[type];
+
+                        cCtx.fillStyle = color.main;
+                        cCtx.beginPath();
+                        cCtx.roundRect(px, py, pw, ph, 2);
+                        cCtx.fill();
+                        
+                        cCtx.strokeStyle = color.dark;
+                        cCtx.lineWidth = 1;
+                        cCtx.beginPath();
+                        cCtx.roundRect(px, py, pw, ph, 2);
+                        cCtx.stroke();
+                    }
+                }
+            }
+        }
+
+        function drawSideCanvases() {
+            drawPieceToCanvas(holdCanvas, holdPiece);
+            if (nextQueue.length >= 3) {
+                drawPieceToCanvas(next1Canvas, nextQueue[0]);
+                drawPieceToCanvas(next2Canvas, nextQueue[1]);
+                drawPieceToCanvas(next3Canvas, nextQueue[2]);
+            }
+        }
+
+        // --- 操作イベント処理 ---
+
+        function handleInput(action) {
+            if (gameOver || isPaused || stageCleared || isGameComplete || clearingRows.length > 0) return;
+
+            switch(action) {
+                case 'left':
+                    if (!checkCollision(currentPiece, -1, 0)) {
+                        currentPiece.x--;
+                        sfx.playMove();
+                    }
+                    break;
+                case 'right':
+                    if (!checkCollision(currentPiece, 1, 0)) {
+                        currentPiece.x++;
+                        sfx.playMove();
+                    }
+                    break;
+                case 'rotate-r': // 右回転 (時計回り)
+                    currentPiece.rotate(1);
+                    break;
+                case 'rotate-l': // 左回転 (反時計回り)
+                    currentPiece.rotate(-1);
+                    break;
+                case 'soft':
+                    if (!checkCollision(currentPiece, 0, 1)) {
+                        currentPiece.y++;
+                        score += 1;
+                        updateScores();
+                        checkStageProgress();
+                    }
+                    break;
+                case 'hard':
+                    performHardDrop();
+                    break;
+                case 'hold':
+                    performHold();
+                    break;
+            }
+        }
+
+        // キーボード操作
+        window.addEventListener('keydown', (e) => {
+            // ゲーム画面外の不要なスクロールを防ぐ (9キーは無関係ですが、矢印キーやスペースキーを防御)
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+                e.preventDefault();
+            }
+
+            if (e.key === 'p' || e.key === 'P') {
+                togglePause();
+                return;
+            }
+
+            sfx.init();
+
+            switch(e.key) {
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    handleInput('left');
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    handleInput('right');
+                    break;
+                case '7': // 7キーで右回転
+                case 'ArrowUp': // サポート用
+                case 'w':
+                case 'W':
+                case 'r':
+                case 'R':
+                    handleInput('rotate-r');
+                    break;
+                case '8': // 8キーで左回転
+                    handleInput('rotate-l');
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    handleInput('soft');
+                    break;
+                case '9': // スペースキーから「9」キーに変更してハードドロップを実行
+                    handleInput('hard');
+                    break;
+                case 'Shift':
+                case 'c':
+                case 'C':
+                    handleInput('hold');
+                    break;
+            }
+        });
+
+        // モバイルタッチボタンイベント
+        document.getElementById('ctrl-left').addEventListener('click', () => handleInput('left'));
+        document.getElementById('ctrl-right').addEventListener('click', () => handleInput('right'));
+        document.getElementById('ctrl-rot-l').addEventListener('click', () => handleInput('rotate-l'));
+        document.getElementById('ctrl-rot-r').addEventListener('click', () => handleInput('rotate-r'));
+        document.getElementById('ctrl-soft').addEventListener('click', () => handleInput('soft'));
+        document.getElementById('ctrl-drop').addEventListener('click', () => handleInput('hard'));
+        document.getElementById('ctrl-hold').addEventListener('click', () => handleInput('hold'));
+
+        const activeControls = ['ctrl-left', 'ctrl-right', 'ctrl-rot-l', 'ctrl-rot-r', 'ctrl-soft', 'ctrl-drop', 'ctrl-hold'];
+        activeControls.forEach(id => {
+            const btn = document.getElementById(id);
+            btn.addEventListener('touchstart', (e) => {
+                sfx.init();
+                if(e.cancelable) e.preventDefault();
+            }, { passive: false });
+        });
+
+        // ボタンのクリックイベント群
+        startBtn.addEventListener('click', () => {
+            sfx.init();
+            if (isGameComplete || gameOver || !gameStarted) {
+                initGame();
+            } else if (stageCleared) {
+                nextStage();
+            } else if (isPaused) {
+                togglePause();
+            }
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            sfx.init();
+            togglePause();
+        });
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            draw();
+        });
+
+        window.onload = function() {
+            resizeCanvas();
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawSideCanvases();
+        }
+
+        const originalGetNextPiece = getNextPiece;
+        getNextPiece = function() {
+            const piece = originalGetNextPiece();
+            drawSideCanvases();
+            return piece;
+        };
+
+    </script>
+</body>
+</html>

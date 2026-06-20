@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>連打マスター (Clicker Speed Test)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .mono-font {
+            font-family: 'Share Tech Mono', monospace;
+        }
+        @keyframes float-up {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-120px) scale(0.8) rotate(15deg);
+            }
+        }
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            animation: float-up 0.6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+        }
+        /* スムーズなアニメーション用 */
+        .scale-active:active {
+            transform: scale(0.92);
+        }
+        /* キーが押されたときのアクティブ風表示 */
+        .key-active {
+            background-color: rgb(34, 211, 238) !important;
+            color: rgb(15, 23, 42) !important;
+            transform: scale(0.9);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- ヘッダー -->
+    <header class="bg-slate-900 border-b border-slate-800 py-4 px-6 shadow-lg">
+        <div class="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h1 class="text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-pink-500 to-yellow-400 flex items-center">
+                <i class="fa-solid fa-bolt mr-2 text-yellow-400 animate-pulse"></i>連打マスター PRO
+            </h1>
+            <!-- モード選択タブ -->
+            <div class="flex bg-slate-950 p-1 rounded-full border border-slate-800 shadow-inner">
+                <button id="tab-10s" class="px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 bg-cyan-500 text-slate-950 shadow-md">
+                    10秒スピード
+                </button>
+                <button id="tab-30s" class="px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 text-slate-400 hover:text-slate-200">
+                    30秒耐久
+                </button>
+                <button id="tab-rta" class="px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 text-slate-400 hover:text-slate-200">
+                    100回RTA
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインエリア -->
+    <main class="flex-grow max-w-4xl w-full mx-auto p-4 flex flex-col justify-center items-center">
+
+        <!-- ゲームメインカード -->
+        <div class="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
+            
+            <!-- 背景のデコレーション光 -->
+            <div id="bg-glow" class="absolute -top-24 -left-24 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none transition-all duration-500"></div>
+
+            <!-- モード説明タイトル -->
+            <div class="text-center mb-3">
+                <span id="mode-badge" class="px-3 py-1 rounded-full text-2xs font-extrabold uppercase tracking-widest bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                    10-SECONDS SPEED MODE
+                </span>
+                <h2 id="mode-title" class="text-2xl font-black mt-2 text-white">10秒スピード測定</h2>
+                <p id="mode-desc" class="text-xs text-slate-400 mt-1">10秒間で何回タップできるか！瞬発力の限界に挑め！</p>
+            </div>
+
+            <!-- CPU対戦設定エリア (新設) -->
+            <div class="mb-4 bg-slate-950/60 rounded-2xl p-3 border border-slate-800">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-robot text-cyan-400"></i>CPU対戦
+                    </span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="cpu-toggle" class="sr-only peer" checked>
+                        <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500"></div>
+                    </label>
+                </div>
+                <!-- CPU難易度選択 -->
+                <div id="cpu-selector-container" class="grid grid-cols-4 gap-1.5">
+                    <button id="cpu-easy" class="py-1 px-1 text-[10px] font-bold rounded-lg border bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 transition-all">
+                        Easy<br><span class="text-[9px] font-normal">まったり</span>
+                    </button>
+                    <button id="cpu-medium" class="py-1 px-1 text-[10px] font-bold rounded-lg border bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 transition-all">
+                        Medium<br><span class="text-[9px] font-normal">おてごろ</span>
+                    </button>
+                    <button id="cpu-hard" class="py-1 px-1 text-[10px] font-bold rounded-lg border bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 transition-all">
+                        Hard<br><span class="text-[9px] font-normal">高速ギア</span>
+                    </button>
+                    <button id="cpu-god" class="py-1 px-1 text-[10px] font-bold rounded-lg border bg-cyan-500/20 border-cyan-400 text-cyan-300 transition-all shadow-md shadow-cyan-500/5">
+                        GOD 🔥<br><span class="text-[9px] font-normal">秒速16回</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 操作方法ヒント -->
+            <div class="text-center mb-4 bg-slate-950/40 py-1 px-3 rounded-lg border border-slate-850/60">
+                <p class="text-[10px] text-cyan-400 font-bold">
+                    <i class="fa-solid fa-keyboard mr-1"></i>キーボードの十字キー <span class="bg-slate-800 px-1 py-0.5 rounded text-white text-[10px]">↑</span><span class="bg-slate-800 px-1 py-0.5 rounded text-white text-[10px]">↓</span><span class="bg-slate-800 px-1 py-0.5 rounded text-white text-[10px]">←</span><span class="bg-slate-800 px-1 py-0.5 rounded text-white text-[10px]">→</span> や、画面下の矢印も連打OK！
+                </p>
+            </div>
+
+            <!-- ステータスボード -->
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <!-- 左スロット: 時間 / 進捗 -->
+                <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3 text-center flex flex-col justify-center">
+                    <div id="label-left" class="text-xs text-slate-400 font-bold mb-1">のこり時間</div>
+                    <div id="disp-left" class="text-2xl font-black text-yellow-400 mono-font tracking-tight">10.00s</div>
+                </div>
+                <!-- 右スロット: タップ数 / 残りタップ数 -->
+                <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3 text-center">
+                    <div id="label-right" class="text-xs text-slate-400 font-bold mb-0.5">あなた</div>
+                    <div id="disp-right" class="text-2xl font-black text-cyan-400 mono-font">0</div>
+                    <!-- CPUのカウントをサブ表示 -->
+                    <div id="cpu-sub-disp" class="text-2xs text-rose-400 font-bold">CPU: 0</div>
+                </div>
+            </div>
+
+            <!-- RTA用プログレスバー (自分とCPUの2本立て) -->
+            <div id="rta-progress-container" class="w-full bg-slate-950 rounded-2xl p-2.5 mb-4 border border-slate-800 hidden space-y-2">
+                <div class="flex items-center justify-between text-2xs font-bold text-slate-400">
+                    <span>あなた: <span id="rta-val-player" class="text-cyan-400">100</span> 残り</span>
+                    <span>CPU: <span id="rta-val-cpu" class="text-rose-400">100</span> 残り</span>
+                </div>
+                <div class="space-y-1.5">
+                    <!-- あなたのバー -->
+                    <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
+                        <div id="rta-progress-bar" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full w-0 transition-all duration-75"></div>
+                    </div>
+                    <!-- CPUのバー -->
+                    <div id="rta-cpu-progress-wrapper" class="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
+                        <div id="rta-progress-bar-cpu" class="bg-gradient-to-r from-rose-500 to-pink-500 h-full w-0 transition-all duration-75"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 特大タップボタン ＆ 仮想十字キーコンテナ -->
+            <div class="flex flex-col items-center gap-4 mb-4">
+                <!-- 特大タップボタン -->
+                <div class="relative w-full aspect-square max-w-[180px] mx-auto">
+                    <button id="tap-target" class="w-full h-full rounded-full bg-gradient-to-tr from-cyan-600 to-blue-500 hover:from-cyan-500 hover:to-blue-400 shadow-xl shadow-cyan-500/10 active:scale-95 transition-all duration-75 flex flex-col items-center justify-center border-4 border-cyan-400 cursor-pointer outline-none select-none touch-manipulation">
+                        <i id="tap-icon" class="fa-solid fa-hand-pointer text-4xl mb-1 text-cyan-100 animate-pulse"></i>
+                        <span id="tap-btn-text" class="text-sm font-black text-white tracking-widest">TAP START</span>
+                    </button>
+                </div>
+
+                <!-- 仮想十字キー（スマホ用タッチエリア / キー連動表示） -->
+                <div class="w-full max-w-[220px] aspect-square grid grid-cols-3 grid-rows-3 gap-2 bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800">
+                    <!-- 空白 -->
+                    <div></div>
+                    <!-- 上 -->
+                    <button id="btn-arrow-up" class="bg-slate-800 hover:bg-slate-700 active:scale-90 border border-slate-750 text-slate-300 rounded-xl flex items-center justify-center transition-all duration-75 text-lg select-none touch-manipulation">
+                        <i class="fa-solid fa-chevron-up"></i>
+                    </button>
+                    <!-- 空白 -->
+                    <div></div>
+                    <!-- 左 -->
+                    <button id="btn-arrow-left" class="bg-slate-800 hover:bg-slate-700 active:scale-90 border border-slate-750 text-slate-300 rounded-xl flex items-center justify-center transition-all duration-75 text-lg select-none touch-manipulation">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <!-- 中央マーク -->
+                    <div class="flex items-center justify-center text-slate-600">
+                        <i class="fa-solid fa-circle text-[6px] animate-pulse text-cyan-500"></i>
+                    </div>
+                    <!-- 右 -->
+                    <button id="btn-arrow-right" class="bg-slate-800 hover:bg-slate-700 active:scale-90 border border-slate-750 text-slate-300 rounded-xl flex items-center justify-center transition-all duration-75 text-lg select-none touch-manipulation">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    <!-- 空白 -->
+                    <div></div>
+                    <!-- 下 -->
+                    <button id="btn-arrow-down" class="bg-slate-800 hover:bg-slate-700 active:scale-90 border border-slate-750 text-slate-300 rounded-xl flex items-center justify-center transition-all duration-75 text-lg select-none touch-manipulation">
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <!-- 空白 -->
+                    <div></div>
+                </div>
+            </div>
+
+            <!-- ハイスコア表示エリア -->
+            <div class="w-full bg-slate-950/50 border border-slate-850 rounded-2xl p-3 flex justify-between items-center text-sm">
+                <span class="text-slate-400 flex items-center text-xs">
+                    <i class="fa-solid fa-crown text-yellow-500 mr-2"></i>自己ベスト
+                </span>
+                <span id="highscore-value" class="font-bold text-yellow-400 mono-font text-sm">0 回 (0.0 cps)</span>
+            </div>
+
+        </div>
+
+        <!-- ハイスコアカウントリセット -->
+        <button id="btn-reset-scores" class="mt-6 text-xs text-slate-600 hover:text-red-400 transition-colors flex items-center gap-1.5">
+            <i class="fa-solid fa-rotate-left"></i>ハイスコアをリセット
+        </button>
+
+    </main>
+
+    <!-- 結果発表モーダル -->
+    <div id="result-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl p-6 shadow-2xl text-center transform scale-95 transition-transform duration-300" id="result-modal-content">
+            
+            <!-- 勝敗王冠アイコン、またはバトル演出 -->
+            <div id="result-battle-header" class="mb-2">
+                <div id="result-battle-badge" class="inline-block px-4 py-1.5 rounded-full font-black text-sm uppercase tracking-wider mb-2">
+                    YOU WIN!
+                </div>
+            </div>
+
+            <h3 class="text-2xl font-black mb-1 text-white">測定結果！</h3>
+            <p id="result-mode-lbl" class="text-xs text-pink-400 font-bold uppercase tracking-wider mb-4">10-SECONDS SPEED</p>
+
+            <!-- プレイヤーとCPUの記録比較 -->
+            <div class="space-y-3 bg-slate-950/85 rounded-2xl p-4 border border-slate-850 mb-4 text-left">
+                <!-- プレイヤーの記録 -->
+                <div class="flex justify-between items-center pb-2 border-b border-slate-900">
+                    <span class="text-slate-400 text-xs font-bold flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>あなたの記録
+                    </span>
+                    <span class="font-black text-white text-base mono-font"><span id="res-val-player" class="text-cyan-400">0</span></span>
+                </div>
+                <!-- CPUの記録 -->
+                <div id="result-cpu-record-row" class="flex justify-between items-center pb-2 border-b border-slate-900">
+                    <span class="text-slate-400 text-xs font-bold flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>相手の記録 (<span id="res-cpu-name">まったりロボ</span>)
+                    </span>
+                    <span class="font-black text-white text-base mono-font"><span id="res-val-cpu" class="text-rose-400">0</span></span>
+                </div>
+                <!-- 認定ランク -->
+                <div class="pt-1 flex justify-between items-center">
+                    <span class="text-slate-400 text-xs font-bold">あなたの認定ランク</span>
+                    <span id="result-rank" class="font-black px-2.5 py-1 rounded-lg text-xs bg-cyan-500 text-slate-950">???</span>
+                </div>
+            </div>
+
+            <!-- コメント -->
+            <p id="result-comment" class="text-xs text-slate-300 italic mb-6 leading-relaxed bg-slate-950/30 p-3 rounded-xl border border-slate-850/40">
+                「素晴らしい俊敏さです！」
+            </p>
+
+            <div class="flex space-x-2">
+                <button id="modal-close" class="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold transition-all duration-200">
+                    閉じる
+                </button>
+                <button id="modal-retry" class="flex-1 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black transition-all duration-200 shadow-lg shadow-cyan-500/20">
+                    もう一回挑戦！
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- トースト通知 -->
+    <div id="toast" class="fixed top-20 left-1/2 transform -translate-x-1/2 bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl text-xs font-bold text-slate-200 shadow-xl opacity-0 pointer-events-none transition-all duration-300 z-40">
+        トーストメッセージ
+    </div>
+
+    <!-- フッター -->
+    <footer class="bg-slate-950/40 text-center py-4 text-xs text-slate-600 border-t border-slate-900">
+        <p>&copy; 2026 連打マスター PRO. 純粋な限界測定ツール</p>
+    </footer>
+
+    <script>
+        // --- アプリ全体の状態管理 ---
+        const state = {
+            activeMode: '10s', // '10s', '30s', 'rta'
+            isPlaying: false,
+            
+            // 各種カウンタ・タイマー
+            count: 0,
+            cpuCount: 0,
+            timeLeft: 10.00,
+            startTime: null,
+            timerId: null,
+            cpuTimerId: null,
+
+            // CPU設定
+            cpu: {
+                isEnabled: true,
+                difficulty: 'god', // デフォルトは最強のGOD
+                list: {
+                    easy: { name: 'まったりロボ', cps: 3.0, commentWin: 'ま、負けちゃいました…強すぎます！', commentLose: 'のんびり叩いても勝てちゃいました！えへへ。' },
+                    medium: { name: 'おてごろボット', cps: 7.0, commentWin: 'お見事！かなりのスピードだね。次は負けないぞ！', commentLose: 'まだまだ修行が足りないね！特訓して出直そう。' },
+                    hard: { name: '高速ギアくん', cps: 12.0, commentWin: 'なんて速さだ！私のギア上限を超える連打、天晴れ！', commentLose: '私の高速ピストン連打に追いつけなかったようだな。ふっ！' },
+                    god: { name: '超速コア・オメガ', cps: 16.0, commentWin: 'ま…まさかこの私が敗北するとは…！お前が新の連打王だ！', commentLose: '秒速16回の領域に届かぬ者は、私にひれ伏すのみ！ハハハ！' }
+                }
+            },
+
+            // ハイスコア記録
+            best: {
+                '10s': { score: 0, cps: 0.0 },
+                '30s': { score: 0, cps: 0.0 },
+                'rta': { time: 99.99 }
+            }
+        };
+
+        // --- DOM要素取得 ---
+        const tab10s = document.getElementById('tab-10s');
+        const tab30s = document.getElementById('tab-30s');
+        const tabRta = document.getElementById('tab-rta');
+
+        const modeBadge = document.getElementById('mode-badge');
+        const modeTitle = document.getElementById('mode-title');
+        const modeDesc = document.getElementById('mode-desc');
+        const bgGlow = document.getElementById('bg-glow');
+
+        const labelLeft = document.getElementById('label-left');
+        const dispLeft = document.getElementById('disp-left');
+        const labelRight = document.getElementById('label-right');
+        const dispRight = document.getElementById('disp-right');
+        const cpuSubDisp = document.getElementById('cpu-sub-disp');
+
+        // CPU対戦のUI要素
+        const cpuToggle = document.getElementById('cpu-toggle');
+        const cpuSelectorContainer = document.getElementById('cpu-selector-container');
+        const cpuEasy = document.getElementById('cpu-easy');
+        const cpuMedium = document.getElementById('cpu-medium');
+        const cpuHard = document.getElementById('cpu-hard');
+        const cpuGod = document.getElementById('cpu-god');
+
+        const rtaProgressContainer = document.getElementById('rta-progress-container');
+        const rtaProgressBar = document.getElementById('rta-progress-bar');
+        const rtaProgressBarCpu = document.getElementById('rta-progress-bar-cpu');
+        const rtaCpuProgressWrapper = document.getElementById('rta-cpu-progress-wrapper');
+        const rtaValPlayer = document.getElementById('rta-val-player');
+        const rtaValCpu = document.getElementById('rta-val-cpu');
+
+        const tapTarget = document.getElementById('tap-target');
+        const tapIcon = document.getElementById('tap-icon');
+        const tapBtnText = document.getElementById('tap-btn-text');
+        const highscoreValue = document.getElementById('highscore-value');
+
+        // 仮想十字キーの各方向ボタン
+        const arrowBtns = {
+            'ArrowUp': document.getElementById('btn-arrow-up'),
+            'ArrowDown': document.getElementById('btn-arrow-down'),
+            'ArrowLeft': document.getElementById('btn-arrow-left'),
+            'ArrowRight': document.getElementById('btn-arrow-right')
+        };
+
+        // モーダル
+        const resultModal = document.getElementById('result-modal');
+        const resultModalContent = document.getElementById('result-modal-content');
+        const resultBattleHeader = document.getElementById('result-battle-header');
+        const resultBattleBadge = document.getElementById('result-battle-badge');
+        const resultCpuRecordRow = document.getElementById('result-cpu-record-row');
+        const resCpuName = document.getElementById('res-cpu-name');
+        const resultModeLbl = document.getElementById('result-mode-lbl');
+        
+        const resValPlayer = document.getElementById('res-val-player');
+        const resValCpu = document.getElementById('res-val-cpu');
+
+        const resultRank = document.getElementById('result-rank');
+        const resultComment = document.getElementById('result-comment');
+        const modalClose = document.getElementById('modal-close');
+        const modalRetry = document.getElementById('modal-retry');
+
+        const btnResetScores = document.getElementById('btn-reset-scores');
+        const toast = document.getElementById('toast');
+
+        // --- モードごとのプロパティ定義 ---
+        const MODES = {
+            '10s': {
+                badge: '10-SECONDS SPEED MODE',
+                title: '10秒スピード測定',
+                desc: '短い時間でどれだけ爆発的な連打ができるかの勝負！',
+                themeColor: 'from-cyan-600 to-blue-500',
+                themeBorder: 'border-cyan-400',
+                glowColor: 'bg-cyan-500/10'
+            },
+            '30s': {
+                badge: '30-SECONDS ENDURANCE',
+                title: '30秒耐久測定',
+                desc: '30秒間の過酷な連打。後半のスタミナ維持が鍵！',
+                themeColor: 'from-purple-600 to-pink-600',
+                themeBorder: 'border-purple-400',
+                glowColor: 'bg-purple-500/10'
+            },
+            'rta': {
+                badge: '100-TAPS TIME ATTACK',
+                title: '100回RTA (タイムアタック)',
+                desc: '100回タップに到達するまでのタイムを秒速で計測！',
+                themeColor: 'from-yellow-600 to-amber-500',
+                themeBorder: 'border-yellow-400',
+                glowColor: 'bg-yellow-500/10'
+            }
+        };
+
+        // --- 初期化処理 ---
+        window.onload = function() {
+            loadScores();
+            setupCpuSelection();
+            switchMode('10s');
+        };
+
+        // --- CPU選択のセットアップ ---
+        function setupCpuSelection() {
+            // トグル処理
+            cpuToggle.addEventListener('change', () => {
+                state.cpu.isEnabled = cpuToggle.checked;
+                if (state.cpu.isEnabled) {
+                    cpuSelectorContainer.style.opacity = '1';
+                    cpuSelectorContainer.style.pointerEvents = 'auto';
+                    cpuSubDisp.classList.remove('invisible');
+                } else {
+                    cpuSelectorContainer.style.opacity = '0.4';
+                    cpuSelectorContainer.style.pointerEvents = 'none';
+                    cpuSubDisp.classList.add('invisible');
+                }
+                resetBoard();
+            });
+
+            // 難易度切り替え関数
+            const setDiff = (diff) => {
+                if (state.isPlaying) return;
+                state.cpu.difficulty = diff;
+
+                const btns = {
+                    easy: cpuEasy,
+                    medium: cpuMedium,
+                    hard: cpuHard,
+                    god: cpuGod
+                };
+
+                Object.keys(btns).forEach(k => {
+                    if (k === diff) {
+                        btns[k].className = "py-1 px-1 text-[10px] font-bold rounded-lg border bg-cyan-500/20 border-cyan-400 text-cyan-300 transition-all shadow-md shadow-cyan-500/5";
+                    } else {
+                        btns[k].className = "py-1 px-1 text-[10px] font-bold rounded-lg border bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 transition-all";
+                    }
+                });
+                resetBoard();
+            };
+
+            cpuEasy.addEventListener('click', () => setDiff('easy'));
+            cpuMedium.addEventListener('click', () => setDiff('medium'));
+            cpuHard.addEventListener('click', () => setDiff('hard'));
+            cpuGod.addEventListener('click', () => setDiff('god'));
+            
+            // デフォルト起動
+            setDiff('god');
+        }
+
+        // --- スコア保存/読み込み ---
+        function loadScores() {
+            const raw = localStorage.getItem('clicker_pro_scores');
+            if (raw) {
+                try {
+                    state.best = JSON.parse(raw);
+                } catch (e) {
+                    console.error("ハイスコアデータの読み込みに失敗しました", e);
+                }
+            }
+            updateHighscoreDisplay();
+        }
+
+        function saveScores() {
+            localStorage.setItem('clicker_pro_scores', JSON.stringify(state.best));
+            updateHighscoreDisplay();
+        }
+
+        // ハイスコア表記の更新
+        function updateHighscoreDisplay() {
+            if (state.activeMode === '10s') {
+                const b = state.best['10s'] || { score: 0, cps: 0.0 };
+                highscoreValue.innerHTML = `${b.score} <span class="text-xs text-slate-400">回</span> (${Number(b.cps).toFixed(1)} <span class="text-xs text-slate-400">cps</span>)`;
+            } else if (state.activeMode === '30s') {
+                const b = state.best['30s'] || { score: 0, cps: 0.0 };
+                highscoreValue.innerHTML = `${b.score} <span class="text-xs text-slate-400">回</span> (${Number(b.cps).toFixed(1)} <span class="text-xs text-slate-400">cps</span>)`;
+            } else if (state.activeMode === 'rta') {
+                const b = state.best['rta'] || { time: 99.99 };
+                if (b.time === 99.99) {
+                    highscoreValue.innerText = "記録なし";
+                } else {
+                    highscoreValue.innerHTML = `${Number(b.time).toFixed(2)} <span class="text-xs text-slate-400">秒</span>`;
+                }
+            }
+        }
+
+        // --- モード切替 ---
+        function switchMode(mode) {
+            if (state.isPlaying) return;
+
+            state.activeMode = mode;
+            
+            // タブの見た目リセット
+            const tabs = [
+                { el: tab10s, id: '10s' },
+                { el: tab30s, id: '30s' },
+                { el: tabRta, id: 'rta' }
+            ];
+            
+            tabs.forEach(t => {
+                if (t.id === mode) {
+                    t.el.className = "px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 bg-cyan-500 text-slate-950 shadow-md";
+                } else {
+                    t.el.className = "px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 text-slate-400 hover:text-slate-200";
+                }
+            });
+
+            // コンテンツテキストの変更
+            const def = MODES[mode];
+            modeBadge.innerText = def.badge;
+            modeTitle.innerText = def.title;
+            modeDesc.innerText = def.desc;
+
+            // ボタン背景光の変更
+            bgGlow.className = `absolute -top-24 -left-24 w-48 h-48 rounded-full blur-3xl pointer-events-none transition-all duration-500 ${def.glowColor}`;
+
+            // ボタン色の変更
+            tapTarget.className = `w-full h-full rounded-full bg-gradient-to-tr ${def.themeColor} shadow-xl active:scale-95 transition-all duration-75 flex flex-col items-center justify-center border-4 ${def.themeBorder} cursor-pointer outline-none select-none touch-manipulation`;
+
+            // ラベル類の準備
+            resetBoard();
+            updateHighscoreDisplay();
+        }
+
+        tab10s.addEventListener('click', () => switchMode('10s'));
+        tab30s.addEventListener('click', () => switchMode('30s'));
+        tabRta.addEventListener('click', () => switchMode('rta'));
+
+        // ボード表記の初期化
+        function resetBoard() {
+            state.count = 0;
+            state.cpuCount = 0;
+            state.isPlaying = false;
+            
+            if (state.timerId) clearInterval(state.timerId);
+            if (state.cpuTimerId) clearInterval(state.cpuTimerId);
+
+            tapBtnText.innerText = "TAP START";
+            tapIcon.className = "fa-solid fa-hand-pointer text-4xl mb-1 text-cyan-100 animate-pulse";
+
+            const opponent = state.cpu.list[state.cpu.difficulty];
+            const oppName = opponent.name;
+
+            if (state.cpu.isEnabled) {
+                cpuSubDisp.innerText = `${oppName}: 0`;
+                cpuSubDisp.className = "text-2xs text-rose-400 font-bold mt-0.5";
+            } else {
+                cpuSubDisp.innerText = "";
+            }
+
+            if (state.activeMode === '10s') {
+                labelLeft.innerText = "のこり時間";
+                dispLeft.innerText = "10.00s";
+                labelRight.innerText = "あなたのタップ";
+                dispRight.innerText = "0";
+                rtaProgressContainer.classList.add('hidden');
+            } else if (state.activeMode === '30s') {
+                labelLeft.innerText = "のこり時間";
+                dispLeft.innerText = "30.00s";
+                labelRight.innerText = "あなたのタップ";
+                dispRight.innerText = "0";
+                rtaProgressContainer.classList.add('hidden');
+            } else if (state.activeMode === 'rta') {
+                labelLeft.innerText = "経過時間";
+                dispLeft.innerText = "0.00s";
+                labelRight.innerText = "のこりタップ";
+                dispRight.innerText = "100";
+                
+                if (state.cpu.isEnabled) {
+                    rtaProgressContainer.classList.remove('hidden');
+                    rtaProgressBar.style.width = '0%';
+                    rtaProgressBarCpu.style.width = '0%';
+                    rtaCpuProgressWrapper.classList.remove('hidden');
+                    rtaValPlayer.innerText = "100";
+                    rtaValCpu.innerText = "100";
+                } else {
+                    rtaProgressContainer.classList.remove('hidden');
+                    rtaProgressBar.style.width = '0%';
+                    rtaCpuProgressWrapper.classList.add('hidden');
+                    rtaValPlayer.innerText = "100";
+                    rtaValCpu.innerText = "-";
+                }
+            }
+        }
+
+        // --- タップエフェクト演出 ---
+        function createTapEffect(x, y, text, colorClass, container) {
+            const p = document.createElement('div');
+            p.className = `particle absolute font-black pointer-events-none text-2xl z-20 ${colorClass}`;
+            p.style.left = `${x - 12}px`;
+            p.style.top = `${y - 24}px`;
+            p.innerText = text;
+
+            // ブレるランダム値
+            const randX = (Math.random() - 0.5) * 50;
+            p.style.setProperty('--x-offset', `${randX}px`);
+
+            container.appendChild(p);
+
+            setTimeout(() => {
+                p.remove();
+            }, 600);
+        }
+
+        // --- トースト表示 ---
+        function showToast(msg) {
+            toast.innerText = msg;
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2000);
+        }
+
+        // --- 汎用的なカウント進捗・加算処理 ---
+        function triggerTap(x, y, isArrowKey, arrowKeyName, containerElement) {
+            if (!state.isPlaying) {
+                startGame();
+            }
+
+            // エフェクト設定用のカラー
+            let color = 'text-cyan-300 drop-shadow-[0_2px_4px_rgba(34,211,238,0.5)]';
+            if (state.activeMode === 'rta') {
+                color = 'text-yellow-400 drop-shadow-[0_2px_4px_rgba(234,179,8,0.5)]';
+            }
+
+            if (state.activeMode === '10s' || state.activeMode === '30s') {
+                if (state.timeLeft > 0) {
+                    state.count++;
+                    dispRight.innerText = state.count;
+                    createTapEffect(x, y, `+1`, color, containerElement);
+                }
+            } else if (state.activeMode === 'rta') {
+                if (state.count < 100) {
+                    state.count++;
+                    const leftTaps = 100 - state.count;
+                    dispRight.innerText = leftTaps;
+                    rtaValPlayer.innerText = leftTaps;
+                    
+                    // プログレスバーの更新
+                    rtaProgressBar.style.width = `${state.count}%`;
+
+                    createTapEffect(x, y, `${leftTaps}`, color, containerElement);
+
+                    if (state.count >= 100) {
+                        endGame();
+                    }
+                }
+            }
+        }
+
+        // --- メインボタン用ハンドラ ---
+        tapTarget.addEventListener('mousedown', (e) => {
+            const rect = tapTarget.getBoundingClientRect();
+            triggerTap(e.clientX - rect.left, e.clientY - rect.top, false, null, tapTarget);
+        });
+        tapTarget.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const rect = tapTarget.getBoundingClientRect();
+            const touch = e.touches[0];
+            triggerTap(touch.clientX - rect.left, touch.clientY - rect.top, false, null, tapTarget);
+        });
+
+        // --- キーボード矢印キーハンドラ ---
+        window.addEventListener('keydown', (e) => {
+            const keyMap = {
+                'ArrowUp': 'ArrowUp',
+                'ArrowDown': 'ArrowDown',
+                'ArrowLeft': 'ArrowLeft',
+                'ArrowRight': 'ArrowRight'
+            };
+
+            if (e.key in keyMap) {
+                e.preventDefault(); // 画面スクロールを防止
+                
+                // 長押しチートを弾く
+                if (e.repeat) return;
+
+                const keyName = keyMap[e.key];
+                
+                // 画面上の対応ボタンをハイライトする
+                const btn = arrowBtns[keyName];
+                if (btn) {
+                    btn.classList.add('key-active');
+                }
+
+                // タップボタンの中央からランダムに少しずらした位置にエフェクトを発生させる
+                const rect = tapTarget.getBoundingClientRect();
+                const randomX = rect.width / 2 + (Math.random() - 0.5) * 40;
+                const randomY = rect.height / 2 + (Math.random() - 0.5) * 40;
+
+                triggerTap(randomX, randomY, true, keyName, tapTarget);
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                const btn = arrowBtns[e.key];
+                if (btn) {
+                    btn.classList.remove('key-active');
+                }
+            }
+        });
+
+        // --- 画面上の仮想十字キー用クリック＆タッチハンドラ ---
+        Object.keys(arrowBtns).forEach(keyName => {
+            const btn = arrowBtns[keyName];
+
+            const handleArrowClick = (e) => {
+                const rect = btn.getBoundingClientRect();
+                let posX, posY;
+                if (e.touches && e.touches.length > 0) {
+                    posX = e.touches[0].clientX - rect.left;
+                    posY = e.touches[0].clientY - rect.top;
+                } else {
+                    posX = e.clientX - rect.left;
+                    posY = e.clientY - rect.top;
+                }
+                triggerTap(posX, posY, true, keyName, btn);
+            };
+
+            btn.addEventListener('mousedown', (e) => {
+                handleArrowClick(e);
+            });
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                handleArrowClick(e);
+            });
+        });
+
+        // --- ゲーム開始処理 ---
+        function startGame() {
+            state.isPlaying = true;
+            state.count = 0;
+            state.cpuCount = 0;
+            state.startTime = performance.now();
+
+            tapBtnText.innerText = "TAP!!!";
+            tapIcon.className = "fa-solid fa-fire text-4xl mb-1 text-red-400 animate-bounce";
+
+            // --- CPU対戦タイマー起動 ---
+            if (state.cpu.isEnabled) {
+                const opp = state.cpu.list[state.cpu.difficulty];
+                // 1タップあたりの間隔(ms)
+                const intervalTime = 1000 / opp.cps;
+
+                state.cpuTimerId = setInterval(() => {
+                    if (!state.isPlaying) return;
+
+                    if (state.activeMode === '10s' || state.activeMode === '30s') {
+                        state.cpuCount++;
+                        cpuSubDisp.innerText = `${opp.name}: ${state.cpuCount}`;
+                    } else if (state.activeMode === 'rta') {
+                        if (state.cpuCount < 100) {
+                            state.cpuCount++;
+                            const leftCpu = 100 - state.cpuCount;
+                            rtaValCpu.innerText = leftCpu;
+                            rtaProgressBarCpu.style.width = `${state.cpuCount}%`;
+
+                            if (state.cpuCount >= 100) {
+                                endGame();
+                            }
+                        }
+                    }
+                }, intervalTime);
+            }
+
+            // --- メインゲーム用タイマー起動 ---
+            if (state.activeMode === '10s') {
+                const limit = 10.00;
+                state.timerId = setInterval(() => {
+                    const elapsed = (performance.now() - state.startTime) / 1000;
+                    state.timeLeft = Math.max(0, limit - elapsed);
+                    dispLeft.innerText = state.timeLeft.toFixed(2) + "s";
+
+                    if (state.timeLeft <= 0) {
+                        endGame();
+                    }
+                }, 10);
+
+            } else if (state.activeMode === '30s') {
+                const limit = 30.00;
+                state.timerId = setInterval(() => {
+                    const elapsed = (performance.now() - state.startTime) / 1000;
+                    state.timeLeft = Math.max(0, limit - elapsed);
+                    dispLeft.innerText = state.timeLeft.toFixed(2) + "s";
+
+                    if (state.timeLeft <= 0) {
+                        endGame();
+                    }
+                }, 10);
+
+            } else if (state.activeMode === 'rta') {
+                state.timerId = setInterval(() => {
+                    const elapsed = (performance.now() - state.startTime) / 1000;
+                    dispLeft.innerText = elapsed.toFixed(2) + "s";
+                }, 10);
+            }
+        }
+
+        // --- ゲーム終了処理 ---
+        function endGame() {
+            clearInterval(state.timerId);
+            if (state.cpuTimerId) clearInterval(state.cpuTimerId);
+            state.isPlaying = false;
+            
+            tapBtnText.innerText = "START AGAIN";
+            tapIcon.className = "fa-solid fa-hand-pointer text-4xl mb-1 text-cyan-100 animate-pulse";
+
+            const finalTime = (performance.now() - state.startTime) / 1000;
+
+            // ハイライトしていたキーの残りをクリア
+            Object.values(arrowBtns).forEach(btn => {
+                btn.classList.remove('key-active');
+            });
+
+            if (state.activeMode === '10s') {
+                const cps = state.count / 10;
+                showResult('10s', state.count, cps, finalTime);
+                
+                // スコア判定
+                if (state.count > state.best['10s'].score) {
+                    state.best['10s'] = { score: state.count, cps: cps };
+                    showToast("🎉 10秒スピード ハイスコア更新！");
+                    saveScores();
+                }
+            } else if (state.activeMode === '30s') {
+                const cps = state.count / 30;
+                showResult('30s', state.count, cps, finalTime);
+
+                // スコア判定
+                if (state.count > state.best['30s'].score) {
+                    state.best['30s'] = { score: state.count, cps: cps };
+                    showToast("🎉 30秒耐久 ハイスコア更新！");
+                    saveScores();
+                }
+            } else if (state.activeMode === 'rta') {
+                showResult('rta', state.count, null, finalTime);
+
+                // 勝利時かつ自己新記録時
+                const cpuTime = state.cpu.isEnabled ? (100 / state.cpu.list[state.cpu.difficulty].cps) : 999;
+                const userWon = finalTime < cpuTime || !state.cpu.isEnabled;
+
+                if (userWon && finalTime < state.best['rta'].time) {
+                    state.best['rta'] = { time: finalTime };
+                    showToast("🎉 100回RTA 自己新記録！");
+                    saveScores();
+                }
+            }
+        }
+
+        // --- ランク算出システム ---
+        function getRank(mode, val1, val2) {
+            if (mode === '10s') {
+                if (val1 >= 140) return { name: "宇宙連打神 (COSMIC GOD)", color: "bg-red-500 text-white", comment: "驚愕のタップスピード！十字キーとボタンのコンボを完全にマスターしていますね！" };
+                if (val1 >= 110) return { name: "連打達人 (GRANDMASTER)", color: "bg-purple-500 text-white", comment: "完全に人間のリミッターを解除しています！お見事！" };
+                if (val1 >= 90) return { name: "エリートタッパー", color: "bg-yellow-500 text-slate-950", comment: "凄まじい連打スピードです。周りのライバルに大差をつけられます！" };
+                if (val1 >= 70) return { name: "プロタッパー", color: "bg-green-500 text-white", comment: "非常に速いレベルです！自信を持って良いスコアです。" };
+                if (val1 >= 45) return { name: "中堅タッパー", color: "bg-cyan-500 text-slate-950", comment: "平均以上の実力を持っています。さらに上を目指そう！" };
+                return { name: "ビギナー", color: "bg-slate-600 text-slate-100", comment: "十字キーや複数の指を組み合わせて連打すると、さらに記録が伸びますよ！" };
+            } else if (mode === '30s') {
+                if (val1 >= 380) return { name: "耐久の絶対神", color: "bg-red-500 text-white", comment: "30秒間トップスピードを維持し続ける驚異の鉄腕！" };
+                if (val1 >= 300) return { name: "無限スタミナ", color: "bg-purple-500 text-white", comment: "ものすごい耐久力！腕に乳酸がたまらない奇跡のテクニックです。" };
+                if (val1 >= 230) return { name: "タフガイ", color: "bg-yellow-500 text-slate-950", comment: "後半のダレが非常に少ない！素晴らしいスタミナコントロールです。" };
+                if (val1 >= 170) return { name: "ランナー", color: "bg-green-500 text-white", comment: "しっかり 30秒走り抜けました！平均スピードもバッチリ。" };
+                return { name: "トレーニング生", color: "bg-slate-600 text-slate-100", comment: "後半スピードが落ちていませんか？キーと画面タップの役割を工夫しましょう。" };
+            } else if (mode === 'rta') {
+                // val1 = クリアタイム
+                if (val1 <= 5.5) return { name: "神速の電撃", color: "bg-red-500 text-white", comment: "神レベルの速さ！十字キーとタップの同時操作を極めた究極のタイムです！" };
+                if (val1 <= 7.5) return { name: "RTAエキスパート", color: "bg-purple-500 text-white", comment: "プロ級の指さばき！リズムを狂わずに叩ききりました。" };
+                if (val1 <= 10.0) return { name: "スピードスター", color: "bg-yellow-500 text-slate-950", comment: "10秒未満！素晴らしいリズム感です。" };
+                if (val1 <= 14.0) return { name: "タイムアタッカー", color: "bg-green-500 text-white", comment: "安定したタイム。10秒の壁を破るのを目指しましょう！" };
+                return { name: "カジュアルタッパー", color: "bg-slate-600 text-slate-100", comment: "慌てず正確にボタンのど真ん中や十字キーを叩くことがタイム更新の秘訣です。" };
+            }
+        }
+
+        // --- 結果モーダル表示 ---
+        function showResult(mode, val1, val2, finalTime) {
+            const opp = state.cpu.list[state.cpu.difficulty];
+            resCpuName.innerText = opp.name;
+
+            // 勝敗判定の準備
+            let isWin = true;
+            let isDraw = false;
+
+            if (state.cpu.isEnabled) {
+                resultCpuRecordRow.classList.remove('hidden');
+                if (mode === '10s' || mode === '30s') {
+                    if (state.count > state.cpuCount) {
+                        isWin = true;
+                    } else if (state.count === state.cpuCount) {
+                        isDraw = true;
+                    } else {
+                        isWin = false;
+                    }
+                } else if (mode === 'rta') {
+                    // RTAは100回に先に達した方が勝ち
+                    if (state.count >= 100 && state.cpuCount < 100) {
+                        isWin = true;
+                    } else if (state.cpuCount >= 100 && state.count < 100) {
+                        isWin = false;
+                    } else {
+                        // ほぼ同時（万一の場合）
+                        isDraw = true;
+                    }
+                }
+            } else {
+                // CPUなし
+                resultCpuRecordRow.classList.add('hidden');
+            }
+
+            // バトル結果ヘッダーの描画
+            if (state.cpu.isEnabled) {
+                resultBattleHeader.classList.remove('hidden');
+                if (isDraw) {
+                    resultBattleBadge.innerText = "DRAW (引き分け)";
+                    resultBattleBadge.className = "inline-block px-4 py-1.5 rounded-full font-black text-sm bg-slate-600 text-white shadow-md animate-pulse";
+                } else if (isWin) {
+                    resultBattleBadge.innerText = "🎉 YOU WIN! 🎉";
+                    resultBattleBadge.className = "inline-block px-4 py-1.5 rounded-full font-black text-sm bg-gradient-to-r from-yellow-400 to-amber-500 text-slate-950 shadow-md shadow-yellow-500/20 animate-bounce";
+                } else {
+                    resultBattleBadge.innerText = "💀 YOU LOSE... 💀";
+                    resultBattleBadge.className = "inline-block px-4 py-1.5 rounded-full font-black text-sm bg-slate-800 text-slate-400 shadow-md";
+                }
+            } else {
+                // CPU無効時はヘッダー非表示
+                resultBattleHeader.classList.add('hidden');
+            }
+
+            // 表示する数字の流し込み
+            if (mode === '10s') {
+                resultModeLbl.innerText = "10-SECONDS SPEED MODE";
+                resValPlayer.innerHTML = `${val1} <span class="text-xs text-slate-400">回</span> (${val2.toFixed(1)} cps)`;
+                resValCpu.innerHTML = `${state.cpuCount} <span class="text-xs text-slate-400">回</span> (${opp.cps.toFixed(1)} cps)`;
+            } else if (mode === '30s') {
+                resultModeLbl.innerText = "30-SECONDS ENDURANCE";
+                resValPlayer.innerHTML = `${val1} <span class="text-xs text-slate-400">回</span> (${val2.toFixed(1)} cps)`;
+                resValCpu.innerHTML = `${state.cpuCount} <span class="text-xs text-slate-400">回</span> (${opp.cps.toFixed(1)} cps)`;
+            } else if (mode === 'rta') {
+                resultModeLbl.innerText = "100-TAPS TIME ATTACK";
+                resValPlayer.innerHTML = `${finalTime.toFixed(2)} <span class="text-xs text-slate-400">秒</span>`;
+                
+                // CPUの予想クリアタイム
+                const cpuRtaTime = 100 / opp.cps;
+                resValCpu.innerHTML = `${cpuRtaTime.toFixed(2)} <span class="text-xs text-slate-400">秒</span>`;
+            }
+
+            // ランクとコメントの決定
+            const rankVal = (mode === 'rta') ? finalTime : val1;
+            const rank = getRank(mode, rankVal, val2);
+            resultRank.innerText = rank.name;
+            resultRank.className = `font-black px-2.5 py-1 rounded-lg text-xs ${rank.color}`;
+
+            if (state.cpu.isEnabled) {
+                resultComment.innerHTML = `<span class="text-rose-400 font-bold block mb-1">💬 ${opp.name}のコメント:</span>「${isWin ? opp.commentWin : opp.commentLose}」`;
+            } else {
+                resultComment.innerHTML = `<span class="text-cyan-400 font-bold block mb-1">💬 認定アドバイス:</span>${rank.comment}`;
+            }
+
+            // モーダルオープン
+            resultModal.classList.remove('hidden');
+            setTimeout(() => {
+                resultModal.classList.add('opacity-100');
+                resultModalContent.classList.remove('scale-95');
+                resultModalContent.classList.add('scale-100');
+            }, 50);
+        }
+
+        function closeModal() {
+            resultModal.classList.remove('opacity-100');
+            resultModalContent.classList.add('scale-95');
+            resultModalContent.classList.remove('scale-100');
+            setTimeout(() => {
+                resultModal.classList.add('hidden');
+                resetBoard();
+            }, 300);
+        }
+
+        modalClose.addEventListener('click', closeModal);
+        modalRetry.addEventListener('click', () => {
+            closeModal();
+            setTimeout(() => {
+                resetBoard();
+            }, 100);
+        });
+
+        // --- スコアのリセット ---
+        btnResetScores.addEventListener('click', () => {
+            const check = confirm("保存されているすべての自己ベストデータを消去しますか？");
+            if (check) {
+                state.best = {
+                    '10s': { score: 0, cps: 0.0 },
+                    '30s': { score: 0, cps: 0.0 },
+                    'rta': { time: 99.99 }
+                };
+                saveScores();
+                showToast("ハイスコアをリセットしました");
+            }
+        });
+    </script>
+</body>
+</html>

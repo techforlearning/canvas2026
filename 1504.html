@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ハピネス・オセロ (Happiness Othello)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for cute rounded style -->
+    <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #fff5f5; /* 優しい薄ピンク */
+            font-family: 'Kosugi Maru', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        /* 盤面のアニメーション対応 */
+        .board-grid {
+            background-color: #a7f3d0; /* 初期値: パステルミント */
+            box-shadow: inset 0 0 16px rgba(16, 185, 129, 0.4);
+            transition: background-color 0.8s ease, box-shadow 0.8s ease;
+        }
+        .board-cell {
+            border: 1.5px solid #6ee7b7; /* 優しいグリーンのグリッド線 */
+            transition: background-color 0.2s, border-color 0.8s ease;
+        }
+        .board-cell:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        /* スイーツみたいなぷっくりした石の立体感 */
+        .disc {
+            transition: transform 0.4s ease-in-out, background-color 0.2s;
+            transform-style: preserve-3d;
+        }
+        /* チョコ風味の黒石 */
+        .disc-black {
+            background: radial-gradient(circle at 35% 35%, #5c3a21 0%, #3d220f 60%, #221105 100%);
+            box-shadow: 0 4px 6px rgba(61, 34, 15, 0.4), 
+                        inset -1.5px -1.5px 3px rgba(0, 0, 0, 0.6), 
+                        inset 1.5px 1.5px 3px rgba(255, 255, 255, 0.25);
+            border: 1px solid #221105;
+        }
+        /* マシュマロ風味の白石 */
+        .disc-white {
+            background: radial-gradient(circle at 35% 35%, #ffffff 0%, #fff0f5 50%, #f3e8ee 100%);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15), 
+                        inset -1.5px -1.5px 3px rgba(200, 180, 190, 0.3), 
+                        inset 1.5px 1.5px 2px rgba(255, 255, 255, 1);
+            border: 1px solid #e2d4dc;
+        }
+        /* ひっくり返るくるっとしたアニメーション */
+        .flip-animate {
+            transform: rotateY(180deg);
+        }
+        /* 置ける場所の可愛いガイド表示 */
+        .valid-move-hint {
+            background-color: rgba(255, 255, 255, 0.4);
+            border: 3px dotted #f43f5e; /* ガイドを親しみやすいピンクの点線に */
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .valid-move-hint:hover {
+            background-color: rgba(255, 255, 255, 0.7);
+            transform: scale(1.1);
+        }
+        /* ふんわり浮き出る影 */
+        .cute-shadow {
+            box-shadow: 0 10px 20px -5px rgba(244, 63, 94, 0.15), 0 8px 16px -8px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between py-4 px-2 text-neutral-800">
+
+    <!-- メインコンテンツ -->
+    <div class="w-full max-w-md flex flex-col items-center flex-grow justify-center">
+        
+        <!-- ヘッダータイトル -->
+        <div class="text-center mb-4">
+            <h1 class="text-3xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-rose-500 flex items-center justify-center gap-1">
+                🍀 ハピネス・オセロ 🌸
+            </h1>
+            <p class="text-xs text-rose-400 font-bold mt-1">パステルカラーのやさしいリバーシ</p>
+        </div>
+
+        <!-- ゲームモード & コントロール -->
+        <div class="w-full bg-white/95 border-2 border-pink-200 rounded-3xl p-3 mb-4 cute-shadow flex flex-wrap justify-between items-center gap-2">
+            <!-- モード切替 -->
+            <div class="flex bg-pink-50 p-1 rounded-2xl border border-pink-100">
+                <button id="mode-vs-cpu" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-rose-400 text-white shadow-sm">
+                    🧸 vs コンピュータ
+                </button>
+                <button id="mode-vs-player" class="px-4 py-2 rounded-xl text-xs font-bold transition-all text-rose-400 hover:text-rose-500">
+                    👭 2人プレイ
+                </button>
+            </div>
+            <!-- リセットボタン -->
+            <button id="btn-restart" class="bg-amber-400 hover:bg-amber-300 active:scale-95 text-neutral-800 text-xs font-bold px-4 py-2 rounded-2xl transition-all shadow-sm">
+                はじめから
+            </button>
+        </div>
+
+        <!-- スコア & ターン表示 -->
+        <div class="w-full grid grid-cols-3 gap-3 mb-4 text-center">
+            <!-- 黒（先手：ココアチョコ） -->
+            <div id="panel-black" class="bg-white/90 border-4 border-rose-400 rounded-3xl p-3 flex flex-col items-center justify-center cute-shadow transition-all">
+                <div class="w-7 h-7 rounded-full disc-black mb-1.5"></div>
+                <span class="text-[10px] text-amber-900 font-bold">チョコ (黒)</span>
+                <span id="score-black" class="text-2xl font-black text-amber-950 mt-1">2</span>
+                <span id="label-black-player" class="text-[9px] text-rose-500 font-bold mt-1">Player 1</span>
+            </div>
+
+            <!-- ステータスメッセージ -->
+            <div class="bg-pink-100/60 border border-pink-200 rounded-3xl p-2 flex flex-col items-center justify-center">
+                <span class="text-[10px] text-rose-400 tracking-wider font-bold">いまの番</span>
+                <div class="flex items-center gap-1 mt-2">
+                    <div id="turn-indicator-disc" class="w-5 h-5 rounded-full disc-black transition-all"></div>
+                    <span id="turn-text" class="text-xs font-bold">チョコの番</span>
+                </div>
+                <span id="status-hint" class="text-[9px] text-rose-500 font-bold mt-2 animate-bounce hidden">かんがえ中...</span>
+            </div>
+
+            <!-- 白（後手：マシュマロ） -->
+            <div id="panel-white" class="bg-white/90 border-4 border-transparent rounded-3xl p-3 flex flex-col items-center justify-center cute-shadow transition-all">
+                <div class="w-7 h-7 rounded-full disc-white mb-1.5"></div>
+                <span class="text-[10px] text-rose-400 font-bold">マシュマロ (白)</span>
+                <span id="score-white" class="text-2xl font-black text-rose-950 mt-1">2</span>
+                <span id="label-white-player" class="text-[9px] text-rose-400 font-bold mt-1">CPU (レベル1)</span>
+            </div>
+        </div>
+
+        <!-- オセロボード本体（マカロンピンクのまあるいフレーム） -->
+        <div class="w-full aspect-square bg-rose-200 p-3 md:p-4 rounded-[2.5rem] shadow-xl border-4 border-rose-300 relative animate-fade-in">
+            <!-- 盤面グリッド（8x8） -->
+            <div id="othello-board" class="w-full h-full board-grid rounded-3xl grid grid-cols-8 grid-rows-8 overflow-hidden relative">
+                <!-- JavaScriptでセルを自動生成 -->
+            </div>
+
+            <!-- 可愛いさくらんぼをイメージした星打ちマーク（定点） -->
+            <div class="absolute w-2.5 h-2.5 bg-rose-400/80 rounded-full" style="top: calc(25% - 5px); left: calc(25% - 5px);"></div>
+            <div class="absolute w-2.5 h-2.5 bg-rose-400/80 rounded-full" style="top: calc(25% - 5px); left: calc(75% - 5px);"></div>
+            <div class="absolute w-2.5 h-2.5 bg-rose-400/80 rounded-full" style="top: calc(75% - 5px); left: calc(25% - 5px);"></div>
+            <div class="absolute w-2.5 h-2.5 bg-rose-400/80 rounded-full" style="top: calc(75% - 5px); left: calc(75% - 5px);"></div>
+        </div>
+
+        <!-- メッセージエリア -->
+        <div class="w-full mt-4 bg-white/80 rounded-2xl p-3 text-center border-2 border-pink-100 cute-shadow">
+            <p id="system-message" class="text-xs text-rose-600 font-bold">ゲームをはじめました。チョコ（黒）が先手です！</p>
+        </div>
+
+    </div>
+
+    <!-- 終了時のポップアップ -->
+    <div id="result-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white border-4 border-pink-300 rounded-[2.5rem] p-6 max-w-xs w-full text-center shadow-2xl transform scale-95 transition-all">
+            <h3 class="text-2xl font-black text-rose-400 mb-2">🎉 たいきょく終了 🐾</h3>
+            <p id="result-winner" class="text-base font-bold text-neutral-700 mb-4">チョコの勝ち！</p>
+            
+            <div class="grid grid-cols-2 gap-2 bg-pink-50 p-3 rounded-3xl mb-6 border border-pink-100">
+                <div class="flex flex-col items-center">
+                    <span class="text-[10px] text-amber-900 font-bold">チョコ</span>
+                    <span id="modal-score-black" class="text-xl font-black text-amber-950">32</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-[10px] text-rose-400 font-bold">マシュマロ</span>
+                    <span id="modal-score-white" class="text-xl font-black text-rose-950">32</span>
+                </div>
+            </div>
+
+            <button id="btn-modal-close" class="w-full bg-gradient-to-r from-pink-400 to-rose-500 hover:from-pink-500 hover:to-rose-600 active:scale-95 text-white font-bold py-3 rounded-2xl shadow-md transition-all text-sm">
+                もういっかい遊ぶ！
+            </button>
+        </div>
+    </div>
+
+    <!-- Web Audio APIを用いた効果音ジェネレータ -->
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'place') {
+                // 優しくコトッと置く音
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(140, now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 0.1);
+                
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'flip') {
+                // 「カタッ」となるようなおもちゃの反転音
+
+                // 1. カッというアタック音 (クリックノイズ風)
+                const clickOsc = audioCtx.createOscillator();
+                const clickGain = audioCtx.createGain();
+                clickOsc.connect(clickGain);
+                clickGain.connect(audioCtx.destination);
+                
+                clickOsc.type = 'sine';
+                clickOsc.frequency.setValueAtTime(600, now);
+                clickOsc.frequency.linearRampToValueAtTime(250, now + 0.03);
+                
+                clickGain.gain.setValueAtTime(0.18, now);
+                clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+                
+                clickOsc.start(now);
+                clickOsc.stop(now + 0.03);
+
+                // 2. タッという少し遅れた跳ね返りボディ音
+                setTimeout(() => {
+                    if (audioCtx.state === 'suspended') return;
+                    const bodyOsc = audioCtx.createOscillator();
+                    const bodyGain = audioCtx.createGain();
+                    bodyOsc.connect(bodyGain);
+                    bodyGain.connect(audioCtx.destination);
+                    
+                    bodyOsc.type = 'triangle';
+                    bodyOsc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                    bodyOsc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.04);
+                    
+                    bodyGain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                    bodyGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+                    
+                    bodyOsc.start(audioCtx.currentTime);
+                    bodyOsc.stop(audioCtx.currentTime + 0.04);
+                }, 15); // 15ms遅らせて「カ・タッ」にする
+
+            } else if (type === 'pass') {
+                // パスの音
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(330, now);
+                osc.frequency.setValueAtTime(294, now + 0.12);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (type === 'win') {
+                // 嬉しいクリア音
+                const melody = [261.63, 329.63, 392.00, 523.25, 659.25]; // ド・ミ・ソ・ド・ミ
+                melody.forEach((freq, idx) => {
+                    const oscM = audioCtx.createOscillator();
+                    const gainM = audioCtx.createGain();
+                    oscM.connect(gainM);
+                    gainM.connect(audioCtx.destination);
+                    oscM.type = 'sine';
+                    oscM.frequency.setValueAtTime(freq, now + idx * 0.08);
+                    gainM.gain.setValueAtTime(0.15, now + idx * 0.08);
+                    gainM.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.3);
+                    oscM.start(now + idx * 0.08);
+                    oscM.stop(now + idx * 0.08 + 0.3);
+                });
+            }
+        }
+    </script>
+
+    <!-- メインゲームロジック -->
+    <script>
+        const BOARD_SIZE = 8;
+        const EMPTY = 0;
+        const BLACK = 1;
+        const WHITE = 2;
+
+        const DIRECTIONS = [
+            [-1, 0], [1, 0], [0, -1], [0, 1],
+            [-1, -1], [-1, 1], [1, -1], [1, 1]
+        ];
+
+        // 🧁 お菓子をイメージしたハッピーなボードカラーパレット
+        const BOARD_COLORS = [
+            { bg: '#a7f3d0', border: '#6ee7b7', shadow: 'rgba(16, 185, 129, 0.4)' }, // 1. パステルミント
+            { bg: '#fecdd3', border: '#fda4af', shadow: 'rgba(244, 63, 94, 0.4)' },  // 2. さくらミルク
+            { bg: '#fef08a', border: '#fde047', shadow: 'rgba(234, 179, 8, 0.3)' },  // 3. レモンシャーベット
+            { bg: '#bfdbfe', border: '#93c5fd', shadow: 'rgba(59, 130, 246, 0.3)' }, // 4. そら色ソーダ
+            { bg: '#ddd6fe', border: '#c4b5fd', shadow: 'rgba(139, 92, 246, 0.3)' }, // 5. ラベンダークリーム
+            { bg: '#fed7aa', border: '#fdba74', shadow: 'rgba(249, 115, 22, 0.3)' }  // 6. アプリコットタルト
+        ];
+        let currentColorIndex = 0;
+
+        let board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(EMPTY));
+        let currentTurn = BLACK; 
+        let isVsCpu = true; 
+        let cpuThinking = false;
+
+        const boardElement = document.getElementById('othello-board');
+        const scoreBlackEl = document.getElementById('score-black');
+        const scoreWhiteEl = document.getElementById('score-white');
+        const turnTextEl = document.getElementById('turn-text');
+        const turnIndicatorDisc = document.getElementById('turn-indicator-disc');
+        const statusHintEl = document.getElementById('status-hint');
+        const systemMessageEl = document.getElementById('system-message');
+        const modeVsCpuBtn = document.getElementById('mode-vs-cpu');
+        const modeVsPlayerBtn = document.getElementById('mode-vs-player');
+        const btnRestart = document.getElementById('btn-restart');
+        const resultModal = document.getElementById('result-modal');
+        const resultWinnerEl = document.getElementById('result-winner');
+        const modalScoreBlackEl = document.getElementById('modal-score-black');
+        const modalScoreWhiteEl = document.getElementById('modal-score-white');
+        const btnModalClose = document.getElementById('btn-modal-close');
+        const panelBlackEl = document.getElementById('panel-black');
+        const panelWhiteEl = document.getElementById('panel-white');
+        const labelBlackPlayer = document.getElementById('label-black-player');
+        const labelWhitePlayer = document.getElementById('label-white-player');
+
+        let cellElements = [];
+
+        function initGame() {
+            board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(EMPTY));
+            
+            board[3][3] = WHITE;
+            board[3][4] = BLACK;
+            board[4][3] = BLACK;
+            board[4][4] = WHITE;
+
+            currentTurn = BLACK;
+            cpuThinking = false;
+            statusHintEl.classList.add('hidden');
+            
+            // ボードの色を最初のパステルミントにリセット
+            currentColorIndex = 0;
+            applyBoardColor(BOARD_COLORS[0]);
+
+            renderBoard();
+            updateScores();
+            updateTurnUI();
+            setSystemMessage("ゲームスタート！あなたの番（チョコ）です。");
+        }
+
+        // ボードの色を変更する関数
+        function updateBoardColor() {
+            // 次の色に進める
+            currentColorIndex = (currentColorIndex + 1) % BOARD_COLORS.length;
+            applyBoardColor(BOARD_COLORS[currentColorIndex]);
+        }
+
+        // 実際に色をスタイルに適用する処理
+        function applyBoardColor(colorObj) {
+            boardElement.style.backgroundColor = colorObj.bg;
+            boardElement.style.boxShadow = `inset 0 0 16px ${colorObj.shadow}`;
+            
+            // 全マスのボーダー色をふんわり変更
+            if (cellElements.length > 0) {
+                for (let r = 0; r < BOARD_SIZE; r++) {
+                    for (let c = 0; c < BOARD_SIZE; c++) {
+                        if (cellElements[r][c]) {
+                            cellElements[r][c].style.borderColor = colorObj.border;
+                        }
+                    }
+                }
+            }
+        }
+
+        function createBoardGrid() {
+            boardElement.innerHTML = '';
+            cellElements = [];
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                cellElements[r] = [];
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'board-cell w-full h-full flex items-center justify-center relative cursor-pointer';
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    
+                    // 現在のボーダーの色を設定
+                    cell.style.borderColor = BOARD_COLORS[currentColorIndex].border;
+                    
+                    cell.addEventListener('click', () => handleCellClick(r, c));
+
+                    boardElement.appendChild(cell);
+                    cellElements[r][c] = cell;
+                }
+            }
+        }
+
+        function renderBoard() {
+            const validMoves = getValidMoves(currentTurn);
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const cell = cellElements[r][c];
+                    const piece = board[r][c];
+                    
+                    cell.innerHTML = '';
+
+                    if (piece === BLACK) {
+                        const disc = document.createElement('div');
+                        disc.className = 'w-5/6 h-5/6 rounded-full disc disc-black';
+                        cell.appendChild(disc);
+                    } else if (piece === WHITE) {
+                        const disc = document.createElement('div');
+                        disc.className = 'w-5/6 h-5/6 rounded-full disc disc-white';
+                        cell.appendChild(disc);
+                    } else if (!cpuThinking && validMoves.some(m => m.r === r && m.c === c)) {
+                        if (!isVsCpu || currentTurn === BLACK) {
+                            const hint = document.createElement('div');
+                            hint.className = 'w-2/5 h-2/5 valid-move-hint';
+                            cell.appendChild(hint);
+                        }
+                    }
+                }
+            }
+        }
+
+        function canPlace(row, col, color) {
+            if (board[row][col] !== EMPTY) return false;
+
+            for (const [dr, dc] of DIRECTIONS) {
+                let r = row + dr;
+                let c = col + dc;
+                let hasOpponentBetween = false;
+
+                while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
+                    const currentCell = board[r][c];
+                    if (currentCell === EMPTY) break;
+                    if (currentCell !== color) {
+                        hasOpponentBetween = true;
+                    } else {
+                        if (hasOpponentBetween) return true;
+                        break;
+                    }
+                    r += dr;
+                    c += dc;
+                }
+            }
+            return false;
+        }
+
+        function placeDisc(row, col, color) {
+            board[row][col] = color;
+            let flippedCells = [];
+
+            for (const [dr, dc] of DIRECTIONS) {
+                let r = row + dr;
+                let c = col + dc;
+                let potentialFlips = [];
+
+                while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
+                    const currentCell = board[r][c];
+                    if (currentCell === EMPTY) break;
+                    if (currentCell !== color) {
+                        potentialFlips.push({ r, c });
+                    } else {
+                        if (potentialFlips.length > 0) {
+                            flippedCells = flippedCells.concat(potentialFlips);
+                        }
+                        break;
+                    }
+                    r += dr;
+                    c += dc;
+                }
+            }
+
+            flippedCells.forEach(cell => {
+                board[cell.r][cell.c] = color;
+            });
+
+            return flippedCells;
+        }
+
+        function getValidMoves(color) {
+            const moves = [];
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (canPlace(r, c, color)) {
+                        moves.push({ r, c });
+                    }
+                }
+            }
+            return moves;
+        }
+
+        function handleCellClick(r, c) {
+            if (cpuThinking) return;
+            if (gameStateIsOver()) return;
+
+            if (isVsCpu && currentTurn === WHITE) return;
+
+            if (canPlace(r, c, currentTurn)) {
+                executeMove(r, c);
+            }
+        }
+
+        function executeMove(r, c) {
+            playSound('place');
+            const flipped = placeDisc(r, c, currentTurn);
+            
+            // 🍭 チョコかマシュマロが置かれるたびに、ボードを次のパステルカラーへチェンジ！
+            updateBoardColor();
+
+            renderBoard();
+            
+            // パタパタと小気味よくひっくり返る演出
+            flipped.forEach((cell, idx) => {
+                setTimeout(() => {
+                    const disc = cellElements[cell.r][cell.c].querySelector('.disc');
+                    if (disc) {
+                        disc.classList.add('flip-animate');
+                        playSound('flip'); // カタッというおもちゃの反転音
+                    }
+                }, idx * 60);
+            });
+
+            const totalDelay = Math.max(150, flipped.length * 60);
+            setTimeout(() => {
+                updateScores();
+                switchTurn();
+            }, totalDelay);
+        }
+
+        function switchTurn() {
+            const nextTurn = currentTurn === BLACK ? WHITE : BLACK;
+            const nextMoves = getValidMoves(nextTurn);
+
+            if (nextMoves.length > 0) {
+                currentTurn = nextTurn;
+                updateTurnUI();
+                renderBoard();
+
+                if (isVsCpu && currentTurn === WHITE) {
+                    triggerCpuMove();
+                }
+            } else {
+                const currentMoves = getValidMoves(currentTurn);
+                if (currentMoves.length > 0) {
+                    playSound('pass');
+                    const passUser = nextTurn === BLACK ? "チョコ" : "マシュマロ";
+                    setSystemMessage(`${passUser}は置く場所がないためパスします。もう一回うってね！`);
+                    renderBoard(); 
+                } else {
+                    endGame();
+                }
+            }
+        }
+
+        function updateTurnUI() {
+            if (currentTurn === BLACK) {
+                turnTextEl.textContent = "チョコの番";
+                turnIndicatorDisc.className = "w-5 h-5 rounded-full disc-black";
+                panelBlackEl.classList.add('border-rose-400');
+                panelBlackEl.classList.remove('border-transparent');
+                panelWhiteEl.classList.add('border-transparent');
+                panelWhiteEl.classList.remove('border-rose-400');
+                if (isVsCpu) {
+                    setSystemMessage("あなたの番（チョコ）だよ。どこに置く？");
+                } else {
+                    setSystemMessage("チョコ（黒）の番です。");
+                }
+            } else {
+                turnTextEl.textContent = "マシュマロの番";
+                turnIndicatorDisc.className = "w-5 h-5 rounded-full disc-white";
+                panelWhiteEl.classList.add('border-rose-400');
+                panelWhiteEl.classList.remove('border-transparent');
+                panelBlackEl.classList.add('border-transparent');
+                panelBlackEl.classList.remove('border-rose-400');
+                if (isVsCpu) {
+                    setSystemMessage("コンピュータが考え中...");
+                } else {
+                    setSystemMessage("マシュマロ（白）の番です。");
+                }
+            }
+        }
+
+        function updateScores() {
+            let blackCount = 0;
+            let whiteCount = 0;
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (board[r][c] === BLACK) blackCount++;
+                    if (board[r][c] === WHITE) whiteCount++;
+                }
+            }
+
+            scoreBlackEl.textContent = blackCount;
+            scoreWhiteEl.textContent = whiteCount;
+        }
+
+        function setSystemMessage(msg) {
+            systemMessageEl.textContent = msg;
+        }
+
+        // ゲームが終わったか調べる
+        function gameStateIsOver() {
+            return getValidMoves(BLACK).length === 0 && getValidMoves(WHITE).length === 0;
+        }
+
+        function endGame() {
+            playSound('win');
+            let blackCount = 0;
+            let whiteCount = 0;
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (board[r][c] === BLACK) blackCount++;
+                    if (board[r][c] === WHITE) whiteCount++;
+                }
+            }
+
+            let winnerText = "";
+            if (blackCount > whiteCount) {
+                winnerText = isVsCpu ? "あなたの勝ち！🎉" : "チョコの勝ち！🎉";
+            } else if (whiteCount > blackCount) {
+                winnerText = isVsCpu ? "コンピュータの勝ち！🤖" : "マシュマロの勝ち！🎉";
+            } else {
+                winnerText = "引き分け！🤝";
+            }
+
+            resultWinnerEl.textContent = winnerText;
+            modalScoreBlackEl.textContent = blackCount;
+            modalScoreWhiteEl.textContent = whiteCount;
+            
+            setSystemMessage("対局終了！お疲れ様でした。");
+
+            setTimeout(() => {
+                resultModal.classList.remove('hidden');
+            }, 600);
+        }
+
+        function triggerCpuMove() {
+            cpuThinking = true;
+            statusHintEl.classList.remove('hidden');
+            renderBoard();
+
+            const thinkDelay = 1000 + Math.random() * 500;
+
+            setTimeout(() => {
+                if (currentTurn !== WHITE || !isVsCpu) return;
+
+                const validMoves = getValidMoves(WHITE);
+                if (validMoves.length > 0) {
+                    const bestMove = selectBestMove(validMoves);
+                    cpuThinking = false;
+                    statusHintEl.classList.add('hidden');
+                    executeMove(bestMove.r, bestMove.c);
+                } else {
+                    cpuThinking = false;
+                    statusHintEl.classList.add('hidden');
+                    switchTurn();
+                }
+            }, thinkDelay);
+        }
+
+        const POSITION_VALUES = [
+            [100, -20,  10,   5,   5,  10, -20, 100],
+            [-20, -50,  -2,  -2,  -2,  -2, -50, -20],
+            [ 10,  -2,   5,   1,   1,   5,  -2,  10],
+            [  5,  -2,   1,   0,   0,   1,  -2,   5],
+            [  5,  -2,   1,   0,   0,   1,  -2,   5],
+            [ 10,  -2,   5,   1,   1,   5,  -2,  10],
+            [-20, -50,  -2,  -2,  -2,  -2, -50, -20],
+            [100, -20,  10,   5,   5,  10, -20, 100]
+        ];
+
+        function selectBestMove(validMoves) {
+            let bestScore = -Infinity;
+            let bestMoves = [];
+
+            validMoves.forEach(move => {
+                const posValue = POSITION_VALUES[move.r][move.c];
+                const flipCount = countFlipsSimulated(move.r, move.c, WHITE);
+                const totalScore = posValue + (flipCount * 2);
+
+                if (totalScore > bestScore) {
+                    bestScore = totalScore;
+                    bestMoves = [move];
+                } else if (totalScore === bestScore) {
+                    bestMoves.push(move);
+                }
+            });
+
+            return bestMoves[Math.floor(Math.random() * bestMoves.length)];
+        }
+
+        function countFlipsSimulated(row, col, color) {
+            let totalFlips = 0;
+            for (const [dr, dc] of DIRECTIONS) {
+                let r = row + dr;
+                let c = col + dc;
+                let pathCount = 0;
+
+                while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
+                    const currentCell = board[r][c];
+                    if (currentCell === EMPTY) break;
+                    if (currentCell !== color) {
+                        pathCount++;
+                    } else {
+                        if (pathCount > 0) {
+                            totalFlips += pathCount;
+                        }
+                        break;
+                    }
+                    r += dr;
+                    c += dc;
+                }
+            }
+            return totalFlips;
+        }
+
+        function setVsCpuMode(cpuOn) {
+            isVsCpu = cpuOn;
+            if (isVsCpu) {
+                modeVsCpuBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all bg-rose-400 text-white shadow-sm";
+                modeVsPlayerBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all text-rose-400 hover:text-rose-500";
+                labelBlackPlayer.textContent = "あなた (チョコ)";
+                labelWhitePlayer.textContent = "CPU (マシュマロ)";
+                panelWhiteEl.classList.remove('bg-white/90');
+                panelWhiteEl.classList.add('bg-white/60');
+            } else {
+                modeVsPlayerBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all bg-rose-400 text-white shadow-sm";
+                modeVsCpuBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all text-rose-400 hover:text-rose-500";
+                labelBlackPlayer.textContent = "Player 1 (チョコ)";
+                labelWhitePlayer.textContent = "Player 2 (マシュマロ)";
+                panelWhiteEl.classList.add('bg-white/90');
+                panelWhiteEl.classList.remove('bg-white/60');
+            }
+            initGame();
+        }
+
+        modeVsCpuBtn.addEventListener('click', () => setVsCpuMode(true));
+        modeVsPlayerBtn.addEventListener('click', () => setVsCpuMode(false));
+        btnRestart.addEventListener('click', () => initGame());
+        btnModalClose.addEventListener('click', () => {
+            resultModal.classList.add('hidden');
+            initGame();
+        });
+
+        window.addEventListener('load', () => {
+            createBoardGrid();
+            initGame();
+        });
+    </script>
+</body>
+</html>

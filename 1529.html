@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>うさぎちゃんのおうちカフェからの脱出 | 3 Rooms Escape</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;950&display=swap');
+        
+        body {
+            font-family: 'Zen Maru Gothic', sans-serif;
+            background-color: #FAF5EF; /* ふんわり韓国風のアイボリー */
+        }
+        /* ふわふわ浮かぶかわいいアニメーション */
+        @keyframes gentle-float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        .floating {
+            animation: gentle-float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="text-stone-700 min-h-screen flex flex-col select-none overflow-x-hidden">
+
+    <!-- ヘッダー -->
+    <header class="bg-amber-100 text-stone-700 border-b-4 border-amber-200 p-4 shadow-sm">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl floating">☕</span>
+                <div>
+                    <h1 class="text-lg font-black tracking-wider">うさぎちゃんのおうちカフェからの脱出</h1>
+                    <p class="text-[10px] text-stone-500">3つの部屋を行き来して、お茶会のひみつを解き明かそう！</p>
+                </div>
+            </div>
+            <button onclick="showHelp()" class="bg-white hover:bg-stone-50 text-stone-700 border border-stone-300 px-3 py-1.5 rounded-full text-xs font-bold transition shadow-sm">
+                あそびかた
+            </button>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col md:flex-row gap-6 items-stretch">
+        
+        <!-- 左側：メインゲーム画面と部屋切り替え -->
+        <div class="flex-1 flex flex-col gap-4">
+            
+            <!-- 部屋のタブ切り替えボタン -->
+            <div class="grid grid-cols-3 gap-2 bg-stone-200/50 p-1.5 rounded-2xl border border-stone-300/50">
+                <button id="btn-room-cafe" onclick="switchRoom('cafe')" class="py-2 px-3 rounded-xl font-bold text-xs transition duration-300 bg-amber-200 text-stone-800 shadow-sm flex items-center justify-center gap-1">
+                    ☕ カフェ
+                </button>
+                <button id="btn-room-kitchen" onclick="switchRoom('kitchen')" class="py-2 px-3 rounded-xl font-bold text-xs transition duration-300 hover:bg-white/60 text-stone-500 flex items-center justify-center gap-1">
+                    🍳 キッチン
+                </button>
+                <button id="btn-room-terrace" onclick="switchRoom('terrace')" class="py-2 px-3 rounded-xl font-bold text-xs transition duration-300 hover:bg-white/60 text-stone-500 flex items-center justify-center gap-1">
+                    🌿 テラス
+                </button>
+            </div>
+
+            <!-- ヘルパー妖精のアドバイスボード -->
+            <div class="bg-white border border-amber-200 rounded-2xl p-3 flex items-center gap-3 shadow-xs">
+                <span class="text-3xl floating" id="fairy-emoji">🧚‍♀️</span>
+                <div class="text-xs">
+                    <span class="font-bold text-amber-800" id="fairy-name">妖精モカ：</span>
+                    <span id="fairy-text" class="text-stone-600">おうちカフェのお部屋だよ！ソファの上の「クッション」を調べてみてね！</span>
+                </div>
+            </div>
+
+            <!-- 部屋のビューポート -->
+            <div class="aspect-[4/3] bg-[#FCF8F2] rounded-3xl border-8 border-amber-200 shadow-xl relative overflow-hidden p-6 bg-[radial-gradient(#EADCC9_1px,transparent_1px)] [background-size:20px_20px] flex items-center justify-center">
+                
+                <!-- ==================== 【カフェルーム】 ==================== -->
+                <div id="room-view-cafe" class="w-full h-full absolute inset-0 p-6 block">
+                    <!-- 奥のトビラ -->
+                    <div id="room-door" onclick="tapDoor()" class="absolute bottom-12 left-1/2 -translate-x-1/2 w-32 h-52 bg-[#F5EFEB] border-4 border-[#EADFCF] rounded-t-full shadow-lg cursor-pointer hover:brightness-105 active:scale-95 transition flex flex-col items-center justify-center">
+                        <div class="w-10 h-10 rounded-full border-2 border-stone-300 bg-white flex items-center justify-center text-sm text-yellow-500 mb-6" id="door-lock-icon">
+                            🔒
+                        </div>
+                        <!-- どんぐりの飾り用の溝 -->
+                        <div id="door-acorn-slot" class="w-6 h-6 rounded-full border border-dashed border-amber-400 bg-amber-50 flex items-center justify-center text-[10px] text-amber-400 font-bold mb-2">🌰？</div>
+                        <span class="text-[10px] text-stone-400 font-bold">カフェトビラ</span>
+                    </div>
+
+                    <!-- うさぎちゃん（トビラをとおせんぼ） -->
+                    <div id="rabbit-char" onclick="tapRabbit()" class="absolute bottom-10 left-1/2 -translate-x-1/2 translate-y-4 cursor-pointer z-10 transition-all duration-700 flex flex-col items-center">
+                        <span id="rabbit-visual" class="text-7xl floating">🐰</span>
+                        <div id="rabbit-bubble" class="bg-white text-stone-700 text-[10px] font-bold px-3 py-1 rounded-full border border-amber-200 shadow-md -mt-1 relative">
+                            お腹がすいて動けないよ…いちごワッフルが食べたいな
+                        </div>
+                    </div>
+
+                    <!-- ガチャガチャ風トイボックス -->
+                    <div id="toy-capsule" onclick="tapCapsuleMachine()" class="absolute bottom-12 left-6 w-24 h-32 bg-[#F6EDE2] border-4 border-[#E2D4C3] rounded-2xl shadow-md cursor-pointer hover:scale-105 active:scale-95 transition flex flex-col items-center justify-start p-1.5">
+                        <div class="text-[10px] font-bold text-stone-500 mb-1 border-b border-stone-300 w-full text-center">トイガチャ</div>
+                        <span id="coin-slot-visual" class="text-[8px] text-amber-500 font-bold mt-2">🪙 コインを入れてね</span>
+                        <span id="capsule-emoji" class="text-4xl mt-3">🎡</span>
+                    </div>
+
+                    <!-- フリルクッション -->
+                    <div id="cushion-area" onclick="tapCushion()" class="absolute bottom-12 right-6 w-24 h-16 cursor-pointer flex flex-col items-center justify-end">
+                        <!-- クッションの下に隠れている銀のカギ -->
+                        <div id="hidden-key-silver" class="text-3xl absolute bottom-2 hidden animate-bounce">🔑</div>
+                        <span id="cushion-emoji" class="text-6xl transition-transform duration-300">🛋️</span>
+                        <span id="cushion-label" class="text-[9px] text-stone-400 font-bold">クッション</span>
+                    </div>
+
+                    <!-- ウェーブミラー -->
+                    <div onclick="tapMirror()" class="absolute top-6 left-12 w-16 h-24 bg-white/40 border-4 border-white rounded-t-full overflow-hidden shadow-md cursor-pointer flex flex-col items-center justify-center">
+                        <span class="text-xl">🪞</span>
+                        <span class="text-[7px] font-bold text-stone-500">ウェーブミラー</span>
+                    </div>
+                </div>
+
+                <!-- ==================== 【キッチンエリア】 ==================== -->
+                <div id="room-view-kitchen" class="w-full h-full absolute inset-0 p-6 hidden">
+                    <!-- レトロなオーブン -->
+                    <div id="kitchen-oven" onclick="tapOven()" class="absolute bottom-12 left-6 w-28 h-36 bg-[#EFECE6] border-4 border-stone-300 rounded-xl shadow-md cursor-pointer hover:brightness-105 transition flex flex-col items-center justify-start p-2">
+                        <div class="text-[10px] font-bold text-stone-500 border-b border-stone-300 w-full text-center mb-1">オーブン</div>
+                        <div id="oven-fire" class="text-2xl mt-2">🔘</div>
+                        <span id="oven-status-text" class="text-[8px] text-stone-400 mt-auto">火がついていない</span>
+                    </div>
+
+                    <!-- カラーダイヤル付き冷蔵庫 -->
+                    <div id="kitchen-fridge" onclick="tapFridge()" class="absolute bottom-12 right-6 w-28 h-48 bg-white border-4 border-stone-200 rounded-2xl shadow-md cursor-pointer hover:brightness-105 transition flex flex-col items-center justify-start p-2">
+                        <div class="text-[10px] font-bold text-stone-500 border-b border-stone-200 w-full text-center mb-1">冷蔵庫</div>
+                        <!-- 冷蔵庫の3色ロック表示 -->
+                        <div class="flex gap-1 mt-2">
+                            <div id="fridge-indicator-r" class="w-4 h-4 bg-red-400 rounded-full flex items-center justify-center text-[8px] text-white font-bold">0</div>
+                            <div id="fridge-indicator-y" class="w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center text-[8px] text-stone-700 font-bold">0</div>
+                            <div id="fridge-indicator-p" class="w-4 h-4 bg-purple-400 rounded-full flex items-center justify-center text-[8px] text-white font-bold">0</div>
+                        </div>
+                        <span id="fridge-emoji" class="text-4xl mt-6">🧊</span>
+                    </div>
+
+                    <!-- カギのかかった調理棚 -->
+                    <div id="kitchen-cabinet" onclick="tapKitchenCabinet()" class="absolute bottom-12 left-40 w-24 h-24 bg-[#EADFCE] border-2 border-[#D9CEBC] rounded-lg shadow-sm cursor-pointer hover:scale-105 transition flex flex-col items-center justify-center">
+                        <span id="kitchen-cabinet-emoji" class="text-3xl">🗄️</span>
+                        <span class="text-[8px] font-bold text-stone-500 mt-1" id="kitchen-cabinet-label">カギのかかった棚</span>
+                    </div>
+                </div>
+
+                <!-- ==================== 【テラスガーデン】 ==================== -->
+                <div id="room-view-terrace" class="w-full h-full absolute inset-0 p-6 hidden">
+                    <!-- チューリップのプランター -->
+                    <div id="terrace-planter" onclick="tapPlanter()" class="absolute bottom-12 left-1/2 -translate-x-1/2 w-48 h-24 bg-[#E2D4C3] border-4 border-amber-900/20 rounded-xl shadow-md cursor-pointer hover:scale-102 transition flex flex-col items-center justify-end p-2">
+                        <!-- ここにお花（チューリップ）が動的に咲きます -->
+                        <div id="tulip-group" class="flex justify-center gap-1 -mb-1 w-full z-10 h-10">
+                            <!-- JSでチューリップを表示 -->
+                        </div>
+                        <div class="w-full bg-[#A28F7E] h-4 rounded-b-md flex items-center justify-center text-[8px] text-[#F3EBE0] font-black">つちのプランター</div>
+                    </div>
+
+                    <!-- ドリンクポスター -->
+                    <div onclick="tapPoster()" class="absolute top-6 left-12 cursor-pointer hover:scale-105 transition bg-white p-2 rounded-lg shadow border-2 border-stone-200 text-center w-28">
+                        <div class="text-[8px] font-bold text-stone-400 mb-1">STROW MENU</div>
+                        <div class="flex justify-center gap-2 text-[10px] font-bold text-stone-500">
+                            <span class="text-red-400">🔴x4</span>
+                            <span class="text-yellow-400">🟡x2</span>
+                            <span class="text-purple-400">🟣x3</span>
+                        </div>
+                    </div>
+
+                    <!-- かわいい置時計 -->
+                    <div onclick="tapClock()" class="absolute top-8 right-16 cursor-pointer hover:scale-110 transition text-4xl">
+                        🕰️
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 右側：アイテムスロット ＆ テキストログ -->
+        <div class="w-full md:w-80 flex flex-col gap-4">
+            <!-- アイテム欄 -->
+            <div class="bg-white p-4 rounded-3xl border-2 border-amber-100 shadow-sm flex flex-col">
+                <h2 class="text-xs font-bold text-stone-500 mb-3 flex items-center gap-1 uppercase tracking-wider">
+                    <i class="fa-solid fa-bag-shopping"></i> もっているもの (タップしてえらぶ)
+                </h2>
+                <div class="grid grid-cols-4 gap-3" id="inventory-grid">
+                    <!-- 動的に生成されます -->
+                </div>
+                <div id="item-description" class="mt-2.5 p-2 bg-[#FAF5EF] rounded-xl text-xs text-stone-500 text-center border border-amber-100 min-h-[56px] flex items-center justify-center">
+                    アイテムをタップしてオレンジ色にしてから、お部屋の使いたいところをタップしてね！
+                </div>
+            </div>
+
+            <!-- メッセージログ -->
+            <div class="bg-white p-4 rounded-3xl border-2 border-amber-100 shadow-sm flex-1 flex flex-col min-h-[150px] md:min-h-[220px]">
+                <h2 class="text-xs font-bold text-stone-500 mb-2 flex items-center gap-1 uppercase tracking-wider">
+                    <i class="fa-solid fa-comment-dots"></i> お部屋のようす
+                </h2>
+                <div id="game-log" class="flex-1 bg-[#FAF5EF] rounded-xl p-3 text-xs overflow-y-auto space-y-1 text-stone-600 max-h-[180px] md:max-h-none border border-amber-100">
+                    <div>うさぎちゃんのおうちカフェに閉じ込められちゃった！</div>
+                    <div class="text-amber-700 font-bold">3つのお部屋をまわって、だつしゅつのカギをみつけよう。</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 冷蔵庫のダイヤルポップアップ -->
+    <div id="popup-fridge" class="fixed inset-0 bg-black/60 flex items-center justify-center z-40 p-4 hidden">
+        <div class="bg-[#FCF8F2] p-6 rounded-3xl border-4 border-amber-200 max-w-xs w-full text-center space-y-4 shadow-2xl">
+            <h3 class="font-bold text-stone-700 text-sm">🧊 冷蔵庫のカラーロック</h3>
+            <p class="text-xs text-stone-500">お庭に咲いた「チューリップの数」をあわせよう！</p>
+            
+            <div class="flex justify-center gap-4 py-2">
+                <!-- 赤ダイヤル -->
+                <div class="flex flex-col items-center">
+                    <span class="w-6 h-6 bg-red-400 rounded-full mb-1 flex items-center justify-center text-xs">🌷</span>
+                    <button onclick="spinDial('r', 1)" class="text-lg text-stone-400 hover:text-stone-600 p-1"><i class="fa-solid fa-chevron-up"></i></button>
+                    <span id="dial-r" class="text-2xl font-bold font-mono bg-white px-3 py-1 rounded border border-stone-200 text-stone-800">0</span>
+                    <button onclick="spinDial('r', -1)" class="text-lg text-stone-400 hover:text-stone-600 p-1"><i class="fa-solid fa-chevron-down"></i></button>
+                </div>
+                <!-- 黄ダイヤル -->
+                <div class="flex flex-col items-center">
+                    <span class="w-6 h-6 bg-yellow-400 rounded-full mb-1 flex items-center justify-center text-xs">💛</span>
+                    <button onclick="spinDial('y', 1)" class="text-lg text-stone-400 hover:text-stone-600 p-1"><i class="fa-solid fa-chevron-up"></i></button>
+                    <span id="dial-y" class="text-2xl font-bold font-mono bg-white px-3 py-1 rounded border border-stone-200 text-stone-800">0</span>
+                    <button onclick="spinDial('y', -1)" class="text-lg text-stone-400 hover:text-stone-600 p-1"><i class="fa-solid fa-chevron-down"></i></button>
+                </div>
+                <!-- 紫ダイヤル -->
+                <div class="flex flex-col items-center">
+                    <span class="w-6 h-6 bg-purple-400 rounded-full mb-1 flex items-center justify-center text-xs">💜</span>
+                    <button onclick="spinDial('p', 1)" class="text-lg text-stone-400 hover:text-stone-600 p-1"><i class="fa-solid fa-chevron-up"></i></button>
+                    <span id="dial-p" class="text-2xl font-bold font-mono bg-white px-3 py-1 rounded border border-stone-200 text-stone-800">0</span>
+                    <button onclick="spinDial('p', -1)" class="text-lg text-stone-400 hover:text-stone-600 p-1"><i class="fa-solid fa-chevron-down"></i></button>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="closeFridgePopup()" class="flex-1 bg-stone-200 hover:bg-stone-300 py-2 rounded-xl text-xs font-bold text-stone-700">やめる</button>
+                <button onclick="checkFridgeLock()" class="flex-1 bg-amber-200 hover:bg-amber-300 text-stone-700 py-2 rounded-xl text-xs font-bold shadow-md">あける</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 脱出確認モーダル -->
+    <div id="modal-confirm-escape" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white max-w-sm w-full rounded-3xl border-4 border-amber-200 p-6 space-y-4 text-center shadow-2xl">
+            <h3 class="text-lg font-bold text-stone-600">🚪 カフェトビラ</h3>
+            <p class="text-sm text-stone-500 font-bold">
+                「ゴールドキー」がぴったり合いそうです！トビラを開けて外に出ますか？
+            </p>
+            <div class="flex gap-3 pt-2">
+                <button onclick="hideEscapeConfirm()" class="flex-1 bg-stone-200 hover:bg-stone-300 text-stone-600 font-bold py-2 px-4 rounded-xl text-xs transition">
+                    もう少し残る
+                </button>
+                <button onclick="gameClear()" class="flex-1 bg-amber-200 hover:bg-amber-350 text-stone-700 font-bold py-2 px-4 rounded-xl text-xs transition shadow-md">
+                    外にでる！
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ゲームクリア画面 -->
+    <div id="modal-clear" class="fixed inset-0 bg-stone-900/90 flex items-center justify-center z-50 p-4 hidden">
+        <div class="max-w-sm w-full bg-[#FAF5EF] border-8 border-amber-200 rounded-3xl p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
+            <div class="text-6xl floating">✨🎉🐰🎉✨</div>
+            <h2 class="text-2xl font-black text-stone-700">おうちカフェ脱出成功！</h2>
+            <p class="text-sm text-stone-600 leading-relaxed font-bold">
+                3つの部屋を探検して、オーブンで特製ワッフルを焼き上げ、<br>
+                どんぐりの飾りをはめて無事にだつしゅつ完了です！<br>
+                素晴らしいひらめきでした！あそんでくれてありがとう！
+            </p>
+            
+            <button onclick="location.reload()" class="w-full bg-amber-200 hover:bg-amber-300 text-stone-700 font-black py-3 rounded-2xl shadow-lg transition active:scale-95">
+                もういちどあそぶ
+            </button>
+        </div>
+    </div>
+
+    <!-- あそびかた説明画面 -->
+    <div id="modal-help" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white max-w-sm w-full rounded-2xl border-4 border-amber-200 p-6 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b border-stone-200 pb-2">
+                <h3 class="text-base font-bold text-stone-600 flex items-center gap-1">
+                    <i class="fa-regular fa-circle-question"></i> あそびかた
+                </h3>
+                <button onclick="hideHelp()" class="text-stone-400 hover:text-stone-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="text-xs text-stone-600 space-y-3 leading-relaxed">
+                <p class="font-bold text-stone-700">🧭 お部屋を移動しよう</p>
+                <p>上の「カフェ」「キッチン」「テラス」ボタンをタップすると、別のお部屋へ移動することができます。</p>
+
+                <p class="font-bold text-stone-700">🔍 お部屋を調べよう</p>
+                <p>気になる家具や小物をタップすると、調べたり、アイテムを拾ったりできるよ。</p>
+
+                <p class="font-bold text-stone-700">🎒 アイテムを使おう</p>
+                <p>拾ったアイテムは下の枠に入ります。タップしてオレンジ色にした状態で、お部屋の使いたい場所をタップして使ってみよう！</p>
+            </div>
+            <button onclick="hideHelp()" class="w-full bg-amber-200 hover:bg-amber-300 py-2.5 rounded-xl text-xs font-bold text-stone-700 transition shadow-md">
+                わかった！
+            </button>
+        </div>
+    </div>
+
+    <footer class="bg-amber-50 text-stone-400 text-[10px] py-3 text-center border-t border-amber-100 mt-auto">
+        &copy; 2026 うさぎのおへや - おうちカフェ脱出ゲーム
+    </footer>
+
+    <!-- JavaScriptゲームエンジン -->
+    <script>
+        // --- 効果音システム (Web Audio API) ---
+        let audioCtx = null;
+        
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            initAudio();
+            try {
+                if (!audioCtx) return;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+
+                if (type === 'click') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(500, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
+                    gain.gain.setValueAtTime(0.04, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'get') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523, now); // C5
+                    osc.frequency.setValueAtTime(659, now + 0.08); // E5
+                    osc.frequency.setValueAtTime(784, now + 0.16); // G5
+                    gain.gain.setValueAtTime(0.06, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'solve') {
+                    osc.type = 'sine';
+                    const notes = [523, 587, 659, 698, 784];
+                    notes.forEach((freq, idx) => {
+                        const noteOsc = audioCtx.createOscillator();
+                        const noteGain = audioCtx.createGain();
+                        noteOsc.connect(noteGain);
+                        noteGain.connect(audioCtx.destination);
+                        noteOsc.type = 'sine';
+                        noteOsc.frequency.setValueAtTime(freq, now + idx * 0.06);
+                        noteGain.gain.setValueAtTime(0.04, now + idx * 0.06);
+                        noteGain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.15);
+                        noteOsc.start(now + idx * 0.06);
+                        noteOsc.stop(now + idx * 0.06 + 0.15);
+                    });
+                } else if (type === 'eat') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.setValueAtTime(250, now + 0.08);
+                    osc.frequency.setValueAtTime(150, now + 0.16);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'fire') {
+                    // シュッという火がつく音
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.linearRampToValueAtTime(150, now + 0.35);
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'locked') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(120, now);
+                    gain.gain.setValueAtTime(0.06, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                }
+            } catch (e) {
+                // エラー回避
+            }
+        }
+
+        // --- ゲームの状態管理 ---
+        const ITEM_DATA = {
+            silver_key: { name: "銀のカギ", emoji: "🔑", desc: "小さな銀のカギ。キッチンの棚を開けられそう！" },
+            shovel: { name: "ちいさなシャベル", emoji: "🥄", desc: "お庭のプランターの土を掘るためのシャベル。" },
+            match_box: { name: "マッチばこ", emoji: "📦", desc: "オーブンの火をつけるためのマッチ箱。" },
+            tulip_seed: { name: "チューリップの球根", emoji: "🧅", desc: "テラスのプランターに植えて育てる球根。" },
+            star_coin: { name: "お星さまのコイン", emoji: "🪙", desc: "ゴールドに輝くお星さまのコイン。ガチャガチャに使える。" },
+            watering_can_full: { name: "お水のジョーロ", emoji: "💦", desc: "お水が入ったジョーロ。チューリップにお水をあげよう！" },
+            waffle_bowl: { name: "ワッフル生地", emoji: "🥣", desc: "いちごワッフルを作るための生地が入ったボウル。" },
+            strawberry_waffle: { name: "いちごワッフル", emoji: "🧇", desc: "焼きたてサクサクのワッフルに、いちごと生クリームをたっぷり乗せたおやつ。" },
+            acorn_deco: { name: "どんぐりの飾り", emoji: "🌰", desc: "トビラの横にはめ込む、どんぐりの形をした木彫りの飾り。" },
+            key_gold: { name: "ゴールドキー", emoji: "🗝️", desc: "お花マークがついたきれいなゴールドの鍵。" }
+        };
+
+        let state = {
+            currentRoom: 'cafe', // 'cafe', 'kitchen', 'terrace'
+            inventory: [], // 持っているアイテム
+            selectedItem: null, // 選択中のアイテムID
+            
+            cushionLifted: false, // クッションがめくれたか
+            hasSilverKey: false, // 銀のカギを拾ったか
+
+            kitchenCabinetOpened: false, // キッチンの棚が開いたか
+            hasShovel: false, // シャベルを拾ったか
+            hasMatchBox: false, // マッチ箱を拾ったか
+
+            ovenFired: false, // オーブンに火をつけたか
+            hasWateringCan: false, // お水のジョーロを拾ったか
+
+            planterDug: false, // プランターを掘り起こしたか
+            hasSeed: false, // 球根を拾ったか
+            hasStarCoin: false, // 星のコインを拾ったか
+
+            seedPlanted: false, // 球根をプランターに植えたか
+            planterWatered: false, // 球根にお水をあげたか
+
+            fridgeOpened: false, // 冷蔵庫が開いたか
+            hasWaffleBowl: false, // ワッフル生地を拾ったか
+
+            waffleBaked: false, // ワッフルをオーブンで焼いたか
+            hasWaffle: false, // ワッフルを拾ったか
+
+            capsuleOpened: false, // ガチャガチャを回したか
+            hasAcornDeco: false, // どんぐりの飾りを拾ったか
+
+            acornPlaced: false, // どんぐりの飾りをトビラにはめたか
+            rabbitHappy: false, // うさぎちゃんを元気にしたか
+            hasKeyGold: false, // 金のカギを貰ったか
+
+            // 冷蔵庫の暗号キー (赤、黄、紫)
+            // 正解は、テラスのポスターに描かれたストローの数：赤4つ、黄2つ、紫3つ = 「4 2 3」
+            dialCodes: { r: 0, y: 0, p: 0 }
+        };
+
+        // --- 画面の表示更新 ---
+        function updateUI() {
+            // インベントリの描画
+            const invGrid = document.getElementById("inventory-grid");
+            invGrid.innerHTML = "";
+            for (let i = 0; i < 8; i++) {
+                const slot = document.createElement("div");
+                slot.className = "aspect-square bg-stone-50 rounded-2xl border-2 border-stone-200 flex items-center justify-center text-3xl relative cursor-pointer hover:bg-stone-100 transition shadow-sm";
+                
+                const itemKey = state.inventory[i];
+                if (itemKey) {
+                    const item = ITEM_DATA[itemKey];
+                    slot.innerHTML = item.emoji;
+                    slot.title = item.name;
+
+                    // 選択中
+                    if (state.selectedItem === itemKey) {
+                        slot.classList.add("border-orange-400", "bg-orange-50", "scale-95");
+                        slot.classList.remove("border-stone-200");
+                    }
+                    slot.onclick = () => selectItem(itemKey);
+                }
+                invGrid.appendChild(slot);
+            }
+
+            // --- ギミックの見た目更新 ---
+
+            // 【カフェルーム】
+            // 1. クッション
+            const cushionEmoji = document.getElementById("cushion-emoji");
+            const hiddenKeySilver = document.getElementById("hidden-key-silver");
+            if (state.cushionLifted) {
+                cushionEmoji.style.transform = "translateY(-15px) rotate(-12deg)";
+                if (!state.hasSilverKey) {
+                    hiddenKeySilver.classList.remove("hidden");
+                } else {
+                    hiddenKeySilver.classList.add("hidden");
+                }
+            }
+
+            // 2. ガチャガチャ
+            const coinSlotVisual = document.getElementById("coin-slot-visual");
+            const capsuleEmoji = document.getElementById("capsule-emoji");
+            if (state.capsuleOpened) {
+                coinSlotVisual.innerText = "🪙 おしまい！";
+                coinSlotVisual.className = "text-[8px] text-stone-400 font-bold mt-2";
+                if (state.hasAcornDeco) {
+                    capsuleEmoji.innerText = "🎡"; // 空っぽ
+                } else {
+                    capsuleEmoji.innerText = "🌰"; // どんぐりがある
+                }
+            } else {
+                coinSlotVisual.innerText = "🪙 コインを入れてね";
+                coinSlotVisual.className = "text-[8px] text-amber-500 font-bold mt-2";
+                capsuleEmoji.innerText = "🎡";
+            }
+
+            // 3. どんぐりはめ口
+            const doorAcornSlot = document.getElementById("door-acorn-slot");
+            if (state.acornPlaced) {
+                doorAcornSlot.innerText = "🌰";
+                doorAcornSlot.classList.remove("border-dashed", "text-amber-400");
+                doorAcornSlot.classList.add("border-solid", "border-amber-800", "bg-amber-100");
+            } else {
+                doorAcornSlot.innerText = "🌰？";
+                doorAcornSlot.classList.add("border-dashed", "text-amber-400");
+            }
+
+            // 4. うさぎちゃん
+            const rabbitBubble = document.getElementById("rabbit-bubble");
+            const rabbitChar = document.getElementById("rabbit-char");
+            const rabbitVisual = document.getElementById("rabbit-visual");
+            if (state.rabbitHappy) {
+                rabbitVisual.innerText = "🐰✨";
+                rabbitBubble.innerText = "おいしい！マシッソヨ！";
+                rabbitBubble.className = "bg-green-50 text-stone-600 text-[10px] font-bold px-3 py-1 rounded-full border border-green-200 shadow-md -mt-1";
+                rabbitChar.className = "absolute bottom-10 left-1/3 -translate-x-1/2 translate-y-4 cursor-pointer z-10 transition-all duration-700 flex flex-col items-center";
+            }
+
+            // 【キッチン】
+            // 5. 調理棚
+            const kitCabEmoji = document.getElementById("kitchen-cabinet-emoji");
+            const kitCabLabel = document.getElementById("kitchen-cabinet-label");
+            if (state.kitchenCabinetOpened) {
+                kitCabLabel.innerText = "あいた棚";
+                if (state.hasShovel && state.hasMatchBox) {
+                    kitCabEmoji.innerText = "📦"; // 空
+                } else {
+                    kitCabEmoji.innerText = "📦"; // ツールが見える
+                }
+            } else {
+                kitCabEmoji.innerText = "🗄️";
+                kitCabLabel.innerText = "カギのかかった棚";
+            }
+
+            // 6. オーブン
+            const ovenFire = document.getElementById("oven-fire");
+            const ovenStatusText = document.getElementById("oven-status-text");
+            if (state.ovenFired) {
+                if (state.waffleBaked) {
+                    if (state.hasWaffle) {
+                        ovenFire.innerText = "🔥"; // 通常の火
+                        ovenStatusText.innerText = "あたたかいオーブン";
+                    } else {
+                        ovenFire.innerText = "🧇"; // ワッフルが中にある
+                        ovenStatusText.innerText = "ワッフルが焼きあがった！";
+                    }
+                } else {
+                    if (state.hasWateringCan) {
+                        ovenFire.innerText = "🔥";
+                        ovenStatusText.innerText = "あたたかいオーブン";
+                    } else {
+                        ovenFire.innerText = "💦"; // お水の入ったジョーロが見える
+                        ovenStatusText.innerText = "奥に何かみえる！";
+                    }
+                }
+            } else {
+                ovenFire.innerText = "🔘";
+                ovenStatusText.innerText = "火がついていない";
+            }
+
+            // 7. 冷蔵庫
+            const fridgeIndicatorR = document.getElementById("fridge-indicator-r");
+            const fridgeIndicatorY = document.getElementById("fridge-indicator-y");
+            const fridgeIndicatorP = document.getElementById("fridge-indicator-p");
+            fridgeIndicatorR.innerText = state.dialCodes.r;
+            fridgeIndicatorY.innerText = state.dialCodes.y;
+            fridgeIndicatorP.innerText = state.dialCodes.p;
+
+            const fridgeEmoji = document.getElementById("fridge-emoji");
+            if (state.fridgeOpened) {
+                if (state.hasWaffleBowl) {
+                    fridgeEmoji.innerText = "🥛"; // あいて空っぽ
+                } else {
+                    fridgeEmoji.innerText = "🥣"; // ボウルが入っている
+                }
+            } else {
+                fridgeEmoji.innerText = "🧊";
+            }
+
+            // 【テラス】
+            // 8. プランター
+            const tulipGroup = document.getElementById("tulip-group");
+            if (state.planterWatered) {
+                // 赤4、黄2、紫3のチューリップを表示
+                tulipGroup.innerHTML = `
+                    <span class="text-xl animate-bounce" style="animation-delay: 0s;">🌷</span>
+                    <span class="text-xl animate-bounce" style="animation-delay: 0.1s;">🌷</span>
+                    <span class="text-xl animate-bounce" style="animation-delay: 0.2s;">🌷</span>
+                    <span class="text-xl animate-bounce" style="animation-delay: 0.3s;">🌷</span>
+                    <span class="text-xl animate-bounce" style="animation-delay: 0.4s;">💛</span>
+                    <span class="text-xl animate-bounce" style="animation-delay: 0.5s;">💛</span>
+                    <span class="text-xl animate-bounce" style="animation-delay: 0.6s;">💜</span>
+                    <span class="text-xl animate-bounce" style="animation-delay: 0.7s;">💜</span>
+                    <span class="text-xl animate-bounce" style="animation-delay: 0.8s;">💜</span>
+                `;
+            } else if (state.seedPlanted) {
+                tulipGroup.innerHTML = "<span class='text-xs text-stone-400 font-bold'>🌱 タネが植えてある</span>";
+            } else if (state.planterDug) {
+                tulipGroup.innerHTML = "<span class='text-xs text-stone-400 font-bold'>🕳️ ほぐしたつち</span>";
+            } else {
+                tulipGroup.innerHTML = "";
+            }
+        }
+
+        // アドバイス＆ログの更新
+        function setFairyAdvice(text, room = state.currentRoom) {
+            const adviceEl = document.getElementById("fairy-text");
+            const nameEl = document.getElementById("fairy-name");
+            const emojiEl = document.getElementById("fairy-emoji");
+
+            if (room === 'cafe') {
+                nameEl.innerText = "妖精モカ：";
+                emojiEl.innerText = "🧚‍♀️";
+            } else if (room === 'kitchen') {
+                nameEl.innerText = "妖精ショコラ：";
+                emojiEl.innerText = "🧚‍♂️";
+            } else if (room === 'terrace') {
+                nameEl.innerText = "妖精シトロン：";
+                emojiEl.innerText = "🧚";
+            }
+            adviceEl.innerText = text;
+        }
+
+        // ログエリアに追記
+        function addLog(message) {
+            const logBox = document.getElementById("game-log");
+            const newLog = document.createElement("div");
+            newLog.innerHTML = `<span class='text-stone-400'>[ようす]</span> ${message}`;
+            logBox.appendChild(newLog);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        // --- 部屋切り替え ---
+        function switchRoom(roomName) {
+            playSound('click');
+            state.currentRoom = roomName;
+
+            // ボタンのスタイル更新
+            document.querySelectorAll("[id^='btn-room-']").forEach(btn => {
+                btn.className = "py-2 px-3 rounded-xl font-bold text-xs transition duration-300 hover:bg-white/60 text-stone-500 flex items-center justify-center gap-1";
+            });
+            const activeBtn = document.getElementById(`btn-room-${roomName}`);
+            activeBtn.className = "py-2 px-3 rounded-xl font-bold text-xs transition duration-300 bg-amber-200 text-stone-800 shadow-sm flex items-center justify-center gap-1";
+
+            // ビューポートの切り替え
+            document.querySelectorAll("[id^='room-view-']").forEach(view => {
+                view.classList.add("hidden");
+                view.classList.remove("block");
+            });
+            document.getElementById(`room-view-${roomName}`).classList.remove("hidden");
+            document.getElementById(`room-view-${roomName}`).classList.add("block");
+
+            // 妖精のアドバイスを部屋に合わせて更新
+            if (roomName === 'cafe') {
+                if (state.rabbitHappy) {
+                    setFairyAdvice("カギと飾りをあわせたら、トビラを開けて脱出できるよ！");
+                } else if (state.hasWaffle) {
+                    setFairyAdvice("うさぎちゃんに焼き上がったワッフルをあげてね！");
+                } else {
+                    setFairyAdvice("カフェのお部屋だよ！ソファのクッションの裏側には、なにかあるかな？");
+                }
+            } else if (roomName === 'kitchen') {
+                if (state.waffleBaked) {
+                    setFairyAdvice("いいにおい！オーブンから焼きたてワッフルを回収しよう！");
+                } else if (state.hasWaffleBowl) {
+                    setFairyAdvice("手に入れたワッフル生地を、温まったオーブンに入れて焼いてみよう！");
+                } else if (state.ovenFired) {
+                    setFairyAdvice("オーブンがあたたまったね！お庭の花の数を数えて、冷蔵庫の鍵を開けよう！");
+                } else {
+                    setFairyAdvice("キッチンだよ！おうちカフェのおやつを作るための道具がいろいろあるね。");
+                }
+            } else if (roomName === 'terrace') {
+                if (state.planterWatered) {
+                    setFairyAdvice("チューリップがカラフルに咲いたね！数をメモしておこう！");
+                } else if (state.seedPlanted) {
+                    setFairyAdvice("タネを植えたね！今度は「お水のジョーロ」でお水をたっぷりあげよう！");
+                } else if (state.planterDug) {
+                    setFairyAdvice("シャベルで土をほぐしたね！球根を植えられるようになったよ！");
+                } else {
+                    setFairyAdvice("テラスガーデンだよ！土のプランターやお水のポスターが貼ってあるね。");
+                }
+            }
+
+            updateUI();
+        }
+
+        // --- アイテム選択処理 ---
+        function selectItem(itemKey) {
+            playSound('click');
+            if (state.selectedItem === itemKey) {
+                state.selectedItem = null;
+                document.getElementById("item-description").innerText = "アイテムをタップして選んだ状態で、お部屋の使いたいところをタップしてね！";
+            } else {
+                state.selectedItem = itemKey;
+                const item = ITEM_DATA[itemKey];
+                document.getElementById("item-description").innerText = `【${item.name}】: ${item.desc}`;
+            }
+            updateUI();
+        }
+
+        // インベントリへの追加
+        function addToInventory(itemKey) {
+            if (!state.inventory.includes(itemKey)) {
+                state.inventory.push(itemKey);
+                playSound('get');
+                addLog(`<span class='text-amber-800 font-bold'>「${ITEM_DATA[itemKey].name}」を手に入れた！</span>`);
+                updateUI();
+            }
+        }
+
+        // インベントリから削除
+        function removeFromInventory(itemKey) {
+            const idx = state.inventory.indexOf(itemKey);
+            if (idx > -1) {
+                state.inventory.splice(idx, 1);
+                if (state.selectedItem === itemKey) {
+                    state.selectedItem = null;
+                }
+                updateUI();
+            }
+        }
+
+        // ==================== 【カフェルームのタップイベント】 ====================
+
+        // クッション
+        function tapCushion() {
+            if (!state.cushionLifted) {
+                playSound('click');
+                state.cushionLifted = true;
+                addLog("ソファの上のクッションをめくった。");
+                setFairyAdvice("あっ！クッションの下から「銀のカギ」が見つかったよ！タップして拾おう！");
+                updateUI();
+                return;
+            }
+
+            if (!state.hasSilverKey) {
+                state.hasSilverKey = true;
+                addToInventory('silver_key');
+                setFairyAdvice("カギをゲットしたね！キッチンの棚に使えそうだね。別の部屋も探索してみよう！");
+            } else {
+                playSound('click');
+                setFairyAdvice("クッションがめくれているよ。");
+            }
+        }
+
+        // トイガチャ
+        function tapCapsuleMachine() {
+            if (state.capsuleOpened) {
+                if (!state.hasAcornDeco) {
+                    state.hasAcornDeco = true;
+                    addToInventory('acorn_deco');
+                    setFairyAdvice("トイガチャから「どんぐりの飾り🌰」を手に入れた！扉に何か関係があるのかな？");
+                    updateUI();
+                } else {
+                    playSound('click');
+                    setFairyAdvice("トイガチャの中はもうからっぽだよ。");
+                }
+                return;
+            }
+
+            if (state.selectedItem === 'star_coin') {
+                playSound('solve');
+                state.capsuleOpened = true;
+                removeFromInventory('star_coin');
+                setFairyAdvice("星のコインをいれてガチャを回したよ！カプセルから「どんぐりの飾り🌰」が出てきた！タップして拾おう！");
+                updateUI();
+            } else {
+                playSound('locked');
+                setFairyAdvice("ガチャガチャを回すには「お星さまのコイン」が必要みたいだよ。どこかでお星さまを見つけないとね。");
+            }
+        }
+
+        // カフェトビラ
+        function tapDoor() {
+            // どんぐりをはめて、ゴールドキーを使ったかチェック
+            if (state.acornPlaced) {
+                if (state.selectedItem === 'key_gold') {
+                    playSound('click');
+                    showEscapeConfirm();
+                } else {
+                    playSound('locked');
+                    setFairyAdvice("飾りははまったね！あとはうさぎちゃんから貰った「ゴールドキー」で開けられるよ！");
+                }
+                return;
+            }
+
+            // どんぐりをはめる
+            if (state.selectedItem === 'acorn_deco') {
+                playSound('solve');
+                state.acornPlaced = true;
+                removeFromInventory('acorn_deco');
+                setFairyAdvice("どんぐりの飾りを扉の横にはめ込んだよ！これでトビラを開ける準備が整ったね！");
+                addLog("扉の横のくぼみに「どんぐりの飾り」をはめた。");
+                updateUI();
+            } else {
+                playSound('locked');
+                setFairyAdvice("トビラの横にどんぐりの形のくぼみがあるね。なにかパーツをはめる必要があるみたい。うさぎちゃんもとおせんぼしているよ。");
+            }
+        }
+
+        // うさぎちゃん
+        function tapRabbit() {
+            if (state.rabbitHappy) {
+                if (!state.hasKeyGold) {
+                    state.hasKeyGold = true;
+                    addToInventory('key_gold');
+                    setFairyAdvice("「ゴールドキー🗝️」を受け取ったよ！トビラをあけて外に出よう！");
+                } else {
+                    playSound('click');
+                    setFairyAdvice("うさぎちゃんはワッフルを食べて大満足しているよ！");
+                }
+                updateUI();
+                return;
+            }
+
+            if (state.selectedItem === 'strawberry_waffle') {
+                playSound('eat');
+                state.rabbitHappy = true;
+                removeFromInventory('strawberry_waffle');
+                addLog("うさぎちゃんに「いちごワッフル」をプレゼントした！");
+                
+                setTimeout(() => {
+                    playSound('solve');
+                    state.hasKeyGold = true;
+                    addToInventory('key_gold');
+                    setFairyAdvice("うさぎちゃん「サクサクでとってもマシッソヨ！お礼に隠していたゴールドの鍵をあげるね！」とよけてくれたよ！");
+                    document.getElementById("door-lock-icon").innerText = "🔓";
+                    updateUI();
+                }, 1000);
+            } else {
+                playSound('click');
+                setFairyAdvice("うさぎちゃんはお腹がペコペコで動けないみたい。大好きな「いちごたっぷりのサクサクワッフル」を作ってあげよう！");
+            }
+        }
+
+        // ミラー
+        function tapMirror() {
+            playSound('click');
+            setFairyAdvice("お部屋がオシャレに映るウェーブミラー。自分の姿が綺麗にみえるね！");
+        }
+
+
+        // ==================== 【キッチンエリアのタップイベント】 ====================
+
+        // カギのかかった棚
+        function tapKitchenCabinet() {
+            if (state.kitchenCabinetOpened) {
+                if (!state.hasShovel || !state.hasMatchBox) {
+                    state.hasShovel = true;
+                    state.hasMatchBox = true;
+                    addToInventory('shovel');
+                    addToInventory('match_box');
+                    setFairyAdvice("棚から「ちいさなシャベル🥄」と「マッチばこ📦」を手に入れた！");
+                    updateUI();
+                } else {
+                    playSound('click');
+                    setFairyAdvice("棚の中は空っぽだよ。");
+                }
+                return;
+            }
+
+            if (state.selectedItem === 'silver_key') {
+                playSound('solve');
+                state.kitchenCabinetOpened = true;
+                removeFromInventory('silver_key');
+                addLog("キッチンの棚のカギを「銀のカギ」で開けた。");
+                setFairyAdvice("ガチャッ！棚が開いて「ちいさなシャベル🥄」と「マッチばこ📦」が入っていたよ！タップして拾おう！");
+                updateUI();
+            } else {
+                playSound('locked');
+                setFairyAdvice("調理棚の引き出しには銀色の鍵穴がついているね。どこかにカギはなかったかな？");
+            }
+        }
+
+        // オーブン
+        function tapOven() {
+            // 火がついていないとき
+            if (!state.ovenFired) {
+                if (state.selectedItem === 'match_box') {
+                    playSound('fire');
+                    state.ovenFired = true;
+                    removeFromInventory('match_box');
+                    addLog("オーブンにマッチで火をつけた。");
+                    setFairyAdvice("パッとオーブンに火がついたよ！中が温まり始めたみたい。あっ、奥に何か落ちているね！");
+                } else {
+                    playSound('click');
+                    setFairyAdvice("レトロなガスオーブン。おやつを焼くには、まずは火をつけないとね。マッチがあれば火をつけられそう！");
+                }
+                updateUI();
+                return;
+            }
+
+            // 火がついているとき、ジョーロをまだ拾っていない
+            if (!state.hasWateringCan) {
+                state.hasWateringCan = true;
+                addToInventory('watering_can_full');
+                setFairyAdvice("オーブンの熱であたたまっていた「お水の入ったジョーロ💦」を手に入れたよ！お庭でお花を育てられるね！");
+                updateUI();
+                return;
+            }
+
+            // ワッフル生地を焼く
+            if (!state.waffleBaked) {
+                if (state.selectedItem === 'waffle_bowl') {
+                    playSound('fire');
+                    state.waffleBaked = true;
+                    removeFromInventory('waffle_bowl');
+                    addLog("オーブンにワッフル生地を入れた。");
+                    setFairyAdvice("ワッフルをオーブンにいれたよ！いい匂いがしてきたね！もう一度オーブンをタップして取り出そう。");
+                } else {
+                    playSound('click');
+                    setFairyAdvice("ガスオーブンがポカポカ温まっているよ。おやつの「ワッフル生地」をいれたらサクサクに焼けそうだね！");
+                }
+                updateUI();
+                return;
+            }
+
+            // ワッフルの回収
+            if (!state.hasWaffle) {
+                state.hasWaffle = true;
+                addToInventory('strawberry_waffle');
+                setFairyAdvice("焼きたてサクサクの「いちごワッフル🧇」が焼き上がったよ！うさぎちゃんに届けてあげよう！");
+                updateUI();
+            } else {
+                playSound('click');
+                setFairyAdvice("オーブンの火は心地よく燃えているよ。");
+            }
+        }
+
+        // 冷蔵庫
+        function tapFridge() {
+            if (state.fridgeOpened) {
+                if (!state.hasWaffleBowl) {
+                    state.hasWaffleBowl = true;
+                    addToInventory('waffle_bowl');
+                    setFairyAdvice("冷蔵庫から冷たい「ワッフル生地🥣」を手に入れたよ！オーブンで美味しく焼いてみよう！");
+                    updateUI();
+                } else {
+                    playSound('click');
+                    setFairyAdvice("冷蔵庫の中は冷たくて気持ちいいね。");
+                }
+                return;
+            }
+
+            // ダイヤルロックポップアップを開く
+            playSound('click');
+            document.getElementById("popup-fridge").classList.remove("hidden");
+            document.getElementById("dial-r").innerText = state.dialCodes.r;
+            document.getElementById("dial-y").innerText = state.dialCodes.y;
+            document.getElementById("dial-p").innerText = state.dialCodes.p;
+        }
+
+        // 冷蔵庫のダイヤルをまわす
+        function spinDial(color, amount) {
+            playSound('click');
+            state.dialCodes[color] = (state.dialCodes[color] + amount + 10) % 10;
+            document.getElementById(`dial-${color}`).innerText = state.dialCodes[color];
+        }
+
+        function closeFridgePopup() {
+            playSound('click');
+            document.getElementById("popup-fridge").classList.add("hidden");
+        }
+
+        function checkFridgeLock() {
+            // テラスのポスターヒント：赤=4, 黄=2, 紫=3
+            if (state.dialCodes.r === 4 && state.dialCodes.y === 2 && state.dialCodes.p === 3) {
+                playSound('solve');
+                state.fridgeOpened = true;
+                closeFridgePopup();
+                setFairyAdvice("カチッ！冷蔵庫の鍵が開いて、なかに美味しそうな「ワッフル生地🥣」が入っていたよ！タップして拾おう！");
+                updateUI();
+            } else {
+                playSound('locked');
+                setFairyAdvice("ダイヤルがちがうみたい。お庭（テラス）で咲いた【赤・黄・紫】のチューリップの数をあわせよう！");
+            }
+        }
+
+
+        // ==================== 【テラスガーデンのタップイベント】 ====================
+
+        // プランター
+        function tapPlanter() {
+            // 土をまだほぐしていない
+            if (!state.planterDug) {
+                if (state.selectedItem === 'shovel') {
+                    playSound('solve');
+                    state.planterDug = true;
+                    removeFromInventory('shovel');
+                    addLog("シャベルでプランターの硬い土をほぐした。");
+                    setFairyAdvice("シャベルで土を掘り起こしたら、土の中から「チューリップの球根🧅」と「お星さまのコイン🪙」が出てきたよ！自動的に手に入ったよ！");
+                    
+                    // 自動で球根とコインをゲット
+                    addToInventory('tulip_seed');
+                    addToInventory('star_coin');
+                    updateUI();
+                } else {
+                    playSound('click');
+                    setFairyAdvice("プランターの土がカチカチにかたまっているね。「シャベル」を使えば土をほぐして何か見つかるかも？");
+                }
+                return;
+            }
+
+            // タネを植えていない
+            if (!state.seedPlanted) {
+                if (state.selectedItem === 'tulip_seed') {
+                    playSound('solve');
+                    state.seedPlanted = true;
+                    removeFromInventory('tulip_seed');
+                    addLog("プランターに球根を植えた。");
+                    setFairyAdvice("土の中にチューリップの球根をそっと植えたよ。今度はお水をあげよう！");
+                } else {
+                    playSound('click');
+                    setFairyAdvice("土はふかふかになっているよ。「チューリップの球根」をここに植えよう！");
+                }
+                updateUI();
+                return;
+            }
+
+            // お水をあげる
+            if (!state.planterWatered) {
+                if (state.selectedItem === 'watering_can_full') {
+                    playSound('water');
+                    state.planterWatered = true;
+                    removeFromInventory('watering_can_full');
+                    addLog("プランターにお水をたっぷりあげた。");
+                    setFairyAdvice("お水をあげたら、赤（🌷）、黄（💛）、紫（💜）のカラフルなチューリップが咲いたよ！花の数を数えて、キッチンの冷蔵庫を開けてみよう！");
+                } else {
+                    playSound('click');
+                    setFairyAdvice("球根が植えてあるよ！「お水の入ったジョーロ」でお水をたっぷりかけてあげよう！");
+                }
+                updateUI();
+                return;
+            }
+
+            // 花が咲いたあと
+            playSound('click');
+            setFairyAdvice("チューリップが元気に咲いているね！赤🌷が4つ、黄💛が2つ、紫💜が3つ咲いているよ！");
+        }
+
+        // ポスター
+        function tapPoster() {
+            playSound('click');
+            setFairyAdvice("カラフルなストローの数が描かれているよ。赤🔴=4本、黄🟡=2本、青(紫)🟣=3本だね。これがヒントなのかな？");
+        }
+
+        // 置時計
+        function tapClock() {
+            playSound('click');
+            setFairyAdvice("レトロな置時計。針が3時をさしているよ。おやつの時間にぴったりだね！");
+        }
+
+
+        // --- モーダル制御 ---
+        function showEscapeConfirm() {
+            document.getElementById("modal-confirm-escape").classList.remove("hidden");
+        }
+
+        function hideEscapeConfirm() {
+            document.getElementById("modal-confirm-escape").classList.add("hidden");
+        }
+
+        function gameClear() {
+            playSound('solve');
+            document.getElementById("modal-confirm-escape").classList.add("hidden");
+            document.getElementById("modal-clear").classList.remove("hidden");
+        }
+
+        function showHelp() {
+            playSound('click');
+            document.getElementById("modal-help").classList.remove("hidden");
+        }
+
+        function hideHelp() {
+            playSound('click');
+            document.getElementById("modal-help").classList.add("hidden");
+        }
+
+        // ゲーム初期ロード
+        window.onload = function() {
+            updateUI();
+        }
+    </script>
+</body>
+</html>

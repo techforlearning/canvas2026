@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>彼岸ノ唄 - 1960s Japanese 2D Fantasy Action Game</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for retro Japanese look -->
+    <link href="https://fonts.googleapis.com/css2?family=Sawarabi+Mincho&family=Yuji+Syuku&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sawarabi Mincho', 'Yuji Syuku', serif;
+            background-color: #0c0a09;
+            color: #f5f5f4;
+            user-select: none;
+            overflow: hidden;
+        }
+        /* CRT scanline effect for vintage feel (Very soft and warm) */
+        .crt::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(255, 240, 220, 0) 50%, rgba(0, 0, 0, 0.08) 50%), linear-gradient(90deg, rgba(255, 150, 0, 0.01), rgba(0, 255, 100, 0.005), rgba(0, 100, 255, 0.01));
+            aspect-ratio: unset;
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+            z-index: 99;
+        }
+        /* Nostalgic Vignette */
+        .vignette {
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+        }
+        /* Twilight Magic Glow */
+        @keyframes twilight-fade {
+            0% { opacity: 0.15; }
+            50% { opacity: 0.35; }
+            100% { opacity: 0.15; }
+        }
+        .pulse-twilight {
+            animation: twilight-fade 6s infinite ease-in-out;
+        }
+        /* Realistic warm light ray overlay */
+        .flashlight-overlay {
+            background: radial-gradient(
+                circle 130px at var(--x, 50%) var(--y, 50%),
+                rgba(254, 243, 199, 0.12) 0%,
+                rgba(251, 191, 36, 0.04) 40%,
+                rgba(12, 10, 9, 0.94) 75%,
+                rgba(6, 5, 4, 0.99) 100%
+            );
+        }
+        .flashlight-overlay-off {
+            background: rgba(6, 5, 4, 0.99);
+        }
+        /* Elegant Rotational Star Style */
+        @keyframes rotate-crystal {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .star-item {
+            cursor: pointer;
+            filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.95));
+            transition: transform 0.15s;
+        }
+        .star-item svg {
+            animation: rotate-crystal 10s infinite linear;
+        }
+        .star-item:hover {
+            transform: scale(1.2);
+        }
+        /* Sleepy Cloud floating animation */
+        @keyframes float-cloud {
+            0%, 100% { transform: translate(0px, 0px); }
+            50% { transform: translate(15px, -10px); }
+        }
+        .sleepy-cloud {
+            animation: float-cloud 4s infinite ease-in-out;
+            filter: drop-shadow(0 0 8px rgba(196, 181, 253, 0.5));
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen relative flex items-center justify-center crt bg-stone-950 overflow-hidden select-none">
+
+    <!-- Sound Indicator -->
+    <div id="sound-indicator" class="absolute top-4 left-4 z-50 flex items-center space-x-2 bg-black/85 border border-amber-900/40 px-3 py-1.5 rounded-lg text-xs text-amber-200">
+        <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+        <span id="ambient-text">音響：無効（画面クリックで琴オルゴールを有効化）</span>
+    </div>
+
+    <!-- MAIN GAME CONTAINER -->
+    <div id="game-container" class="relative w-full max-w-4xl aspect-[4/3] bg-stone-950 border-4 border-stone-900 rounded-lg overflow-hidden shadow-2xl flex flex-col justify-between">
+        
+        <!-- ================= START SCREEN ================= -->
+        <div id="screen-start" class="absolute inset-0 z-40 bg-stone-950 flex flex-col items-center justify-between p-6 overflow-y-auto bg-gradient-to-b from-stone-950 via-amber-950/20 to-stone-950 scrollbar-none">
+            
+            <!-- Title -->
+            <div class="text-center mt-4 space-y-2">
+                <p class="text-xs md:text-sm tracking-[0.4em] text-amber-400 font-semibold">昭和三十九年・黄金色にきらめく帰り道</p>
+                <h1 class="text-4xl md:text-5xl font-extrabold tracking-[0.2em] text-amber-500 font-serif drop-shadow-[0_4px_6px_rgba(0,0,0,0.9)]">彼岸ノ唄</h1>
+                <p class="text-[10px] text-stone-500 tracking-wider">Higan no Uta - 2D Autumn Evening Fantasy</p>
+            </div>
+
+            <!-- ================= GOAL & PLAY GUIDE ================= -->
+            <div class="w-full max-w-2xl bg-black/60 border border-amber-900/60 rounded-xl p-5 my-4 text-left space-y-4 shadow-inner">
+                <h2 class="text-sm font-bold text-amber-400 border-b border-amber-900/40 pb-2 flex items-center space-x-2">
+                    <svg viewBox="0 0 24 24" class="w-5 h-5 text-amber-400"><path fill="currentColor" d="M12,2 Q12,12 2,12 Q12,12 12,22 Q12,12 22,12 Q12,12 12,2"/></svg>
+                    <span>おうちへ帰るための「夕光の結晶」とあそびかた</span>
+                </h2>
+                
+                <!-- Steps Layout -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-stone-300">
+                    <!-- Step 1 -->
+                    <div class="bg-stone-900/80 p-3 rounded-lg border border-amber-900/20 space-y-1.5">
+                        <div class="flex items-center space-x-2 text-amber-400 font-bold">
+                            <span class="bg-amber-600 text-black w-4 h-4 rounded-full flex items-center justify-center text-[10px]">一</span>
+                            <span>懐中電灯で照らして探す</span>
+                        </div>
+                        <p class="text-[11px] leading-relaxed text-stone-400">
+                            画面に触れると手元の<span class="text-amber-400 font-semibold">懐中電灯</span>が灯ります。暗い部屋を照らして調べましょう。
+                        </p>
+                    </div>
+                    <!-- Step 2 -->
+                    <div class="bg-stone-900/80 p-3 rounded-lg border border-amber-900/20 space-y-1.5">
+                        <div class="flex items-center space-x-2 text-amber-400 font-bold">
+                            <span class="bg-amber-600 text-black w-4 h-4 rounded-full flex items-center justify-center text-[10px]">二</span>
+                            <span>「ねむたい雲」を避ける</span>
+                        </div>
+                        <p class="text-[11px] leading-relaxed text-stone-400">
+                            ふわふわ動く<span class="text-purple-300 font-semibold">「ねむたい雲」</span>を懐中電灯で照らすと眠気がアップ！当たらないように避けて星を集めます。
+                        </p>
+                    </div>
+                    <!-- Step 3 -->
+                    <div class="bg-stone-900/80 p-3 rounded-lg border border-amber-900/20 space-y-1.5">
+                        <div class="flex items-center space-x-2 text-amber-400 font-bold">
+                            <span class="bg-amber-600 text-black w-4 h-4 rounded-full flex items-center justify-center text-[10px]">三</span>
+                            <span>鳥居の鎖を優しく解く</span>
+                        </div>
+                        <p class="text-[11px] leading-relaxed text-stone-400">
+                            結晶を<span class="text-amber-400 font-bold">15個</span>集めて道具を使い、蔵を開け、石灯籠に火を灯して鳥居の鎖を消し去るとゴールです！
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Start Button Area -->
+            <div class="mb-4 space-y-3">
+                <button id="btn-start" class="px-12 py-3 bg-amber-900/80 hover:bg-amber-800 border border-amber-500/60 rounded-xl text-amber-100 tracking-[0.3em] font-semibold text-lg transition duration-300 hover:shadow-[0_0_25px_rgba(245,158,11,0.6)] transform hover:scale-105 active:scale-95">
+                    冒険をはじめる
+                </button>
+                <p class="text-[10px] text-stone-500">
+                    ※ 怖いおばけや脅かし要素、ゲームオーバーのペナルティは一切ありません。
+                </p>
+            </div>
+        </div>
+
+        <!-- ================= MAIN GAME UI ================= -->
+        <!-- Scene Viewport (Upper 75%) -->
+        <div id="game-viewport" class="relative w-full flex-grow bg-stone-950 overflow-hidden vignette cursor-none">
+            
+            <!-- Beautiful Golden Twilight Overlay -->
+            <div id="otherworld-overlay" class="absolute inset-0 bg-amber-500/5 mix-blend-color-dodge z-20 pointer-events-none pulse-twilight"></div>
+            
+            <!-- Soft Magical Flashlight Mask (Warm lantern light) -->
+            <div id="flashlight-mask" class="absolute inset-0 z-20 pointer-events-none flashlight-overlay-off transition-opacity duration-300"></div>
+
+            <!-- ================= INTERACTIVE 2D SCENES ================= -->
+
+            <!-- Room 1: 2D Tatami Room (奥の間) -->
+            <div id="room_tatami" class="absolute inset-0 room-scene flex items-center justify-center">
+                <svg viewBox="0 0 400 300" class="w-full h-full object-cover">
+                    <!-- 2D Wall & Wooden floor border -->
+                    <rect x="0" y="0" width="400" height="230" fill="#2d1a15" />
+                    <!-- Tatami Mats (Flat 2D Front View) -->
+                    <rect x="0" y="230" width="400" height="70" fill="#4a3029" />
+                    <line x1="0" y1="230" x2="400" y2="230" stroke="#1d0a06" stroke-width="3" />
+                    <!-- Tatami border lines -->
+                    <line x1="100" y1="230" x2="100" y2="300" stroke="#100201" stroke-width="1.5" />
+                    <line x1="200" y1="230" x2="200" y2="300" stroke="#100201" stroke-width="1.5" />
+                    <line x1="300" y1="230" x2="300" y2="300" stroke="#100201" stroke-width="1.5" />
+                    
+                    <!-- Retro TV (2D Side View) -->
+                    <g class="interactive-object cursor-pointer" onclick="inspectObject('retro_tv')">
+                        <rect x="40" y="150" width="60" height="80" fill="#4d2205" stroke="#1a0b05" stroke-width="2.5" rx="2" />
+                        <rect x="45" y="158" width="42" height="40" fill="#111" rx="1" />
+                        <rect id="tv-screen-static" x="47" y="160" width="38" height="36" fill="#f59e0b" class="opacity-25" />
+                        <!-- Golden knobs -->
+                        <circle cx="90" cy="165" r="2.5" fill="#d97706" />
+                        <circle cx="90" cy="175" r="2.5" fill="#d97706" />
+                        <!-- Speaker lines -->
+                        <line x1="45" y1="210" x2="95" y2="210" stroke="#1e0a00" stroke-width="1.5" />
+                        <line x1="45" y1="215" x2="95" y2="215" stroke="#1e0a00" stroke-width="1.5" />
+                    </g>
+
+                    <!-- Low Table & Black Phone (2D Front-on) -->
+                    <g>
+                        <!-- Table Base -->
+                        <rect x="140" y="195" width="120" height="15" fill="#3e2723" stroke="#1d0a06" stroke-width="1.5" rx="1" />
+                        <rect x="150" y="210" width="12" height="20" fill="#1d0a06" />
+                        <rect x="238" y="210" width="12" height="20" fill="#1d0a06" />
+                    </g>
+
+                    <!-- Vintage Telephone -->
+                    <g class="interactive-object cursor-pointer" onclick="inspectObject('rotary_phone')">
+                        <path d="M 185,195 C 185,188 215,188 215,195 Z" fill="#18181b" />
+                        <rect x="192" y="195" width="16" height="6" fill="#18181b" rx="1" />
+                        <circle cx="200" cy="191" r="4.5" fill="#fafafa" stroke="#444" stroke-width="1" />
+                        <path d="M 182,189 Q 200,183 218,189" stroke="#18181b" stroke-width="3" fill="none" stroke-linecap="round" />
+                    </g>
+
+                    <!-- Sliding Door Left (Shoji) -->
+                    <g class="interactive-object cursor-pointer" onclick="inspectObject('fusuma_left')">
+                        <rect x="270" y="50" width="60" height="180" fill="#f5f5f4" stroke="#2e1405" stroke-width="3" />
+                        <!-- Shoji lattice grid -->
+                        <line x1="270" y1="95" x2="330" y2="95" stroke="#2e1405" stroke-width="1.5" />
+                        <line x1="270" y1="140" x2="330" y2="140" stroke="#2e1405" stroke-width="1.5" />
+                        <line x1="270" y1="185" x2="330" y2="185" stroke="#2e1405" stroke-width="1.5" />
+                        <line x1="300" y1="50" x2="300" y2="230" stroke="#2e1405" stroke-width="1.5" />
+                        <rect x="273" y="125" width="5" height="15" fill="#2e1405" rx="1" />
+                    </g>
+
+                    <!-- Closet Door (Oshiire) -->
+                    <g class="interactive-object cursor-pointer" onclick="inspectObject('oshiire_door')">
+                        <rect x="335" y="50" width="65" height="180" fill="#edd6b1" stroke="#2e1405" stroke-width="3" />
+                        <rect x="340" y="125" width="5" height="15" fill="#2e1405" rx="1" />
+                    </g>
+
+                    <!-- Warm Hanging Lantern (Light bulb) -->
+                    <g>
+                        <line x1="130" y1="0" x2="130" y2="80" stroke="#444" stroke-width="1.5" />
+                        <polygon points="112,80 148,80 155,95 105,95" fill="#fefaf0" stroke="#5d4037" stroke-width="1" opacity="0.95" />
+                        <circle id="bulb-glow" cx="130" cy="95" r="9" fill="#fbbf24" class="animate-pulse" />
+                    </g>
+
+                    <!-- Retro Calendar -->
+                    <g class="interactive-object cursor-pointer" onclick="inspectObject('retro_calendar')">
+                        <rect x="10" y="50" width="35" height="50" fill="#faf9f5" stroke="#a3a3a3" stroke-width="1" />
+                        <rect x="10" y="50" width="35" height="8" fill="#d97706" />
+                        <text x="27.5" y="70" font-size="10" fill="#111" text-anchor="middle" font-family="serif" font-weight="bold">夕暮</text>
+                        <text x="27.5" y="90" font-size="5" fill="#444" text-anchor="middle">1964年</text>
+                    </g>
+                </svg>
+                <!-- Area Title -->
+                <div class="absolute bottom-4 left-4 bg-black/80 px-3 py-1 text-xs border border-stone-700 tracking-widest text-stone-300">
+                    場所：奥の間（畳）
+                </div>
+            </div>
+
+            <!-- Room 2: 2D Corridor (廊下) -->
+            <div id="room_hallway" class="absolute inset-0 room-scene flex items-center justify-center hidden">
+                <svg viewBox="0 0 400 300" class="w-full h-full object-cover">
+                    <!-- 2D flat wall and wooden corridor view -->
+                    <rect x="0" y="0" width="400" height="230" fill="#2d1f18" />
+                    <!-- Corridor Floor (Front view) -->
+                    <rect x="0" y="230" width="400" height="70" fill="#3e1d11" />
+                    <line x1="0" y1="230" x2="400" y2="230" stroke="#1f0f08" stroke-width="3" />
+                    <!-- Floor plank lines -->
+                    <line x1="0" y1="250" x2="400" y2="250" stroke="#1f0f08" stroke-width="1" />
+                    <line x1="0" y1="275" x2="400" y2="275" stroke="#1f0f08" stroke-width="1" />
+
+                    <!-- Window with Beautiful Sunset (2D Side View) -->
+                    <g class="interactive-object cursor-pointer" onclick="inspectObject('corridor_window')">
+                        <rect x="50" y="60" width="90" height="110" fill="#d97706" stroke="#1f0f08" stroke-width="3" />
+                        <!-- Reddish sky sunset gradient feel -->
+                        <rect x="55" y="65" width="80" height="100" fill="#9a3412" opacity="0.6" />
+                        <!-- Star particles -->
+                        <circle cx="70" cy="85" r="1.5" fill="#fff" />
+                        <circle cx="110" cy="80" r="2.5" fill="#fbbf24" class="animate-pulse" />
+                        <!-- Shoji grid lines -->
+                        <line x1="95" y1="60" x2="95" y2="170" stroke="#1f0f08" stroke-width="2" />
+                        <line x1="50" y1="115" x2="140" y2="115" stroke="#1f0f08" stroke-width="2" />
+                    </g>
+
+                    <!-- Wooden Chest (2D side view box on the floor) -->
+                    <g id="obj-wooden-chest" class="interactive-object cursor-pointer" onclick="inspectObject('wooden_chest')">
+                        <rect x="170" y="160" width="70" height="70" fill="#4a2205" stroke="#1f0f08" stroke-width="2.5" rx="2" />
+                        <!-- Iron bindings -->
+                        <rect x="175" y="160" width="6" height="70" fill="#292524" />
+                        <rect x="229" y="160" width="6" height="70" fill="#292524" />
+                        <!-- Lock plate -->
+                        <rect x="198" y="175" width="14" height="18" fill="#d97706" rx="1" />
+                        <circle id="chest-padlock" cx="205" cy="184" r="3.5" fill="#111" />
+                    </g>
+
+                    <!-- Vintage Student Uniform (Gakuran) hanging on wall -->
+                    <g class="interactive-object cursor-pointer" onclick="inspectObject('gakuran_coat')">
+                        <line x1="300" y1="40" x2="300" y2="140" stroke="#444" stroke-width="0.5" />
+                        <rect x="280" y="60" width="40" height="70" fill="#1c1917" rx="3" stroke="#000" stroke-width="1.5" />
+                        <!-- Gold buttons -->
+                        <circle cx="300" cy="80" r="1.5" fill="#ca8a04" />
+                        <circle cx="300" cy="95" r="1.5" fill="#ca8a04" />
+                        <circle cx="300" cy="110" r="1.5" fill="#ca8a04" />
+                    </g>
+
+                    <!-- Storehouse Door (Flat 2D door with seal) -->
+                    <g class="interactive-object cursor-pointer" onclick="inspectObject('storehouse_door')">
+                        <rect x="340" y="50" width="50" height="180" fill="#321402" stroke="#111" stroke-width="3.5" />
+                        <circle cx="348" cy="140" r="4.5" fill="#d97706" />
+                        <!-- Golden Talisman paper -->
+                        <rect id="door-talisman" x="355" y="90" width="18" height="35" fill="#fef08a" stroke="#ca8a04" stroke-width="0.8" />
+                        <text x="364" y="112" font-size="10" fill="#b45309" text-anchor="middle" font-family="serif" font-weight="bold">夢</text>
+                    </g>
+                </svg>
+                <div class="absolute bottom-4 left-4 bg-black/80 px-3 py-1 text-xs border border-stone-700 tracking-widest text-stone-300">
+                    場所：静かな廊下
+                </div>
+            </div>
+
+            <!-- Room 3: 2D Storehouse (古びた蔵) -->
+            <div id="room_storehouse" class="absolute inset-0 room-scene flex items-center justify-center hidden">
+                <svg viewBox="0 0 400 300" class="w-full h-full object-cover">
+                    <!-- Concrete/Clay storehouse walls (2D Flat) -->
+                    <rect x="0" y="0" width="400" height="230" fill="#242423" />
+                    <!-- Concrete floor -->
+                    <rect x="0" y="230" width="400" height="70" fill="#333332" />
+                    <line x1="0" y1="230" x2="400" y2="230" stroke="#181817" stroke-width="3" />
+
+                    <!-- Storage Shelves (Flat 2D Shelving) -->
+                    <g>
+                        <rect x="30" y="40" width="10" height="190" fill="#3e1d05" />
+                        <rect x="190" y="40" width="10" height="190" fill="#3e1d05" />
+                        <rect x="30" y="100" width="170" height="10" fill="#4d2710" />
+                        <rect x="30" y="160" width="170" height="10" fill="#4d2710" />
+                    </g>
+
+                    <!-- Shelf Item 1: Blue Sake Bottle -->
+                    <g class="interactive-object cursor-pointer" onclick="inspectObject('shelf_sake_bottle')">
+                        <rect x="55" y="70" width="18" height="30" fill="#0284c7" rx="2" opacity="0.8" />
+                        <rect x="61" y="58" width="6" height="12" fill="#0284c7" opacity="0.8" />
+                    </g>
+
+                    <!-- Shelf Item 2: Old Book/Diary -->
+                    <g class="interactive-object cursor-pointer" onclick="inspectObject('dusty_diary')">
+                        <rect x="100" y="130" width="35" height="30" fill="#fef08a" stroke="#ca8a04" rx="2" transform="rotate(-5 100 130)" />
+                        <!-- Red cord -->
+                        <line x1="102" y1="128" x2="102" y2="162" stroke="#dc2626" stroke-width="1.5" />
+                    </g>
+
+                    <!-- Large Lacquered Offering Chest / Star Box (星の箱) -->
+                    <g class="interactive-object cursor-pointer" onclick="inspectObject('offering_box')">
+                        <rect x="250" y="140" width="110" height="90" fill="#651a05" stroke="#311005" stroke-width="3" rx="4" />
+                        <!-- Golden details -->
+                        <rect x="250" y="155" width="110" height="6" fill="#b45309" />
+                        <circle cx="305" cy="185" r="16" fill="#fbbf24" stroke="#ca8a04" stroke-width="1.5" />
+                        <!-- Cross mark -->
+                        <path d="M 299,185 L 311,185 M 305,179 L 305,191" stroke="#651a05" stroke-width="3" stroke-linecap="round" />
+                    </g>
+
+                    <!-- Little sparkling dots inside -->
+                    <circle cx="110" cy="50" r="2" fill="#fbbf24" class="animate-ping" />
+                    <circle cx="330" cy="80" r="2.5" fill="#fbbf24" class="animate-ping" />
+                </svg>
+                <div class="absolute bottom-4 left-4 bg-black/80 px-3 py-1 text-xs border border-stone-700 tracking-widest text-stone-300">
+                    場所：光る蔵
+                </div>
+            </div>
+
+            <!-- Room 4: 2D Shrine Gate Pathway (鳥居の参道) -->
+            <div id="room_shrine" class="absolute inset-0 room-scene flex items-center justify-center hidden">
+                <svg viewBox="0 0 400 300" class="w-full h-full object-cover">
+                    <defs>
+                        <linearGradient id="beautifulSky" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stop-color="#1e1b4b" />
+                            <stop offset="50%" stop-color="#3b0764" />
+                            <stop offset="85%" stop-color="#7c2d12" />
+                            <stop offset="100%" stop-color="#0c0a09" />
+                        </linearGradient>
+                    </defs>
+                    <rect x="0" y="0" width="400" height="300" fill="url(#beautifulSky)" />
+
+                    <!-- Sparkling Stars -->
+                    <circle cx="50" cy="40" r="1.5" fill="#fff" class="animate-pulse" />
+                    <circle cx="150" cy="30" r="2" fill="#fff" class="animate-pulse" />
+                    <circle cx="280" cy="20" r="1" fill="#fef08a" />
+                    <circle cx="340" cy="50" r="1.5" fill="#fff" class="animate-pulse" />
+
+                    <!-- Silhouettes of trees -->
+                    <path d="M 10,240 L 35,130 L 60,240 Z" fill="#0c0a09" opacity="0.8" />
+                    <path d="M 330,240 L 365,110 L 400,240 Z" fill="#0c0a09" opacity="0.8" />
+
+                    <!-- Ground Path (2D Flat) -->
+                    <rect x="0" y="240" width="400" height="60" fill="#1c1917" />
+                    <line x1="0" y1="240" x2="400" y2="240" stroke="#0c0a09" stroke-width="2.5" />
+
+                    <!-- Massive Torii Gate (2D Front-on View) -->
+                    <g id="obj-torii-gate" class="interactive-object cursor-pointer" onclick="inspectObject('torii_gate')">
+                        <!-- Left pillar -->
+                        <rect x="130" y="55" width="14" height="185" fill="#c2410c" stroke="#7c2d12" stroke-width="2" />
+                        <!-- Right pillar -->
+                        <rect x="256" y="55" width="14" height="185" fill="#c2410c" stroke="#7c2d12" stroke-width="2" />
+                        <!-- Top horizontal beam (Kasagi) -->
+                        <rect x="90" y="40" width="220" height="16" fill="#c2410c" stroke="#7c2d12" stroke-width="2" rx="2" />
+                        <!-- Sub beam (Nuki) -->
+                        <rect x="110" y="75" width="180" height="10" fill="#7c2d12" />
+                        
+                        <!-- Beautiful Magic barrier/chains (2D Cross) -->
+                        <path id="escape-chains" d="M 110,100 L 290,190 M 110,190 L 290,100" fill="none" stroke="#fef08a" stroke-width="3" stroke-dasharray="6,6" />
+                    </g>
+
+                    <!-- Stone Lantern (Flat 2D side) -->
+                    <g class="interactive-object cursor-pointer" onclick="inspectObject('stone_lantern')">
+                        <rect x="60" y="160" width="16" height="80" fill="#374151" stroke="#1f2937" stroke-width="1" />
+                        <rect x="54" y="125" width="28" height="35" fill="#374151" stroke="#1f2937" stroke-width="1.5" />
+                        <!-- Lantern light window -->
+                        <rect x="60" y="132" width="16" height="18" fill="#111827" />
+                        <circle id="lantern-fire" cx="68" cy="141" r="5" fill="#fbbf24" class="animate-pulse hidden" />
+                        <!-- Cap -->
+                        <polygon points="46,125 90,125 68,105" fill="#111827" stroke="#111" stroke-width="1" />
+                    </g>
+
+                    <!-- Beautiful golden firefly particles -->
+                    <circle cx="30" cy="225" r="5" fill="#fbbf24" class="animate-ping" />
+                    <circle cx="370" cy="220" r="5" fill="#fbbf24" class="animate-ping" />
+                </svg>
+                <div class="absolute bottom-4 left-4 bg-black/80 px-3 py-1 text-xs border border-stone-700 tracking-widest text-stone-300">
+                    場所：鳥居・きらめく参道
+                </div>
+            </div>
+
+            <!-- ================= DYNAMIC CLOUDS CONTAINER ================= -->
+            <!-- Cute sleepy clouds floating inside the room (Obstacles to avoid with flashlight) -->
+            <div id="clouds-container" class="absolute inset-0 z-25 pointer-events-none">
+                <!-- Sleepy clouds will be dynamically injected here -->
+            </div>
+
+            <!-- ================= ACTION LAYER (Fallen Stars container) ================= -->
+            <!-- Active interactive area where stars spawn dynamically for action clicking -->
+            <div id="action-spawner" class="absolute inset-0 z-30 pointer-events-none">
+                <!-- Stars will be dynamically injected here to be caught -->
+            </div>
+
+            <!-- Room Navigation Overlays (Sleek 2D UI navigation) -->
+            <button id="btn-nav-left" class="absolute left-3 top-1/2 -translate-y-1/2 z-30 bg-black/85 hover:bg-black border border-stone-700 w-12 h-12 rounded-full flex items-center justify-center text-stone-400 hover:text-white transition duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+            </button>
+            <button id="btn-nav-right" class="absolute right-3 top-1/2 -translate-y-1/2 z-30 bg-black/85 hover:bg-black border border-stone-700 w-12 h-12 rounded-full flex items-center justify-center text-stone-400 hover:text-white transition duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+            </button>
+
+            <!-- HUD / Star collection score -->
+            <div class="absolute top-4 right-4 z-30 flex flex-col items-end space-y-2">
+                <div class="bg-black/90 border border-amber-600/80 px-4 py-2 rounded-lg text-amber-400 font-bold tracking-widest flex items-center space-x-2">
+                    <!-- Beautiful Custom Japanese-style Star icon -->
+                    <svg viewBox="0 0 24 24" class="w-6 h-6 text-amber-400 animate-bounce"><path fill="currentColor" d="M12,2 Q12,12 2,12 Q12,12 12,22 Q12,12 22,12 Q12,12 12,2"/></svg>
+                    <span class="text-xs">夕光の結晶:</span>
+                    <span id="txt-star-count" class="text-xl font-mono text-white">0</span>
+                    <span class="text-xs text-stone-400">/ 15</span>
+                </div>
+                
+                <!-- Sleepiness indicator bar (Cozy gameplay metric) -->
+                <div id="danger-bar-container" class="bg-black/90 border border-purple-900/50 p-2.5 rounded-lg text-[10px] text-right w-40 space-y-1 shadow-md">
+                    <div class="text-purple-300 font-bold tracking-wider flex justify-between">
+                        <span>うとうと度 (眠気)</span>
+                        <span id="txt-panic-percent" class="font-mono text-white">0%</span>
+                    </div>
+                    <div class="w-full h-2 bg-stone-900 rounded-full overflow-hidden border border-stone-800">
+                        <div id="danger-bar" class="w-0 h-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-300"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Dialogue / Story Bar (Middle 18%) -->
+        <div id="dialogue-container" class="h-20 bg-stone-950 border-t border-stone-800 p-3 flex flex-col justify-center relative">
+            <div id="dialogue-text" class="text-sm text-stone-300 leading-relaxed overflow-y-auto max-h-16 tracking-wide text-center">
+                「ここはどこだろう……。静かで幻想的、だけどどこか切ない雰囲気だ。」（左右のボタンでお部屋を移動して、まずは夕日のきらめきをタッチして集めましょう！）
+            </div>
+        </div>
+
+        <!-- Inventory Bar (Lower 7%) -->
+        <div id="inventory-container" class="h-12 bg-stone-900 border-t-2 border-stone-950 flex items-center px-4 space-x-3">
+            <span class="text-xs text-stone-500 uppercase tracking-widest mr-2">所持品:</span>
+            <div id="inventory-slots" class="flex-grow flex items-center space-x-3 py-1 text-xs text-stone-400">
+                夕光の結晶を集めると自動的に大切なアイテムがここに入ります。
+            </div>
+        </div>
+
+        <!-- ================= SLEEPY/COZY END SCREEN (優しいゲームオーバー画面) ================= -->
+        <div id="screen-gameover" class="absolute inset-0 z-50 bg-stone-950/95 flex flex-col items-center justify-center p-8 text-center hidden bg-gradient-to-b from-stone-950 via-purple-950/20 to-stone-950">
+            <div class="space-y-4 max-w-md">
+                <h2 class="text-4xl font-bold text-purple-400 tracking-wider font-serif">心地よいおねんね</h2>
+                <p id="gameover-reason" class="text-sm text-stone-300 leading-relaxed">
+                    ねむたい雲をたくさん照らして、うとうと眠くなってしまいました……。<br>
+                    お布団の中で心地よい秋の風に吹かれながら、ぐっすり夢を見ています。
+                </p>
+                <div class="py-6">
+                    <span class="text-purple-400 text-6xl animate-bounce inline-block">💤</span>
+                </div>
+                <p class="text-xs text-stone-400 leading-relaxed">
+                    「目が覚めたら、また元気いっぱい帰り道を探しましょう！」<br>
+                    <span class="text-amber-400">（集めた結晶はそのままで、その場からやり直せます）</span>
+                </p>
+                <button id="btn-retry" class="px-8 py-3 bg-purple-900/80 hover:bg-purple-800 border border-purple-500/50 rounded-xl text-purple-100 tracking-wider transition duration-200 active:scale-95 mt-4">
+                    目を覚ます
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= VICTORY SCREEN ================= -->
+        <div id="screen-victory" class="absolute inset-0 z-50 bg-gradient-to-b from-stone-950 via-stone-900 to-black flex flex-col items-center justify-center p-8 text-center hidden">
+            <div class="space-y-6 max-w-lg">
+                <p class="text-xs tracking-[0.5em] text-amber-400">生還</p>
+                <h2 class="text-4xl md:text-5xl font-extrabold text-neutral-200 tracking-wider font-serif">朝のきらめく世界へ</h2>
+                <div class="h-0.5 w-24 bg-amber-600 mx-auto"></div>
+                <p class="text-sm text-stone-300 leading-relaxed max-w-md mx-auto">
+                    神聖な神楽鈴の音が美しく響き渡り、あの夕暮れの不思議な霧がゆっくりと晴れてゆきます。<br>
+                    彼岸花の温かい光に包まれ、さわやかな朝の太陽があなたを迎えてくれました。<br>
+                    あなたは、あの昭和の不思議な町から無事に元の世界へと帰ることができたのです！
+                </p>
+                <p class="text-xs text-stone-500 italic">
+                    「遠くで、新しい一日の始まりを告げる優しいチャイムが響いていた……」
+                </p>
+                <button onclick="location.reload()" class="px-8 py-3 bg-amber-950 hover:bg-amber-900 border border-amber-700 text-amber-100 tracking-[0.3em] rounded transition">
+                    最初から遊ぶ
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JS Logic and Audio Engine -->
+    <script>
+        // Game States & Variables
+        const rooms = ['room_tatami', 'room_hallway', 'room_storehouse', 'room_shrine'];
+        let currentRoomIndex = 0;
+        let inventory = [];
+        let flashlightOn = false; // Controls whether the flashlight mask is active
+        let starCount = 0; // Action collect counter
+        let isHiding = false;
+        let isOtherworld = false;
+        let sleepyLevel = 0; // 0 to 100 (Cozy sleepiness level)
+        let mouseX = 0;
+        let mouseY = 0;
+        
+        let solvedPuzzles = {
+            retro_tv: false,
+            rotary_phone: false,
+            wooden_chest: false,
+            lantern_light: false,
+            storehouse_unlocked: false,
+            final_gate_unlocked: false
+        };
+
+        let activeStars = []; // Array of flying star elements with tracking properties
+        let activeClouds = []; // Array of floating sleepy clouds
+        let starSpawnInterval = null;
+        let gameLoopInterval = null; // Updates physics of flying stars & check collisions
+        let audioCtx = null;
+        let ambientDrone = null;
+        let soundEnabled = false;
+
+        // Custom Sound System using Web Audio API (Serene and beautiful tones)
+        function initAudio() {
+            if (audioCtx) return;
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                soundEnabled = true;
+                const soundInd = document.getElementById('ambient-text');
+                if (soundInd) {
+                    soundInd.innerText = "音響：有効（琴オルゴールの心地よい響き）";
+                }
+                startAmbientDrone();
+            } catch (e) {
+                console.error("Audio init error", e);
+            }
+        }
+
+        // Low Synth Frequency Hum (Gentle warm tone)
+        function startAmbientDrone() {
+            if (!audioCtx) return;
+            try {
+                let osc = audioCtx.createOscillator();
+                let osc2 = audioCtx.createOscillator();
+                let filter = audioCtx.createBiquadFilter();
+                let gain = audioCtx.createGain();
+
+                osc.type = 'sine'; 
+                osc.frequency.setValueAtTime(65, audioCtx.currentTime); 
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(65.4, audioCtx.currentTime); 
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(100, audioCtx.currentTime);
+
+                gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+
+                osc.connect(filter);
+                osc2.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start();
+                osc2.start();
+
+                ambientDrone = { osc, osc2, gain, filter };
+            } catch (err) {
+                console.log("Drone failed", err);
+            }
+        }
+
+        // Play synthetic procedural SFX (Gentle and beautiful tones)
+        function playProceduralSound(type) {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+
+            try {
+                if (type === 'click') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.frequency.setValueAtTime(800, now);
+                    osc.frequency.exponentialRampToValueAtTime(80, now + 0.05);
+                    gain.gain.setValueAtTime(0.01, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.06);
+                } 
+                else if (type === 'jumpscare') {
+                    // Wind chime / Fairy dust magical sound
+                    for (let i = 0; i < 5; i++) {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(600 + (i * 180), now + (i * 0.05));
+                        
+                        gain.gain.setValueAtTime(0.02, now + (i * 0.05));
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + (i * 0.05) + 0.4);
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + (i * 0.05));
+                        osc.stop(now + (i * 0.05) + 0.5);
+                    }
+                }
+                else if (type === 'item') {
+                    // Magical Chime
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, now);
+                    osc.frequency.setValueAtTime(1100, now + 0.1);
+                    osc.frequency.setValueAtTime(1320, now + 0.2);
+                    
+                    gain.gain.setValueAtTime(0.03, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.7);
+                }
+                else if (type === 'dial') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(500, now);
+                    gain.gain.setValueAtTime(0.02, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                }
+            } catch (err) {
+                console.warn("SFX error", err);
+            }
+        }
+
+        // Setup Flashlight Mouse Tracking
+        const viewport = document.getElementById('game-viewport');
+        const mask = document.getElementById('flashlight-mask');
+
+        function updateFlashlight(x, y) {
+            if (!viewport || !mask) return;
+            const rect = viewport.getBoundingClientRect();
+            mouseX = x - rect.left;
+            mouseY = y - rect.top;
+            const relX = (mouseX / rect.width) * 100;
+            const relY = (mouseY / rect.height) * 100;
+            mask.style.setProperty('--x', `${relX}%`);
+            mask.style.setProperty('--y', `${relY}%`);
+        }
+
+        // Turn on/off flashlight based on cursor state
+        function setFlashlightState(on) {
+            if (!mask) return;
+            flashlightOn = on;
+            if (on) {
+                mask.classList.remove('flashlight-overlay-off');
+                mask.classList.add('flashlight-overlay');
+                const label = document.getElementById('txt-flashlight');
+                if (label) label.innerText = "懐中電灯：照らし中";
+            } else {
+                mask.classList.remove('flashlight-overlay');
+                mask.classList.add('flashlight-overlay-off');
+                const label = document.getElementById('txt-flashlight');
+                if (label) label.innerText = "懐中電灯：カーソルオフ";
+            }
+        }
+
+        if (viewport) {
+            viewport.addEventListener('mousemove', (e) => {
+                updateFlashlight(e.clientX, e.clientY);
+                if (!flashlightOn) setFlashlightState(true);
+            });
+
+            viewport.addEventListener('mouseenter', (e) => {
+                updateFlashlight(e.clientX, e.clientY);
+                setFlashlightState(true);
+            });
+
+            viewport.addEventListener('mouseleave', () => {
+                setFlashlightState(false);
+            });
+
+            viewport.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 0) {
+                    updateFlashlight(e.touches[0].clientX, e.touches[0].clientY);
+                    if (!flashlightOn) setFlashlightState(true);
+                }
+            });
+
+            viewport.addEventListener('touchstart', (e) => {
+                if (e.touches.length > 0) {
+                    updateFlashlight(e.touches[0].clientX, e.touches[0].clientY);
+                    setFlashlightState(true);
+                }
+            });
+
+            viewport.addEventListener('touchend', () => {
+                setFlashlightState(false);
+            });
+        }
+
+        // Room Navigation Setup
+        function changeRoom(dir) {
+            playProceduralSound('click');
+            closeTray();
+            
+            // Hide current clouds before changing rooms
+            clearCurrentClouds();
+
+            const currentRoomEl = document.getElementById(rooms[currentRoomIndex]);
+            if (currentRoomEl) {
+                currentRoomEl.classList.add('hidden');
+            }
+
+            currentRoomIndex += dir;
+            if (currentRoomIndex < 0) currentRoomIndex = rooms.length - 1;
+            if (currentRoomIndex >= rooms.length) currentRoomIndex = 0;
+
+            const nextRoomEl = document.getElementById(rooms[currentRoomIndex]);
+            if (nextRoomEl) {
+                nextRoomEl.classList.remove('hidden');
+            }
+
+            // Spawn new clouds for the entered room
+            spawnSleepyCloudsForRoom();
+            updateHideButtonState();
+            describeRoomState();
+        }
+
+        const leftNavBtn = document.getElementById('btn-nav-left');
+        const rightNavBtn = document.getElementById('btn-nav-right');
+        if (leftNavBtn) leftNavBtn.addEventListener('click', () => changeRoom(-1));
+        if (rightNavBtn) rightNavBtn.addEventListener('click', () => changeRoom(1));
+
+        // Describe rooms
+        function describeRoomState() {
+            let msg = "";
+            switch(rooms[currentRoomIndex]) {
+                case 'room_tatami':
+                    msg = "奥の間。畳の香りと、暖かい白熱電球の光が優しく部屋を照らしています。";
+                    break;
+                case 'room_hallway':
+                    msg = "廊下。格子窓の外には美しい夕日が静かに輝いています。";
+                    break;
+                case 'room_storehouse':
+                    msg = "光る蔵の中。不思議な光に包まれて、古い宝箱や本が並んでいます。";
+                    break;
+                case 'room_shrine':
+                    msg = "鳥居の参道。夕光の結晶を「15個」集めて、帰り道を開きましょう。";
+                    break;
+            }
+            writeDialogue(msg);
+        }
+
+        function updateHideButtonState() {
+            const hideBtn = document.getElementById('btn-hide-action');
+            if (hideBtn) hideBtn.classList.add('hidden');
+        }
+
+        // Dialogue Writer Helper
+        function writeDialogue(text) {
+            const container = document.getElementById('dialogue-text');
+            if (container) {
+                container.innerText = text;
+                container.scrollTop = 0;
+            }
+        }
+
+        // Inventory System
+        function addToInventory(itemKey, label, icon) {
+            if (inventory.some(i => i.key === itemKey)) return;
+            
+            playProceduralSound('item');
+            inventory.push({ key: itemKey, label: label });
+            renderInventory();
+            writeDialogue(`大切な道具【${label}】を手に入れました！`);
+        }
+
+        // Check if user has item
+        function hasItem(itemKey) {
+            return inventory.some(i => i.key === itemKey);
+        }
+
+        function removeItem(itemKey) {
+            inventory = inventory.filter(i => i.key !== itemKey);
+            renderInventory();
+        }
+
+        function renderInventory() {
+            const slots = document.getElementById('inventory-slots');
+            if (!slots) return;
+            if (inventory.length === 0) {
+                slots.innerHTML = `<span class="text-xs text-stone-500">夕光の結晶を集めると自動的に大切な道具がここに入ります。</span>`;
+                return;
+            }
+            slots.innerHTML = inventory.map(item => {
+                return `
+                    <div class="px-3 py-1 bg-stone-800 hover:bg-stone-700 border border-amber-900/40 rounded text-xs text-stone-200 cursor-pointer transition select-none flex items-center space-x-1" onclick="useItemDirectly('${item.key}')">
+                        <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-amber-400 mr-1"><path fill="currentColor" d="M12,2 Q12,12 2,12 Q12,12 12,22 Q12,12 22,12 Q12,12 12,2"/></svg>
+                        <span>${item.label}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function useItemDirectly(key) {
+            playProceduralSound('click');
+            let itemObj = inventory.find(i => i.key === key);
+            if (itemObj) {
+                writeDialogue(`【${itemObj.label}】を選択中。これを適切な場所（蔵の扉や灯籠、鳥居）で使ってみましょう。`);
+            }
+        }
+
+        // ================= SPAWNING SLEEPY CLOUDS (OBSTACLES) =================
+        // Spawns 2 beautiful custom Japanese style puffy sleepy clouds in the current scene
+        function spawnSleepyCloudsForRoom() {
+            const container = document.getElementById('clouds-container');
+            if (!container) return;
+
+            clearCurrentClouds();
+
+            // Spawn 2 clouds per room
+            for (let i = 0; i < 2; i++) {
+                const cloud = document.createElement('div');
+                cloud.className = 'absolute sleepy-cloud w-20 h-12 opacity-65';
+                
+                // Random position
+                let posX = Math.random() * 60 + 20; // 20% to 80%
+                let posY = Math.random() * 40 + 25; // 25% to 65%
+                cloud.style.left = `${posX}%`;
+                cloud.style.top = `${posY}%`;
+
+                // Beautiful custom puffy Japanese cloud (Zuiun style) SVG
+                cloud.innerHTML = `
+                    <svg viewBox="0 0 100 60" class="w-full h-full text-purple-300">
+                        <path fill="currentColor" opacity="0.85" d="M20,40 C15,40 10,35 10,28 C10,20 18,15 26,18 C30,10 45,8 52,16 C60,10 75,12 78,22 C85,22 90,28 90,34 C90,42 82,46 74,46 L20,46 Z"/>
+                        <!-- Gentle sleepy face on cloud -->
+                        <path d="M35,28 Q40,32 45,28" stroke="#4a2040" stroke-width="2" fill="none" stroke-linecap="round" />
+                        <path d="M55,28 Q60,32 65,28" stroke="#4a2040" stroke-width="2" fill="none" stroke-linecap="round" />
+                        <path d="M46,36 Q50,40 54,36" stroke="#4a2040" stroke-width="1.5" fill="none" stroke-linecap="round" />
+                    </svg>
+                `;
+
+                container.appendChild(cloud);
+                
+                // Store physics metadata
+                activeClouds.push({
+                    el: cloud,
+                    x: posX,
+                    y: posY,
+                    // Small speeds for organic drifting
+                    vx: (Math.random() * 0.04 + 0.02) * (Math.random() < 0.5 ? 1 : -1),
+                    vy: (Math.random() * 0.04 + 0.02) * (Math.random() < 0.5 ? 1 : -1)
+                });
+            }
+        }
+
+        function clearCurrentClouds() {
+            const container = document.getElementById('clouds-container');
+            if (container) container.innerHTML = '';
+            activeClouds = [];
+        }
+
+        // ================= DYNAMIC ACTION: SPARKLING EVENING SPARKS SPAWNER =================
+        // Spawns beautiful golden multi-point dynamic stars (夕光の結晶) that move smoothly
+        function spawnStar() {
+            const container = document.getElementById('action-spawner');
+            if (!container) return;
+
+            // Create Star SVG element
+            const star = document.createElement('div');
+            star.className = 'absolute star-item w-12 h-12 select-none pointer-events-auto flex items-center justify-center';
+            
+            // Random start position within viewport (percentages)
+            let posX = Math.random() * 80 + 10; // 10% to 90%
+            let posY = Math.random() * 45 + 25; // 25% to 70%
+            star.style.left = `${posX}%`;
+            star.style.top = `${posY}%`;
+
+            // Setup movement speed vector (vx, vy in percentage change per frame)
+            let vx = (Math.random() * 0.18 + 0.08) * (Math.random() < 0.5 ? 1 : -1);
+            let vy = (Math.random() * 0.18 + 0.08) * (Math.random() < 0.5 ? 1 : -1);
+
+            // Beautiful Japanese Traditional "Evening Sparkle / Lycoris Drop" SVG design
+            star.innerHTML = `
+                <svg viewBox="0 0 24 24" class="w-10 h-10 text-amber-400 hover:text-yellow-200">
+                    <path fill="currentColor" d="M12,2 Q12,12 2,12 Q12,12 12,22 Q12,12 22,12 Q12,12 12,2"/>
+                    <circle cx="12" cy="12" r="3.5" fill="#ffffff" />
+                </svg>
+            `;
+
+            // Store physics metadata
+            const starObj = {
+                el: star,
+                x: posX,
+                y: posY,
+                vx: vx,
+                vy: vy,
+                life: 5000 // 5 seconds lifetime
+            };
+
+            // Action: Catching the star (Both click and touch supported)
+            const triggerCatch = (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                catchStar(starObj);
+            };
+
+            star.addEventListener('mousedown', triggerCatch);
+            star.addEventListener('touchstart', triggerCatch);
+
+            container.appendChild(star);
+            activeStars.push(starObj);
+
+            // Automatically clean up old star after its life ends
+            setTimeout(() => {
+                if (container.contains(star)) {
+                    container.removeChild(star);
+                    activeStars = activeStars.filter(s => s.el !== star);
+                }
+            }, starObj.life);
+        }
+
+        function catchStar(starObj) {
+            const container = document.getElementById('action-spawner');
+            if (!container || !container.contains(starObj.el)) return;
+
+            // Audio & Visual feedback
+            playProceduralSound('item');
+            container.removeChild(starObj.el);
+            activeStars = activeStars.filter(s => s.el !== starObj.el);
+
+            // Increment Score
+            starCount++;
+            const starCountText = document.getElementById('txt-star-count');
+            if (starCountText) starCountText.innerText = starCount;
+
+            // Display message based on count
+            if (starCount === 5) {
+                writeDialogue("「夕光 of 結晶」が5個集まりました！廊下の『蔵の扉』をタッチして封印を解いてみましょう。");
+                addToInventory('magic_bell', '神楽鈴', '🔔');
+            } else if (starCount === 10) {
+                writeDialogue("「夕光の結晶」が10個になりました！鳥居の横にある『石灯籠』をともす準備ができました。");
+                addToInventory('matches', '経年マッチ', '🔥');
+            } else if (starCount === 15) {
+                writeDialogue("「夕光の結晶」が15個集まりました！参道の『鳥居』からおうちへ帰る準備がすべて整いました！");
+                addToInventory('bolt_cutter', 'ボルトクリッパー', '✂');
+            } else {
+                writeDialogue(`夕光の結晶をキャッチ！ 現在の結晶の数: ${starCount}/15`);
+            }
+        }
+
+        // Physics update for active stars & clouds + Flashlight collision detection
+        function updateStarPhysics() {
+            if (!gameLoopInterval) return;
+
+            const rect = viewport.getBoundingClientRect();
+
+            // 1. Update stars physics
+            activeStars.forEach(star => {
+                star.x += star.vx;
+                star.y += star.vy;
+
+                // Bounce horizontally
+                if (star.x < 5 || star.x > 90) {
+                    star.vx = -star.vx;
+                    star.x = Math.max(5, Math.min(90, star.x));
+                }
+                // Bounce vertically
+                if (star.y < 20 || star.y > 80) {
+                    star.vy = -star.vy;
+                    star.y = Math.max(20, Math.min(80, star.y));
+                }
+
+                // Apply to DOM
+                star.el.style.left = `${star.x}%`;
+                star.el.style.top = `${star.y}%`;
+            });
+
+            // 2. Update clouds physics & check collision with Flashlight ray
+            let touchingCloud = false;
+
+            activeClouds.forEach(cloud => {
+                cloud.x += cloud.vx;
+                cloud.y += cloud.vy;
+
+                // Drift bounce limits
+                if (cloud.x < 15 || cloud.x > 85) {
+                    cloud.vx = -cloud.vx;
+                }
+                if (cloud.y < 20 || cloud.y > 70) {
+                    cloud.vy = -cloud.vy;
+                }
+
+                cloud.el.style.left = `${cloud.x}%`;
+                cloud.el.style.top = `${cloud.y}%`;
+
+                // Calculate distance between Flashlight cursor and Cloud center
+                if (flashlightOn) {
+                    const cloudPixelX = (cloud.x / 100) * rect.width;
+                    const cloudPixelY = (cloud.y / 100) * rect.height;
+                    
+                    const dx = mouseX - cloudPixelX;
+                    const dy = mouseY - cloudPixelY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    // If flashlight (approx 130px radius) overlaps cloud (approx 40px radius)
+                    if (distance < 140) {
+                        touchingCloud = true;
+                    }
+                }
+            });
+
+            // 3. Update sleepiness level based on cloud collision
+            if (touchingCloud) {
+                // Sleepiness increases when flashlight touches cozy clouds
+                sleepyLevel = Math.min(100, sleepyLevel + 0.6);
+                playProceduralSound('heartbeat'); // Rhythmic warm ticking sound
+            } else {
+                // Naturally cools down / wakes up when looking away
+                sleepyLevel = Math.max(0, sleepyLevel - 0.2);
+            }
+
+            // Update UI elements
+            const dangerBar = document.getElementById('danger-bar');
+            const panicPercent = document.getElementById('txt-panic-percent');
+            if (dangerBar) dangerBar.style.width = `${sleepyLevel}%`;
+            if (panicPercent) panicPercent.innerText = `${Math.floor(sleepyLevel)}%`;
+
+            // Trigger Cozy Game Over / Sleeping Bedtime
+            if (sleepyLevel >= 100) {
+                triggerGameOver("ふかふかのねむたい雲に包まれて、あなたは心地よく夢の世界へ……。一度お布団でおねんねの時間です。");
+            }
+
+            if (gameLoopInterval) {
+                requestAnimationFrame(updateStarPhysics);
+            }
+        }
+
+        // CORE ACTIVE OBJECT INSPECTIONS
+        function inspectObject(obj) {
+            initAudio(); 
+            playProceduralSound('click');
+
+            switch(obj) {
+                case 'retro_tv':
+                    writeDialogue("昭和の真空管テレビです。画面の中できれいな夕暮れの光の粒子がパチパチとはじけています。お部屋を動いてもっと結晶を集めましょう！");
+                    break;
+
+                case 'rotary_phone':
+                    writeDialogue("懐かしい黒電話です。受話器を耳にあてると、優しい秋の風の音と琴のメロディが微かに聞こえてきます。");
+                    break;
+
+                case 'fusuma_left':
+                    writeDialogue("和紙が美しい障子戸です。格子のすきまから、暖かく輝く夕光の結晶たちがのんびりと空を昇っていくのが見えます。");
+                    break;
+
+                case 'oshiire_door':
+                    writeDialogue("押し入れです。お日様の匂いがするお布団がふかふかにしまわれています。");
+                    break;
+
+                case 'retro_calendar':
+                    writeDialogue("カレンダーには「おだやかな秋の帰り道」と手書きされています。焦らずゆっくり進みましょう。");
+                    break;
+
+                case 'corridor_window':
+                    writeDialogue("廊下の木製窓です。窓の外には黄金色にきらきらと輝く秋の田舎町の絶景がどこまでも広がっています。");
+                    break;
+
+                case 'wooden_chest':
+                    writeDialogue("しっかりとしたつくりの古い長持（木箱）です。夕暮れのきらめきが中に少しつまっているようです。");
+                    break;
+
+                case 'storehouse_door':
+                    if (solvedPuzzles.storehouse_unlocked) {
+                        writeDialogue("蔵の扉はきれいに開いています。心地よいお線香と古い紙の香りが漂っています。");
+                    } else {
+                        if (hasItem('magic_bell')) {
+                            writeDialogue("【神楽鈴】を凛とシャン♪と振りました！扉の封印のお札が黄金の光になって、美しく舞い散りながら消え去りました！蔵の中に入れます。");
+                            removeItem('magic_bell');
+                            solvedPuzzles.storehouse_unlocked = true;
+                            const talismanEl = document.getElementById('door-talisman');
+                            if (talismanEl) talismanEl.classList.add('hidden');
+                        } else {
+                            writeDialogue("扉はお札で封印されています。結晶を「5つ」集めると手に入る【神楽鈴】をここで使ってみましょう。");
+                        }
+                    }
+                    break;
+
+                case 'gakuran_coat':
+                    writeDialogue("ハンガーに掛けられた学生服です。黄金色のボタンが夕日を受けて美しく輝いています。");
+                    break;
+
+                case 'shelf_sake_bottle':
+                    writeDialogue("透き通るような美しい青ガラスの徳利です。差し込む光を受けて宝石のようにキラキラとしています。");
+                    break;
+
+                case 'dusty_diary':
+                    writeDialogue("『楽しい帰り道の日記』を見つけました：\n「ふわふわ舞う夕光の結晶を15個集めよう！結晶がすべて集まると大切な道具が授かり、鳥居の鎖を消すことができる。のんびり、夕暮れの旅を楽しんでいこう。」");
+                    break;
+
+                case 'offering_box':
+                    writeDialogue("神社の紋章が施された、漆塗りの美しい宝箱です。");
+                    break;
+
+                case 'stone_lantern':
+                    if (solvedPuzzles.lantern_light) {
+                        writeDialogue("石灯籠に温かいロウソクの火が灯り、参道をぽうっと優しく包むように照らしています。");
+                    } else {
+                        if (hasItem('matches')) {
+                            writeDialogue("集めた【経年マッチ】を使って、石灯籠のロウソクに火を灯しました！あたりに優しく神聖なオレンジ色の明かりが灯ります！");
+                            removeItem('matches');
+                            solvedPuzzles.lantern_light = true;
+                            const lanternFireEl = document.getElementById('lantern-fire');
+                            if (lanternFireEl) lanternFireEl.classList.remove('hidden');
+                        } else {
+                            writeDialogue("石灯籠です。結晶を「10個」集めて手に入る【経年マッチ】を使って、ぽっと暖かい明かりを灯してみましょう。");
+                        }
+                    }
+                    break;
+
+                case 'torii_gate':
+                    if (solvedPuzzles.final_gate_unlocked) {
+                        triggerVictory();
+                    } else {
+                        if (hasItem('bolt_cutter')) {
+                            if (solvedPuzzles.lantern_light) {
+                                writeDialogue("【ボルトクリッパー】を使い、鳥居にかかった夕暮れの鎖をパチッと解きました！鳥居の向こうから、キラキラとした朝の光があふれ出します。");
+                                removeItem('bolt_cutter');
+                                solvedPuzzles.final_gate_unlocked = true;
+                                const chainsEl = document.getElementById('escape-chains');
+                                if (chainsEl) chainsEl.classList.add('hidden');
+                            } else {
+                                writeDialogue("ボルトクリッパーを持っていますが、まだ鎖の結界の力が強いようです。先に鳥居の横にある『石灯籠に火をともして』結界を和らげましょう。");
+                            }
+                        } else {
+                            writeDialogue("大きな美しい赤い鳥居です。黄金の光の鎖で大切に閉じられています。結晶を「15個」すべて集めて【ボルトクリッパー】を授かり、鎖を優しく解いてみましょう！");
+                        }
+                    }
+                    break;
+            }
+        }
+
+        function closeTray() {
+            const tray = document.getElementById('interactive-tray');
+            if (tray) tray.classList.add('hidden');
+        }
+
+        function startCozyActionLoop() {
+            // Spawn an interactive star every 2.4 seconds
+            if (starSpawnInterval) clearInterval(starSpawnInterval);
+            starSpawnInterval = setInterval(() => {
+                spawnStar();
+            }, 2400);
+
+            // Reset game state variables
+            sleepyLevel = 0;
+            const dangerBar = document.getElementById('danger-bar');
+            if (dangerBar) dangerBar.style.width = '0%';
+
+            // Initial spawning of sleepy clouds
+            spawnSleepyCloudsForRoom();
+
+            // Start physics tick
+            gameLoopInterval = true;
+            requestAnimationFrame(updateStarPhysics);
+        }
+
+        function triggerGameOver(reason) {
+            gameLoopInterval = false;
+            clearInterval(starSpawnInterval);
+            playProceduralSound('jumpscare');
+            
+            const reasonEl = document.getElementById('gameover-reason');
+            const screenEl = document.getElementById('screen-gameover');
+            if (reasonEl) reasonEl.innerText = reason;
+            if (screenEl) screenEl.classList.remove('hidden');
+        }
+
+        function triggerVictory() {
+            clearInterval(starSpawnInterval);
+            gameLoopInterval = false;
+            playProceduralSound('item');
+            const victoryEl = document.getElementById('screen-victory');
+            if (victoryEl) victoryEl.classList.remove('hidden');
+        }
+
+        // RETRY / INITS
+        const retryBtn = document.getElementById('btn-retry');
+        if (retryBtn) {
+            retryBtn.addEventListener('click', () => {
+                // Safe restart: Hide gameover screen, reset sleepiness, resume loop
+                const screenEl = document.getElementById('screen-gameover');
+                if (screenEl) screenEl.classList.add('hidden');
+                
+                startCozyActionLoop();
+                describeRoomState();
+            });
+        }
+
+        const startBtn = document.getElementById('btn-start');
+        if (startBtn) {
+            startBtn.addEventListener('click', () => {
+                const startScreen = document.getElementById('screen-start');
+                if (startScreen) {
+                    startScreen.classList.add('hidden');
+                }
+
+                // Initialize Audio Context on user gesture
+                try {
+                    initAudio();
+                } catch (e) {
+                    console.warn("Audio bypass", e);
+                }
+
+                // Start active spawning stars
+                startCozyActionLoop();
+
+                // Initial description
+                describeRoomState();
+            });
+        }
+
+        window.addEventListener('click', () => {
+            try {
+                initAudio();
+            } catch (e) {}
+        });
+    </script>
+</body>
+</html>

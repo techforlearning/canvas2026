@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>プリンセス着せ替えドリーム</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Kiwi Maru for cute Japanese font) -->
+    <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Kiwi Maru', serif;
+            background: linear-gradient(135deg, #ffe5ec 0%, #ffc2d1 50%, #f9bec7 100%);
+            min-height: 100vh;
+        }
+        /* スクロールバーのカスタマイズ */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #ffe5ec;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #ff8fab;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #fb6f92;
+        }
+        /* ふわふわ揺れるアニメーション */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+        }
+        .floating {
+            animation: float 4s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen text-gray-800">
+
+    <!-- ヘッダー -->
+    <header class="w-full py-4 px-6 bg-white/80 backdrop-blur-md shadow-sm border-b border-pink-100 flex justify-between items-center z-10">
+        <h1 class="text-xl md:text-2xl font-bold text-pink-600 flex items-center gap-2">
+            <i class="fa-solid fa-crown text-amber-400 floating"></i>
+            <span>プリンセス着せ替えドリーム</span>
+        </h1>
+        <div class="flex gap-2">
+            <button id="btn-random" class="bg-gradient-to-r from-pink-400 to-rose-400 hover:from-pink-500 hover:to-rose-500 text-white font-bold py-2 px-4 rounded-full shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 text-xs md:text-sm flex items-center gap-1">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> おまかせ
+            </button>
+            <button id="btn-reset" class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2 px-4 rounded-full shadow-sm transition-all text-xs md:text-sm flex items-center gap-1">
+                <i class="fa-solid fa-rotate-left"></i> リセット
+            </button>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="flex-1 flex flex-col lg:flex-row max-w-7xl w-full mx-auto p-4 md:p-6 gap-6 items-stretch">
+        
+        <!-- 左側：プリンセスプレビュー画面 (キャンバス) -->
+        <div class="flex-1 bg-white/40 backdrop-blur-md rounded-3xl p-4 border border-white/60 shadow-xl flex flex-col items-center justify-between min-h-[450px] lg:min-h-0">
+            
+            <!-- キャラクター表示エリア -->
+            <div id="canvas-container" class="relative w-full max-w-[340px] aspect-[3/4] bg-gradient-to-b from-sky-100 to-pink-100 rounded-2xl overflow-hidden shadow-inner border-2 border-white/80 transition-all duration-500">
+                
+                <!-- 背景レイヤー -->
+                <div id="layer-bg" class="absolute inset-0 bg-cover bg-center transition-all duration-500"></div>
+                
+                <!-- キラキラエフェクトレイヤー -->
+                <div class="absolute inset-0 pointer-events-none opacity-40 mix-blend-screen bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-200 via-transparent to-transparent"></div>
+                
+                <!-- キャラクターレイヤー（最背面から順に重ねる） -->
+                <!-- 1. 後ろ髪 -->
+                <svg id="layer-hair-back" class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 300 400"></svg>
+                
+                <!-- 2. 素体 (体と頭) -->
+                <svg id="layer-body" class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 300 400"></svg>
+                
+                <!-- 3. アイメイク / 表情 -->
+                <svg id="layer-face" class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 300 400"></svg>
+                
+                <!-- 4. トップス/ドレス -->
+                <svg id="layer-dress" class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 300 400"></svg>
+                
+                <!-- 5. シューズ -->
+                <svg id="layer-shoes" class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 300 400"></svg>
+                
+                <!-- 6. 前髪 -->
+                <svg id="layer-hair-front" class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 300 400"></svg>
+                
+                <!-- 7. アクセサリー (ネックレス・王冠) -->
+                <svg id="layer-accessory" class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 300 400"></svg>
+                
+                <!-- 8. 手持ちアイテム -->
+                <svg id="layer-hand" class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 300 400"></svg>
+
+            </div>
+
+            <!-- アクションエリア -->
+            <div class="w-full max-w-[340px] mt-4 flex justify-between gap-3">
+                <!-- カラーパレット（髪やドレス用） -->
+                <div class="flex flex-col gap-1 flex-1">
+                    <span class="text-xs text-pink-600 font-bold"><i class="fa-solid fa-palette"></i> テーマカラー</span>
+                    <div class="flex gap-2" id="color-palette">
+                        <!-- JSでカラーボタンを生成 -->
+                    </div>
+                </div>
+                
+                <!-- 保存ボタン -->
+                <button id="btn-save" class="bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white font-bold px-5 py-2 rounded-full shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-sm self-end">
+                    <i class="fa-solid fa-camera"></i> 保存する
+                </button>
+            </div>
+        </div>
+
+        <!-- 右側：着せ替えアイテムセレクター -->
+        <div class="w-full lg:w-[480px] bg-white/90 backdrop-blur-md rounded-3xl p-4 md:p-6 border border-white/80 shadow-xl flex flex-col h-[500px] lg:h-auto">
+            
+            <!-- カテゴリタブ -->
+            <div class="flex gap-2 overflow-x-auto pb-3 mb-4 custom-scrollbar snap-x" id="category-tabs">
+                <!-- JSでカテゴリボタンを動的生成 -->
+            </div>
+
+            <!-- アイテムリスト -->
+            <div class="flex-1 overflow-y-auto pr-1 custom-scrollbar" id="item-grid-container">
+                <div class="grid grid-cols-3 sm:grid-cols-4 gap-3" id="item-grid">
+                    <!-- JSで選択中のカテゴリに応じたアイテムカードを生成 -->
+                </div>
+            </div>
+            
+            <!-- インフォメーション -->
+            <div class="mt-4 pt-4 border-t border-pink-100 text-center text-xs text-pink-400">
+                お気に入りのコーディネートができたら「保存する」ボタンで写真を撮ろう！
+            </div>
+        </div>
+
+    </main>
+
+    <!-- フッター -->
+    <footer class="w-full py-4 text-center text-xs text-pink-500/80 mt-auto">
+        &copy; 2026 プリンセス着せ替えドリーム - Magical Dress-up Game
+    </footer>
+
+    <!-- 保存モーダル -->
+    <div id="save-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-pink-100 flex flex-col items-center gap-4 animate-[bounce_0.5s_ease-out_1]">
+            <h3 class="text-lg font-bold text-pink-600 flex items-center gap-1">
+                <i class="fa-solid fa-sparkles text-amber-400"></i> すてきなプリンセス！
+            </h3>
+            <p class="text-xs text-gray-500 text-center">画像を長押し、または下の保存ボタンから保存してください。</p>
+            
+            <!-- キャプチャプレビュー用の擬似キャンバス画像表示 -->
+            <div id="modal-preview-container" class="relative w-[240px] aspect-[3/4] rounded-xl overflow-hidden border-2 border-pink-200 shadow-md">
+                <!-- ここにレンダリングされた画像が入ります -->
+                <img id="capture-image" class="w-full h-full object-cover" src="" alt="Princess">
+            </div>
+
+            <div class="flex gap-3 w-full">
+                <button id="btn-modal-close" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-full transition-all text-sm">
+                    とじる
+                </button>
+                <a id="btn-download" href="#" download="my_princess.png" class="flex-1 bg-gradient-to-r from-pink-400 to-rose-400 hover:from-pink-500 hover:to-rose-500 text-white font-bold py-2.5 rounded-full text-center transition-all text-sm flex items-center justify-center gap-1 shadow-md">
+                    <i class="fa-solid fa-download"></i> ダウンロード
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 処理 -->
+    <script>
+        // --- 1. グローバル設定 & データ定義 ---
+        const colors = [
+            { id: 'blue', name: 'アクアブルー', primary: '#70e6ff', shadow: '#4b9fff' },
+            { id: 'gold', name: 'ハニーゴールド', primary: '#f6d365', shadow: '#fda085' },
+            { id: 'pink', name: 'プリンセスピンク', primary: '#ff9a9e', shadow: '#fecfef' },
+            { id: 'brown', name: 'クラシックブラウン', primary: '#845ec2', shadow: '#4b4453' },
+            { id: 'silver', name: 'プラチナシルバー', primary: '#e2ebf0', shadow: '#cfd9df' },
+            { id: 'purple', name: 'ラベンダー', primary: '#dcd6f7', shadow: '#a6b1e1' }
+        ];
+
+        let selectedColor = colors[0]; // 初期値アクアブルー
+
+        // お肌の色データ
+        const skins = {
+            skin1: { name: 'ミルキーピーチ', primary: '#ffe3d1', stroke: '#f0c2a2' },
+            skin2: { name: 'スノーホワイト', primary: '#fff5f0', stroke: '#ebd5cb' },
+            skin3: { name: 'ココアベージュ', primary: '#e8be9e', stroke: '#c79c7b' },
+            skin4: { name: 'サニーブロンズ', primary: '#f2bd91', stroke: '#db9d6b' }
+        };
+
+        // 背景デザイン一覧
+        const backgrounds = [
+            { id: 'bg1', name: 'お城のバルコニー', style: 'linear-gradient(to top, #fad0c4 0%, #ffd1ff 100%)', pattern: 'balcony' },
+            { id: 'bg2', name: '星空の舞踏会', style: 'linear-gradient(to top, #30cfd0 0%, #330867 100%)', pattern: 'stars' },
+            { id: 'bg3', name: '森の秘密の庭園', style: 'linear-gradient(to top, #96fbc4 0%, #f9f586 100%)', pattern: 'forest' },
+            { id: 'bg4', name: 'マーメイドキャッスル', style: 'linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%)', pattern: 'sea' }
+        ];
+
+        // 各カテゴリの着せ替えアイテムデータ
+        const items = {
+            hair: [
+                { id: 'hair1', name: 'ノーブルロング', icon: '💇‍♀️', isColorable: true },
+                { id: 'hair2', name: 'ツインテールロール', icon: '🎀', isColorable: true },
+                { id: 'hair3', name: 'ロイヤルお団子アップ', icon: '👸', isColorable: true },
+                { id: 'hair4', name: 'ゆるふわショートボブ', icon: '👩', isColorable: true }
+            ],
+            face: [
+                { id: 'face1', name: 'キラキラハッピー', icon: '😊' },
+                { id: 'face2', name: 'うるうるエンジェル', icon: '😉' },
+                { id: 'face3', name: 'おっとりドリーミー', icon: '😍' },
+                { id: 'face4', name: 'あこがれクラシック', icon: '✨' }
+            ],
+            skin: [
+                { id: 'skin1', name: 'ミルキーピーチ', icon: '🍑' },
+                { id: 'skin2', name: 'スノーホワイト', icon: '❄️' },
+                { id: 'skin3', name: 'ココアベージュ', icon: '🍫' },
+                { id: 'skin4', name: 'サニーブロンズ', icon: '☀️' }
+            ],
+            dress: [
+                { id: 'dress1', name: 'シンデレラドレス', icon: '👗', color: '#8ec5fc' },
+                { id: 'dress2', name: 'ベル・薔薇ドレス', icon: '🌹', color: '#f6d365' },
+                { id: 'dress3', name: 'マーメイドドレス', icon: '🧜‍♀️', color: '#a1c4fd' },
+                { id: 'dress4', name: 'いちごロリータドレス', icon: '🍓', color: '#ff9a9e' },
+                { id: 'dress5', name: 'クイーンパープルドレス', icon: '🍇', color: '#b19ffb' },
+                { id: 'dress6', name: 'フェアリーバタフライ', icon: '🦋', color: '#a3f7bf' },
+                { id: 'dress7', name: 'スノークリスタル', icon: '❄️', color: '#c9eefc' }
+            ],
+            accessory: [
+                { id: 'none', name: 'なし', icon: '❌' },
+                { id: 'acc1', name: 'ティアラ＆ネックレス', icon: '👑' },
+                { id: 'acc2', name: 'フラワークラウン', icon: '🌸' },
+                { id: 'acc3', name: 'リボンカチューシャ', icon: '🎀' }
+            ],
+            shoes: [
+                { id: 'shoes1', name: 'ガラスの靴', icon: '👠' },
+                { id: 'shoes2', name: 'ピンクストラップ', icon: '🩰' },
+                { id: 'shoes3', name: 'ゴールドミュール', icon: '👡' }
+            ],
+            hand: [
+                { id: 'none', name: 'なし', icon: '❌' },
+                { id: 'hand1', name: '魔法のステッキ', icon: '🪄' },
+                { id: 'hand2', name: 'バラの花束', icon: '💐' },
+                { id: 'hand3', name: 'ロイヤルファン(扇)', icon: '🪭' }
+            ],
+            background: [
+                { id: 'bg1', name: 'バルコニー', icon: '🏰' },
+                { id: 'bg2', name: '星空', icon: '🌌' },
+                { id: 'bg3', name: '森の庭園', icon: '🌳' },
+                { id: 'bg4', name: '海の宮殿', icon: '🧜' }
+            ]
+        };
+
+        // 現在のプリンセスのコーディネート状態
+        let currentDressUp = {
+            hair: 'hair1',
+            face: 'face1',
+            skin: 'skin1',
+            dress: 'dress1',
+            accessory: 'acc1',
+            shoes: 'shoes1',
+            hand: 'none',
+            background: 'bg1'
+        };
+
+        // カテゴリの日本語表示用
+        const categoryLabels = {
+            hair: 'かみがた',
+            face: 'メイク',
+            skin: 'おはだ',
+            dress: 'ドレス',
+            accessory: 'アクセ',
+            shoes: 'くつ',
+            hand: 'もちもの',
+            background: 'はいけい'
+        };
+
+        let currentCategory = 'hair';
+
+        // --- 2. SVGパーツ描画エンジン ---
+
+        // 素体（お肌の色に対応）
+        function drawBody() {
+            const svg = document.getElementById('layer-body');
+            const skin = skins[currentDressUp.skin] || skins.skin1;
+            
+            svg.innerHTML = `
+                <!-- 体・首 -->
+                <path d="M135 240 L165 240 L160 215 L140 215 Z" fill="${skin.primary}" stroke="${skin.stroke}" stroke-width="2" />
+                <path d="M120 238 Q150 242 180 238 L170 310 L130 310 Z" fill="${skin.primary}" />
+                <!-- 腕 -->
+                <path d="M115 240 Q90 280 110 305 Q120 305 125 285" fill="${skin.primary}" stroke="${skin.stroke}" stroke-width="1.5" />
+                <path d="M185 240 Q210 280 190 305 Q180 305 175 285" fill="${skin.primary}" stroke="${skin.stroke}" stroke-width="1.5" />
+                <!-- 顔の輪郭 (少し丸みを出してかわいく) -->
+                <path d="M102 180 C102 135 198 135 198 180 C198 220 182 232 150 232 C118 232 102 220 102 180 Z" fill="${skin.primary}" stroke="${skin.stroke}" stroke-width="2" />
+                <!-- 耳 -->
+                <circle cx="100" cy="185" r="8" fill="${skin.primary}" stroke="${skin.stroke}" stroke-width="1" />
+                <circle cx="200" cy="185" r="8" fill="${skin.primary}" stroke="${skin.stroke}" stroke-width="1" />
+            `;
+        }
+
+        // お顔メイク（可愛さを最大化したアイ＆チークデザイン）
+        function drawFace(faceId) {
+            const svg = document.getElementById('layer-face');
+            let content = '';
+
+            // ふんわりとしたかわいいピンクチーク
+            content += `
+                <ellipse cx="120" cy="198" rx="10" ry="5" fill="#ff7da7" opacity="0.5" />
+                <ellipse cx="180" cy="198" rx="10" ry="5" fill="#ff7da7" opacity="0.5" />
+                <!-- チークの中の照れ線(きらきら感) -->
+                <path d="M116 198 L119 195 M121 199 L124 196 M125 201 L128 198" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" />
+                <path d="M176 198 L179 195 M181 199 L184 196 M185 201 L188 198" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" />
+            `;
+
+            // まつげ・二重ラインのベーススタイル
+            const eyeColor = '#3a2d24'; // 深いココアブラウン
+
+            if (faceId === 'face1') {
+                // キラキラハッピー（うるうるキラキラな瞳＋微笑み）
+                content += `
+                    <!-- 二重ライン -->
+                    <path d="M112 170 Q124 162 136 169" fill="none" stroke="#a38272" stroke-width="1.5" stroke-linecap="round" />
+                    <path d="M164 170 Q176 162 188 169" fill="none" stroke="#a38272" stroke-width="1.5" stroke-linecap="round" />
+                    
+                    <!-- 左目 -->
+                    <ellipse cx="124" cy="180" rx="11" ry="12" fill="${eyeColor}" />
+                    <circle cx="121" cy="176" r="4.5" fill="#ffffff" /> <!-- メインハイライト -->
+                    <circle cx="127" cy="184" r="2.5" fill="#ffffff" /> <!-- サブハイライト -->
+                    <circle cx="120" cy="184" r="1" fill="#ffffff" opacity="0.8" /> <!-- うるうる感 -->
+                    <!-- まつげ -->
+                    <path d="M112 176 Q124 167 136 174" fill="none" stroke="${eyeColor}" stroke-width="3" stroke-linecap="round" />
+                    <path d="M134 172 L139 168" stroke="${eyeColor}" stroke-width="2" stroke-linecap="round" />
+                    <path d="M113 174 L108 170" stroke="${eyeColor}" stroke-width="2" stroke-linecap="round" />
+
+                    <!-- 右目 -->
+                    <ellipse cx="176" cy="180" rx="11" ry="12" fill="${eyeColor}" />
+                    <circle cx="173" cy="176" r="4.5" fill="#ffffff" />
+                    <circle cx="179" cy="184" r="2.5" fill="#ffffff" />
+                    <circle cx="172" cy="184" r="1" fill="#ffffff" opacity="0.8" />
+                    <!-- まつげ -->
+                    <path d="M164 174 Q176 167 188 176" fill="none" stroke="${eyeColor}" stroke-width="3" stroke-linecap="round" />
+                    <path d="M166 172 L161 168" stroke="${eyeColor}" stroke-width="2" stroke-linecap="round" />
+                    <path d="M187 174 L192 170" stroke="${eyeColor}" stroke-width="2" stroke-linecap="round" />
+
+                    <!-- 眉毛 -->
+                    <path d="M114 160 Q124 153 134 157" fill="none" stroke="#a38272" stroke-width="2" stroke-linecap="round" />
+                    <path d="M166 157 Q176 153 186 160" fill="none" stroke="#a38272" stroke-width="2" stroke-linecap="round" />
+
+                    <!-- お口（ちょっと開けた笑顔） -->
+                    <path d="M144 204 Q150 214 156 204" fill="#ff6b8b" stroke="#e04d70" stroke-width="1.5" />
+                    <path d="M142 203 Q150 206 158 203" fill="none" stroke="#e04d70" stroke-width="2" stroke-linecap="round" />
+                `;
+            } else if (faceId === 'face2') {
+                // うるうるエンジェル（ハートハイライトの最強ウィンク）
+                content += `
+                    <!-- 左目 (ウインク) -->
+                    <path d="M112 181 Q124 167 136 181" fill="none" stroke="${eyeColor}" stroke-width="4.5" stroke-linecap="round" />
+                    <path d="M110 178 L105 174" stroke="${eyeColor}" stroke-width="2" stroke-linecap="round" />
+                    <path d="M138 178 L143 174" stroke="${eyeColor}" stroke-width="2" stroke-linecap="round" />
+                    
+                    <!-- 右目 (うるうるハート) -->
+                    <ellipse cx="176" cy="180" rx="11" ry="12" fill="${eyeColor}" />
+                    <!-- ハート型ハイライト -->
+                    <path d="M174 173 C172 171 170 171 169 173 C168 174 168 176 171 178 L174 181 L177 178 C180 176 180 174 179 173 C178 171 176 171 174 173 Z" fill="#ffffff" />
+                    <circle cx="179" cy="184" r="2.5" fill="#ffffff" />
+                    <!-- まつげ -->
+                    <path d="M164 174 Q176 167 188 176" fill="none" stroke="${eyeColor}" stroke-width="3" stroke-linecap="round" />
+                    <path d="M187 174 L192 170" stroke="${eyeColor}" stroke-width="2" stroke-linecap="round" />
+
+                    <!-- 眉毛 -->
+                    <path d="M114 158 Q124 153 134 160" fill="none" stroke="#a38272" stroke-width="2" stroke-linecap="round" />
+                    <path d="M166 156 Q176 151 186 158" fill="none" stroke="#a38272" stroke-width="2" stroke-linecap="round" />
+
+                    <!-- お口（ペロッとした猫口） -->
+                    <path d="M145 204 Q150 208 155 204 Q160 208 165 204" fill="none" stroke="#e04d70" stroke-width="2.5" stroke-linecap="round" />
+                `;
+            } else if (faceId === 'face3') {
+                // おっとりドリーミー（お星様ハイライトのハーフアイ）
+                content += `
+                    <!-- 左目 -->
+                    <ellipse cx="124" cy="182" rx="11" ry="10" fill="#4d3b5a" />
+                    <!-- 星ハイライト -->
+                    <polygon points="124,175 125,178 128,178 126,180 127,183 124,181 121,183 122,180 120,178 123,178" fill="#ffffff" />
+                    <circle cx="128" cy="185" r="2" fill="#ffffff" />
+                    <!-- まつげ＆まぶた -->
+                    <path d="M112 176 Q124 169 136 176" fill="none" stroke="#4d3b5a" stroke-width="3.5" stroke-linecap="round" />
+                    <path d="M112 172 Q124 165 136 172" fill="none" stroke="#ffb3c1" stroke-width="1.5" />
+
+                    <!-- 右目 -->
+                    <ellipse cx="176" cy="182" rx="11" ry="10" fill="#4d3b5a" />
+                    <!-- 星ハイライト -->
+                    <polygon points="176,175 177,178 180,178 178,180 179,183 176,181 173,183 174,180 172,178 175,178" fill="#ffffff" />
+                    <circle cx="180" cy="185" r="2" fill="#ffffff" />
+                    <!-- まつげ＆まぶた -->
+                    <path d="M164 176 Q176 169 188 176" fill="none" stroke="#4d3b5a" stroke-width="3.5" stroke-linecap="round" />
+                    <path d="M164 172 Q176 165 188 172" fill="none" stroke="#ffb3c1" stroke-width="1.5" />
+
+                    <!-- お口（ぽかんとしたちいさな口） -->
+                    <circle cx="150" cy="205" r="4.5" fill="#ff7da7" stroke="#e04d70" stroke-width="1" />
+                `;
+            } else if (faceId === 'face4') {
+                // あこがれクラシック（ピュアできれいなグラデーションの瞳）
+                content += `
+                    <!-- 左目 -->
+                    <ellipse cx="124" cy="180" rx="10" ry="12" fill="#2d4059" />
+                    <ellipse cx="124" cy="183" rx="8" ry="8" fill="#00adb5" opacity="0.6" />
+                    <circle cx="121" cy="175" r="4" fill="#ffffff" />
+                    <circle cx="127" cy="183" r="2" fill="#ffffff" />
+                    <path d="M112 174 Q124 165 136 174" fill="none" stroke="#2d4059" stroke-width="3" stroke-linecap="round" />
+                    
+                    <!-- 右目 -->
+                    <ellipse cx="176" cy="180" rx="10" ry="12" fill="#2d4059" />
+                    <ellipse cx="176" cy="183" rx="8" ry="8" fill="#00adb5" opacity="0.6" />
+                    <circle cx="173" cy="175" r="4" fill="#ffffff" />
+                    <circle cx="179" cy="183" r="2" fill="#ffffff" />
+                    <path d="M164 174 Q176 165 188 174" fill="none" stroke="#2d4059" stroke-width="3" stroke-linecap="round" />
+
+                    <!-- お口（おすましスマイル） -->
+                    <path d="M144 204 Q150 208 156 204" fill="none" stroke="#e04d70" stroke-width="2.5" stroke-linecap="round" />
+                `;
+            }
+
+            svg.innerHTML = content;
+        }
+
+        // 髪の毛（前髪＋後ろ髪）
+        function drawHair(hairId, color) {
+            const backSvg = document.getElementById('layer-hair-back');
+            const frontSvg = document.getElementById('layer-hair-front');
+            
+            let backContent = '';
+            let frontContent = '';
+
+            const p = color.primary;
+            const s = color.shadow;
+
+            if (hairId === 'hair1') {
+                // ノーブルロング
+                backContent = `
+                    <path d="M100 180 C80 220 70 300 90 350 C100 360 110 320 110 260 Z" fill="${s}" />
+                    <path d="M200 180 C220 220 230 300 210 350 C200 360 190 320 190 260 Z" fill="${s}" />
+                    <path d="M100 170 C80 200 80 320 100 380 C110 360 120 300 120 230 Z" fill="${p}" />
+                    <path d="M200 170 C220 200 220 320 180 380 C190 360 180 300 180 230 Z" fill="${p}" />
+                `;
+                frontContent = `
+                    <!-- 頭頂部ベース -->
+                    <path d="M102 175 C102 120 198 120 198 175 C198 185 185 170 170 170 C150 170 145 180 130 180 C115 180 102 185 102 175 Z" fill="${p}" stroke="${s}" stroke-width="1" />
+                    <!-- 前髪レイヤー -->
+                    <path d="M105 170 Q130 160 145 185 Q135 185 115 175" fill="${s}" />
+                    <path d="M105 168 Q130 155 140 182 Q130 180 115 172" fill="${p}" />
+                    <path d="M195 170 Q170 160 155 185 Q165 185 185 175" fill="${s}" />
+                    <path d="M195 168 Q170 155 160 182 Q170 180 185 172" fill="${p}" />
+                    <!-- 横髪束 -->
+                    <path d="M105 175 Q95 230 115 260 Q120 230 112 180" fill="${p}" />
+                    <path d="M195 175 Q205 230 185 260 Q180 230 188 180" fill="${p}" />
+                `;
+            } else if (hairId === 'hair2') {
+                // ツインテールロール
+                backContent = `
+                    <!-- 左ツインテール -->
+                    <g transform="translate(70, 160)">
+                        <path d="M10 10 C-30 30 -40 120 0 150 C20 120 0 80 10 30" fill="${s}" />
+                        <path d="M5 5 C-25 25 -30 110 5 140 C15 110 5 70 10 25" fill="${p}" />
+                        <!-- リボン -->
+                        <path d="M-5 12 Q5 0 15 12 L5 18 Z" fill="#ff4d6d" />
+                    </g>
+                    <!-- 右ツインテール -->
+                    <g transform="translate(230, 160) scale(-1, 1)">
+                        <path d="M10 10 C-30 30 -40 120 0 150 C20 120 0 80 10 30" fill="${s}" />
+                        <path d="M5 5 C-25 25 -30 110 5 140 C15 110 5 70 10 25" fill="${p}" />
+                        <!-- リボン -->
+                        <path d="M-5 12 Q5 0 15 12 L5 18 Z" fill="#ff4d6d" />
+                    </g>
+                `;
+                frontContent = `
+                    <!-- 前髪ストレートぱっつん風 -->
+                    <path d="M102 170 C102 120 198 120 198 170 Q150 150 102 170" fill="${p}" stroke="${s}" stroke-width="1" />
+                    <path d="M105 170 Q125 182 135 182 L130 170" fill="${s}" />
+                    <path d="M195 170 Q175 182 165 182 L170 170" fill="${s}" />
+                    <path d="M132 170 Q150 185 168 170 Z" fill="${p}" />
+                    <!-- サイドの髪 -->
+                    <path d="M105 170 C95 200 95 240 105 250 C110 230 105 200 112 175" fill="${p}" />
+                    <path d="M195 170 C205 200 205 240 195 250 C190 230 195 200 188 175" fill="${p}" />
+                `;
+            } else if (hairId === 'hair3') {
+                // ロイヤルお団子アップ
+                backContent = `
+                    <!-- 大きなお団子 -->
+                    <circle cx="150" cy="115" r="30" fill="${s}" />
+                    <circle cx="150" cy="118" r="27" fill="${p}" />
+                    <!-- お団子飾り（パール風） -->
+                    <circle cx="125" cy="115" r="4" fill="#ffffff" />
+                    <circle cx="132" cy="105" r="4" fill="#ffffff" />
+                    <circle cx="142" cy="98" r="4" fill="#ffffff" />
+                    <circle cx="158" cy="98" r="4" fill="#ffffff" />
+                    <circle cx="168" cy="105" r="4" fill="#ffffff" />
+                    <circle cx="175" cy="115" r="4" fill="#ffffff" />
+                `;
+                frontContent = `
+                    <!-- すっきりアップフロント -->
+                    <path d="M102 175 C102 120 198 120 198 175 C198 180 180 170 150 172 C120 170 102 180 102 175 Z" fill="${p}" stroke="${s}" stroke-width="1" />
+                    <!-- カチューシャ風編み込みイメージ -->
+                    <path d="M110 150 Q150 135 190 150" fill="none" stroke="${s}" stroke-width="4" stroke-dasharray="6,4" />
+                    <!-- 触覚髪の毛 -->
+                    <path d="M105 175 Q98 210 103 230" fill="none" stroke="${p}" stroke-width="3.5" stroke-linecap="round" />
+                    <path d="M195 175 Q202 210 197 230" fill="none" stroke="${p}" stroke-width="3.5" stroke-linecap="round" />
+                `;
+            } else if (hairId === 'hair4') {
+                // ゆるふわショートボブ
+                backContent = `
+                    <path d="M110 180 Q80 230 110 260" fill="none" stroke="${s}" stroke-width="12" stroke-linecap="round" />
+                    <path d="M190 180 Q220 230 190 260" fill="none" stroke="${s}" stroke-width="12" stroke-linecap="round" />
+                `;
+                frontContent = `
+                    <path d="M102 170 C102 120 198 120 198 170 C198 185 180 175 150 180 C120 175 102 185 102 170 Z" fill="${p}" stroke="${s}" stroke-width="1" />
+                    <!-- 無造作ヘアピン -->
+                    <path d="M120 145 L130 150" stroke="#ff4d6d" stroke-width="3" stroke-linecap="round" />
+                    <!-- ふわっとした両サイド -->
+                    <path d="M104 172 C90 200 92 235 112 245 C116 220 110 190 115 175" fill="${p}" />
+                    <path d="M196 172 C210 200 208 235 188 245 C184 220 190 190 185 175" fill="${p}" />
+                `;
+            }
+
+            backSvg.innerHTML = backContent;
+            frontSvg.innerHTML = frontContent;
+        }
+
+        // ドレス / 衣装 (豪華な新作を追加！)
+        function drawDress(dressId, baseColorHex) {
+            const svg = document.getElementById('layer-dress');
+            let content = '';
+
+            // ドレスの基本色と少し暗い影色、ハイライト色
+            const primary = baseColorHex || '#ffccd5';
+            const shadow = adjustColorBrightness(primary, -20);
+            const light = adjustColorBrightness(primary, 30);
+
+            if (dressId === 'dress1') {
+                // シンデレラプリンセスドレス (豪華なパフスリーブ＆ドーム)
+                content = `
+                    <!-- 肩・パフスリーブ -->
+                    <circle cx="120" cy="245" r="16" fill="${light}" stroke="${shadow}" stroke-width="1" />
+                    <circle cx="180" cy="245" r="16" fill="${light}" stroke="${shadow}" stroke-width="1" />
+                    
+                    <!-- コルセット/トップス -->
+                    <path d="M125 240 L175 240 L165 285 L135 285 Z" fill="${primary}" stroke="${shadow}" stroke-width="1.5" />
+                    <path d="M125 240 Q150 255 175 240 L150 285 Z" fill="${shadow}" opacity="0.3" />
+                    <path d="M142 240 L142 285 M158 240 L158 285" stroke="${light}" stroke-width="1.5" />
+                    
+                    <!-- ウエスト飾り -->
+                    <path d="M130 282 Q150 292 170 282 Q190 300 170 310 Q150 300 130 310 Q110 300 130 282" fill="${light}" opacity="0.9" />
+
+                    <!-- 大きなスカート -->
+                    <path d="M135 285 Q150 288 165 285 Q250 340 250 380 L50 380 Q50 340 135 285 Z" fill="${primary}" />
+                    <!-- ドレープ・オーバースカート -->
+                    <path d="M135 285 Q150 292 165 285 C210 290 240 330 230 365 C190 340 150 350 135 285 Z" fill="${light}" stroke="${shadow}" stroke-width="1" opacity="0.8" />
+                    <path d="M135 285 Q150 292 165 285 C90 290 60 330 70 365 C110 340 150 350 135 285 Z" fill="${light}" stroke="${shadow}" stroke-width="1" opacity="0.8" />
+                    <!-- スカートのひだ・影 -->
+                    <path d="M150 285 L150 380" stroke="${shadow}" stroke-width="3" opacity="0.4" />
+                    <path d="M145 285 L110 380" stroke="${shadow}" stroke-width="2" opacity="0.3" />
+                    <path d="M155 285 L190 380" stroke="${shadow}" stroke-width="2" opacity="0.3" />
+                    
+                    <!-- 裾レース -->
+                    <path d="M50 380 Q60 375 70 380 Q80 375 90 380 Q100 375 110 380 Q120 375 130 380 Q140 375 150 380 Q160 375 170 380 Q180 375 190 380 Q200 375 210 380 Q220 375 230 380 Q240 375 250 380" fill="none" stroke="#ffffff" stroke-width="3" />
+                `;
+            } else if (dressId === 'dress2') {
+                // ベル・華やかギャザードレス（ゴールド・薔薇デザイン）
+                content = `
+                    <!-- オフショルダー -->
+                    <path d="M110 245 Q150 255 190 245 Q190 255 170 255 Q150 250 130 255 Z" fill="${light}" stroke="${shadow}" stroke-width="1" />
+                    <!-- コルセット -->
+                    <path d="M130 250 L170 250 L160 290 L140 290 Z" fill="${primary}" stroke="${shadow}" stroke-width="2" />
+                    <path d="M150 250 L150 290" stroke="#ff4d6d" stroke-width="2" />
+                    
+                    <!-- スカート段々フリル -->
+                    <!-- 1段目 -->
+                    <path d="M140 290 Q150 292 160 290 Q210 320 220 335 L80 335 Q90 320 140 290 Z" fill="${primary}" stroke="${shadow}" stroke-width="1" />
+                    <!-- 2段目 -->
+                    <path d="M80 335 L220 335 Q235 360 240 380 L60 380 Q65 360 80 335 Z" fill="${shadow}" />
+                    <path d="M85 335 L215 335 Q225 358 235 380 L65 380 Q75 358 85 335 Z" fill="${primary}" />
+                    
+                    <!-- タックフリルの絞り -->
+                    <circle cx="110" cy="325" r="8" fill="${light}" />
+                    <circle cx="150" cy="325" r="8" fill="${light}" />
+                    <circle cx="190" cy="325" r="8" fill="${light}" />
+                    <!-- 赤いバラの飾り -->
+                    <circle cx="110" cy="325" r="4" fill="#ff0040" />
+                    <circle cx="150" cy="325" r="4" fill="#ff0040" />
+                    <circle cx="190" cy="325" r="4" fill="#ff0040" />
+                    <circle cx="150" cy="250" r="5" fill="#ff0040" />
+                `;
+            } else if (dressId === 'dress3') {
+                // マーメイドエレガントドレス
+                content = `
+                    <!-- ビスチェ -->
+                    <path d="M125 240 L175 240 Q180 265 170 285 L130 285 Q120 265 125 240 Z" fill="${primary}" stroke="${shadow}" stroke-width="1.5" />
+                    <!-- 胸元のシアーレース -->
+                    <path d="M125 240 Q150 225 175 240 Q150 250 125 240 Z" fill="#ffffff" opacity="0.6" />
+                    
+                    <!-- タイトなヒップライン -->
+                    <path d="M130 285 L170 285 C185 320 180 340 165 350 L135 350 C120 340 115 320 130 285 Z" fill="${primary}" />
+                    <path d="M130 285 Q150 320 170 285 L150 350 Z" fill="${shadow}" opacity="0.4" />
+
+                    <!-- 人魚の尾びれ風フレア裾 -->
+                    <path d="M135 350 L165 350 Q210 380 240 385 L60 385 Q90 380 135 350 Z" fill="${light}" stroke="${shadow}" stroke-width="1" />
+                    <path d="M140 350 L160 350 Q180 375 200 385 L100 385 Q120 375 140 350 Z" fill="${primary}" />
+                    <!-- キラキラ鱗ステッチ -->
+                    <path d="M140 300 Q150 305 160 300 M135 315 Q150 320 165 315" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.7" />
+                `;
+            } else if (dressId === 'dress4') {
+                // いちごロリータドレス（フリル＆エプロン）
+                content = `
+                    <path d="M130 238 Q150 248 170 238 L165 248 Q150 255 135 248 Z" fill="#ffffff" stroke="#ffccd5" stroke-width="1" />
+                    <!-- コルセット -->
+                    <path d="M130 245 L170 245 L162 285 L138 285 Z" fill="${primary}" stroke="${shadow}" stroke-width="1.5" />
+                    <path d="M140 250 L160 260 M160 250 L140 260 M140 260 L160 270 M160 260 L140 270" stroke="#ff4d6d" stroke-width="1.5" />
+                    
+                    <!-- パフスリーブ -->
+                    <circle cx="120" cy="248" r="12" fill="${primary}" />
+                    <circle cx="120" cy="248" r="14" fill="#ffffff" opacity="0.4" />
+                    <circle cx="180" cy="248" r="12" fill="${primary}" />
+                    <circle cx="180" cy="248" r="14" fill="#ffffff" opacity="0.4" />
+                    
+                    <!-- エプロン＆ふんわりスカート -->
+                    <path d="M138 285 L162 285 C230 320 230 375 225 380 L75 380 C70 375 70 320 138 285 Z" fill="${primary}" />
+                    <path d="M138 285 L162 285 C190 310 190 350 180 365 L120 365 C110 350 110 310 138 285 Z" fill="#ffffff" stroke="#ffb3c1" stroke-width="1" />
+                    
+                    <!-- いちご模様 -->
+                    <circle cx="95" cy="340" r="3" fill="#ff4d6d" />
+                    <circle cx="105" cy="360" r="3" fill="#ff4d6d" />
+                    <circle cx="205" cy="340" r="3" fill="#ff4d6d" />
+                    <circle cx="195" cy="360" r="3" fill="#ff4d6d" />
+                    <path d="M75 380 Q150 370 225 380 L225 385 Q150 375 75 385 Z" fill="#ffffff" />
+                `;
+            } else if (dressId === 'dress5') {
+                // クイーンパープルドレス
+                content = `
+                    <path d="M125 235 L120 210 L140 230 Z" fill="${shadow}" />
+                    <path d="M175 235 L180 210 L160 230 Z" fill="${shadow}" />
+                    <path d="M128 240 L172 240 L165 285 L135 285 Z" fill="${primary}" stroke="${shadow}" stroke-width="1.5" />
+                    <path d="M150 240 L150 285" stroke="#ffe5ec" stroke-width="2" />
+                    <circle cx="150" cy="255" r="4" fill="#ffd700" />
+                    <circle cx="150" cy="270" r="4" fill="#ffd700" />
+                    
+                    <!-- 袖 -->
+                    <path d="M128 240 Q105 270 120 295" fill="none" stroke="${primary}" stroke-width="10" stroke-linecap="round" />
+                    <path d="M172 240 Q195 270 180 295" fill="none" stroke="${primary}" stroke-width="10" stroke-linecap="round" />
+                    
+                    <path d="M135 285 L165 285 L150 295 Z" fill="#ffd700" />
+                    <path d="M135 285 Q150 295 165 285 C240 320 250 375 240 380 L60 380 C50 375 60 320 135 285 Z" fill="${primary}" />
+                    <path d="M150 290 L175 380 L125 380 Z" fill="${shadow}" />
+                `;
+            } else if (dressId === 'dress6') {
+                // 【新作】フェアリーバタフライ（妖精の輝く羽＆グラデーションドレス）
+                content = `
+                    <!-- 背中の妖精の羽 (透き通るグリーン) -->
+                    <g opacity="0.75" style="mix-blend-mode: screen;">
+                        <!-- 左羽 -->
+                        <path d="M120 240 C60 170 30 220 80 270 C50 310 70 340 115 300 Z" fill="#baffc9" stroke="#a3f7bf" stroke-width="2" />
+                        <circle cx="70" cy="220" r="3" fill="#fff" />
+                        <circle cx="90" cy="260" r="2" fill="#fff" />
+                        <!-- 右羽 -->
+                        <path d="M180 240 C240 170 270 220 220 270 C250 310 230 340 185 300 Z" fill="#baffc9" stroke="#a3f7bf" stroke-width="2" />
+                        <circle cx="230" cy="220" r="3" fill="#fff" />
+                        <circle cx="210" cy="260" r="2" fill="#fff" />
+                    </g>
+
+                    <!-- オフショルダーの葉っぱ風ストラップ -->
+                    <path d="M120 240 Q150 248 180 240" fill="none" stroke="#a3f7bf" stroke-width="4" stroke-linecap="round" />
+                    <circle cx="150" cy="244" r="5" fill="#ffb3c1" />
+
+                    <!-- コルセット -->
+                    <path d="M128 245 L172 245 L164 285 L136 285 Z" fill="${primary}" stroke="${shadow}" stroke-width="1.5" />
+                    <path d="M136 245 Q150 265 164 245" fill="none" stroke="${light}" stroke-width="2" />
+
+                    <!-- 自然豊かなお花付きフリルスカート -->
+                    <path d="M136 285 Q150 290 164 285 Q240 330 235 380 L65 380 Q60 330 136 285 Z" fill="${primary}" />
+                    <!-- グラデーションフリル -->
+                    <path d="M136 285 Q150 290 164 285 C200 310 220 350 215 380 L85 380 C80 350 100 310 136 285 Z" fill="#e8ffdb" opacity="0.8" />
+                    <!-- お花のクリップ -->
+                    <circle cx="138" cy="290" r="6" fill="#ffb3c1" /> <circle cx="138" cy="290" r="2" fill="#fff" />
+                    <circle cx="162" cy="290" r="6" fill="#ffb3c1" /> <circle cx="162" cy="290" r="2" fill="#fff" />
+                    <path d="M85 380 Q150 372 215 380 L215 383 Q150 375 85 383 Z" fill="#ffffff" />
+                `;
+            } else if (dressId === 'dress7') {
+                // 【新作】スノークリスタル（きらめく雪の結晶＆シフォンドレス）
+                content = `
+                    <!-- 雪の結晶のエフェクトオーラ(後ろ) -->
+                    <g stroke="#ffffff" stroke-width="1" opacity="0.6">
+                        <!-- 結晶1 -->
+                        <path d="M110 240 L110 250 M105 245 L115 245 M107 242 L113 248 M107 248 L113 242" />
+                        <!-- 結晶2 -->
+                        <path d="M190 240 L190 250 M185 245 L195 245 M187 242 L193 248 M187 248 L193 242" />
+                    </g>
+
+                    <!-- シースルーの襟元 -->
+                    <path d="M125 238 Q150 225 175 238 L165 245 Q150 250 135 245 Z" fill="#e3f2fd" opacity="0.7" stroke="#90caf9" stroke-width="1" />
+                    <!-- コルセット(アイスブルー) -->
+                    <path d="M128 245 L172 245 L165 285 L135 285 Z" fill="${primary}" stroke="${shadow}" stroke-width="1.5" />
+                    <polygon points="150,248 144,258 150,268 156,258" fill="#ffffff" opacity="0.9" />
+
+                    <!-- シフォンパフスリーブ -->
+                    <circle cx="118" cy="245" r="14" fill="#ffffff" stroke="${light}" stroke-width="1" opacity="0.8" />
+                    <circle cx="182" cy="245" r="14" fill="#ffffff" stroke="${light}" stroke-width="1" opacity="0.8" />
+
+                    <!-- ティアード（3段）スカート -->
+                    <!-- 1段目 -->
+                    <path d="M135 285 Q150 290 165 285 Q210 320 220 330 L80 330 Q90 320 135 285 Z" fill="${primary}" />
+                    <!-- 2段目 -->
+                    <path d="M80 330 Q150 335 220 330 Q230 355 235 360 L65 360 Q70 355 80 330 Z" fill="${light}" />
+                    <!-- 3段目 -->
+                    <path d="M65 360 Q150 365 235 360 Q245 378 250 380 L50 380 Q55 378 65 360 Z" fill="${shadow}" />
+
+                    <!-- キラキラ輝く雪の結晶の飾り（裾・ウエスト） -->
+                    <path d="M150 285 L150 295 M145 290 L155 290" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+                    <circle cx="150" cy="290" r="2.5" fill="#e3f2fd" />
+
+                    <path d="M50 380 Q150 370 250 380 L250 383 Q150 373 50 383 Z" fill="#ffffff" />
+                `;
+            }
+
+            svg.innerHTML = content;
+        }
+
+        // シューズ
+        function drawShoes(shoesId) {
+            const svg = document.getElementById('layer-shoes');
+            let content = '';
+
+            if (shoesId === 'shoes1') {
+                // ガラスの靴 (スカイブルーに輝く)
+                content = `
+                    <path d="M125 365 L143 365 L140 378 L127 378 Z" fill="#b3e5fc" opacity="0.8" stroke="#81d4fa" stroke-width="1.5" />
+                    <circle cx="135" cy="365" r="3" fill="#ffffff" />
+                    <path d="M157 365 L175 365 L173 378 L160 378 Z" fill="#b3e5fc" opacity="0.8" stroke="#81d4fa" stroke-width="1.5" />
+                    <circle cx="165" cy="365" r="3" fill="#ffffff" />
+                `;
+            } else if (shoesId === 'shoes2') {
+                // ピンクストラップ
+                content = `
+                    <path d="M125 365 L143 365 L140 376 L127 376 Z" fill="#ff8fab" stroke="#fb6f92" stroke-width="1.5" />
+                    <path d="M123 363 L145 363" stroke="#fb6f92" stroke-width="2" />
+                    <path d="M157 365 L175 365 L173 376 L160 376 Z" fill="#ff8fab" stroke="#fb6f92" stroke-width="1.5" />
+                    <path d="M155 363 L177 363" stroke="#fb6f92" stroke-width="2" />
+                `;
+            } else if (shoesId === 'shoes3') {
+                // ゴールドミュール
+                content = `
+                    <path d="M125 365 L143 365 L138 376 L129 376 Z" fill="#ffe082" stroke="#ffb300" stroke-width="1.5" />
+                    <circle cx="134" cy="363" r="4" fill="#ff8f00" />
+                    <path d="M157 365 L175 365 L171 376 L162 376 Z" fill="#ffe082" stroke="#ffb300" stroke-width="1.5" />
+                    <circle cx="166" cy="363" r="4" fill="#ff8f00" />
+                `;
+            }
+
+            svg.innerHTML = content;
+        }
+
+        // アクセサリー（ティアラ・ネックレスなど）
+        function drawAccessory(accId) {
+            const svg = document.getElementById('layer-accessory');
+            let content = '';
+
+            if (accId === 'acc1') {
+                // ティアラ ＆ ダイヤネックレス
+                content = `
+                    <!-- ダイヤネックレス -->
+                    <path d="M132 225 Q150 238 168 225" fill="none" stroke="#e0f7fa" stroke-width="3" />
+                    <path d="M132 225 Q150 238 168 225" fill="none" stroke="#00e5ff" stroke-width="1" />
+                    <polygon points="150,234 147,240 150,245 153,240" fill="#00e5ff" />
+                    <circle cx="150" cy="234" r="2.5" fill="#ffffff" />
+                    
+                    <!-- ティアラ（頭の上） -->
+                    <g transform="translate(150, 133)">
+                        <path d="M-25 5 Q0 -2 25 5" fill="none" stroke="#ffe082" stroke-width="3.5" />
+                        <polygon points="0,-16 -8,2 8,2" fill="#ffd54f" stroke="#ffc107" stroke-width="1" />
+                        <polygon points="-14,-10 -20,3 -8,3" fill="#ffd54f" stroke="#ffc107" stroke-width="1" />
+                        <polygon points="14,-10 8,3 20,3" fill="#ffd54f" stroke="#ffc107" stroke-width="1" />
+                        <circle cx="0" cy="-16" r="3" fill="#e91e63" />
+                        <circle cx="-14" cy="-10" r="2.5" fill="#03a9f4" />
+                        <circle cx="14" cy="-10" r="2.5" fill="#03a9f4" />
+                        <circle cx="0" cy="-4" r="3.5" fill="#ffffff" />
+                    </g>
+                `;
+            } else if (accId === 'acc2') {
+                // フラワークラウン（花かんむり）
+                content = `
+                    <g transform="translate(150, 136)">
+                        <path d="M-28 3 Q0 -6 28 3" fill="none" stroke="#81c784" stroke-width="3.5" />
+                        <circle cx="-20" cy="1" r="6" fill="#ff8fab" /> <circle cx="-20" cy="1" r="2" fill="#fff" />
+                        <circle cx="-8" cy="-3" r="7" fill="#ffe5ec" /> <circle cx="-8" cy="-3" r="2" fill="#ffd700" />
+                        <circle cx="6" cy="-3" r="7" fill="#ffb3c1" /> <circle cx="6" cy="-3" r="2" fill="#ffd700" />
+                        <circle cx="18" cy="1" r="6" fill="#ffe5ec" /> <circle cx="18" cy="1" r="2" fill="#fff" />
+                        <path d="M-13 -6 Q-10 -12 -5 -6 Z" fill="#4caf50" />
+                        <path d="M10 -6 Q13 -12 18 -6 Z" fill="#4caf50" />
+                    </g>
+                `;
+            } else if (accId === 'acc3') {
+                // 大きなピンクリボン
+                content = `
+                    <g transform="translate(150, 134)">
+                        <rect x="-6" y="-14" width="12" height="10" rx="3" fill="#ff4d6d" />
+                        <path d="M-6 -10 C-30 -25 -35 5 -6 -6 Z" fill="#ff758f" stroke="#ff4d6d" stroke-width="1.5" />
+                        <path d="M6 -10 C30 -25 35 5 6 -6 Z" fill="#ff758f" stroke="#ff4d6d" stroke-width="1.5" />
+                        <path d="M-4 -6 L-15 12 L-8 12 Z" fill="#ff4d6d" />
+                        <path d="M4 -6 L15 12 L8 12 Z" fill="#ff4d6d" />
+                    </g>
+                `;
+            }
+
+            svg.innerHTML = content;
+        }
+
+        // 持ち物・アイテム
+        function drawHand(handId) {
+            const svg = document.getElementById('layer-hand');
+            let content = '';
+
+            if (handId === 'hand1') {
+                // 魔法のステッキ (右手に持たせる)
+                content = `
+                    <path d="M190 280 L235 220" stroke="#f6d365" stroke-width="3" stroke-linecap="round" />
+                    <g transform="translate(235, 220)">
+                        <polygon points="0,-12 3,-3 12,-3 5,2 8,11 0,6 -8,11 -5,2 -12,-3 -3,-3" fill="#ffd700" stroke="#ffa000" stroke-width="1" />
+                        <circle cx="0" cy="0" r="3" fill="#ffffff" />
+                        <circle cx="-10" cy="-12" r="1.5" fill="#fff" />
+                        <circle cx="12" cy="10" r="1.5" fill="#fff" />
+                        <circle cx="-12" cy="8" r="2" fill="#ffe5ec" />
+                    </g>
+                `;
+            } else if (handId === 'hand2') {
+                // バラの花束
+                content = `
+                    <g transform="translate(182, 275)">
+                        <path d="M0 0 L-20 -35 Q0 -45 20 -35 Z" fill="#ffe5ec" stroke="#ffb3c1" stroke-width="1" />
+                        <path d="M0 0 L-10 -35 L10 -35 Z" fill="#fff" opacity="0.6" />
+                        <circle cx="-8" cy="-35" r="9" fill="#ff3366" />
+                        <circle cx="8" cy="-35" r="9" fill="#ff4d6d" />
+                        <circle cx="0" cy="-42" r="9" fill="#c9184a" />
+                        <path d="M-8 -35 Q-11 -38 -8 -41 Q-5 -38 -8 -35" fill="none" stroke="#fff" stroke-width="1" />
+                        <path d="M8 -35 Q5 -38 8 -41 Q11 -38 8 -35" fill="none" stroke="#fff" stroke-width="1" />
+                        <path d="M0 -42 Q-3 -45 0 -48 Q3 -45 0 -42" fill="none" stroke="#fff" stroke-width="1" />
+                        <path d="M-5 -2 Q0 8 5 -2 Q8 -6 0 -6 Q-8 -6 -5 -2" fill="#ffb3c1" />
+                    </g>
+                `;
+            } else if (handId === 'hand3') {
+                // ロイヤル扇子
+                content = `
+                    <g transform="translate(184, 272)">
+                        <path d="M0 10 L-22 -15 M0 10 L-12 -22 M0 10 L0 -25 M0 10 L12 -22 M0 10 L22 -15" stroke="#ffd700" stroke-width="2" />
+                        <path d="M-22 -15 A 25 25 0 0 1 22 -15 L12 -5 A 12 12 0 0 0 -12 -5 Z" fill="#e0f7fa" stroke="#ffd700" stroke-width="1" />
+                        <path d="M-22 -15 Q-15 -25 0 -25 Q15 -25 22 -15" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="3,2" />
+                        <circle cx="0" cy="-15" r="3" fill="#ff4d6d" />
+                    </g>
+                `;
+            }
+
+            svg.innerHTML = content;
+        }
+
+        // 背景切り替え
+        function drawBackground(bgId) {
+            const container = document.getElementById('canvas-container');
+            const bgObj = backgrounds.find(b => b.id === bgId);
+            if (bgObj) {
+                container.style.background = bgObj.style;
+            }
+        }
+
+        // --- 3. ユーティリティ & カラー変更関数 ---
+        function adjustColorBrightness(hex, percent) {
+            let R = parseInt(hex.substring(1, 3), 16);
+            let G = parseInt(hex.substring(3, 5), 16);
+            let B = parseInt(hex.substring(5, 7), 16);
+
+            R = parseInt(R * (100 + percent) / 100);
+            G = parseInt(G * (100 + percent) / 100);
+            B = parseInt(B * (100 + percent) / 100);
+
+            R = (R < 255) ? R : 255;
+            G = (G < 255) ? G : 255;
+            B = (B < 255) ? B : 255;
+
+            R = (R > 0) ? R : 0;
+            G = (G > 0) ? G : 0;
+            B = (B > 0) ? B : 0;
+
+            const rHex = ((R.toString(16).length === 1) ? "0" + R.toString(16) : R.toString(16));
+            const gHex = ((G.toString(16).length === 1) ? "0" + G.toString(16) : G.toString(16));
+            const bHex = ((B.toString(16).length === 1) ? "0" + B.toString(16) : B.toString(16));
+
+            return "#" + rHex + gHex + bHex;
+        }
+
+        // 全レイヤーを再描画するマスター関数
+        function renderPrincess() {
+            drawBody();
+            drawFace(currentDressUp.face);
+            drawHair(currentDressUp.hair, selectedColor);
+            
+            // ドレスの色は選択中のカラーに応じて変化（ドレス1, ドレス6, ドレス7に対応）
+            let dressColor = null;
+            if (currentDressUp.dress === 'dress1' || currentDressUp.dress === 'dress6' || currentDressUp.dress === 'dress7') {
+                dressColor = selectedColor.primary;
+            } else {
+                const defaultDress = items.dress.find(d => d.id === currentDressUp.dress);
+                dressColor = defaultDress ? defaultDress.color : '#ffccd5';
+            }
+            drawDress(currentDressUp.dress, dressColor);
+            
+            drawShoes(currentDressUp.shoes);
+            drawAccessory(currentDressUp.accessory);
+            drawHand(currentDressUp.hand);
+            drawBackground(currentDressUp.background);
+        }
+
+        // --- 4. UI 構築 & イベント処理 ---
+        
+        // カテゴリタブの生成
+        function initCategoryTabs() {
+            const tabsContainer = document.getElementById('category-tabs');
+            tabsContainer.innerHTML = '';
+
+            Object.keys(items).forEach(catKey => {
+                const isActive = catKey === currentCategory;
+                const tab = document.createElement('button');
+                tab.className = `snap-align-start flex-none px-4 py-2 rounded-full font-bold text-sm transition-all whitespace-nowrap ${
+                    isActive 
+                    ? 'bg-pink-500 text-white shadow-md' 
+                    : 'bg-pink-50 text-pink-600 hover:bg-pink-100'
+                }`;
+                tab.textContent = categoryLabels[catKey];
+                tab.addEventListener('click', () => {
+                    currentCategory = catKey;
+                    initCategoryTabs(); // アクティブ状態を再描画
+                    renderItemGrid();   // アイテム選択肢を再描画
+                });
+                tabsContainer.appendChild(tab);
+            });
+        }
+
+        // アイテムグリッドの生成
+        function renderItemGrid() {
+            const grid = document.getElementById('item-grid');
+            grid.innerHTML = '';
+
+            const currentItems = items[currentCategory];
+            currentItems.forEach(item => {
+                const isSelected = currentDressUp[currentCategory] === item.id;
+                const card = document.createElement('button');
+                
+                card.className = `relative aspect-square flex flex-col items-center justify-center p-2 rounded-2xl border-2 transition-all cursor-pointer ${
+                    isSelected 
+                    ? 'border-pink-500 bg-pink-50/50 shadow-inner scale-95' 
+                    : 'border-transparent bg-white hover:border-pink-200 hover:bg-pink-50/20'
+                } shadow-sm`;
+
+                card.innerHTML = `
+                    <div class="text-3xl mb-1">${item.icon}</div>
+                    <div class="text-[10px] text-gray-500 text-center font-bold leading-tight line-clamp-2">${item.name}</div>
+                `;
+
+                if (isSelected) {
+                    const check = document.createElement('div');
+                    check.className = 'absolute top-1 right-1 bg-pink-500 text-white w-4 h-4 rounded-full flex items-center justify-center text-[8px]';
+                    check.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    card.appendChild(check);
+                }
+
+                card.addEventListener('click', () => {
+                    currentDressUp[currentCategory] = item.id;
+                    renderItemGrid();
+                    renderPrincess();
+                });
+
+                grid.appendChild(card);
+            });
+        }
+
+        // カラーパレットの生成
+        function initColorPalette() {
+            const palette = document.getElementById('color-palette');
+            palette.innerHTML = '';
+
+            colors.forEach(col => {
+                const isSelected = col.id === selectedColor.id;
+                const btn = document.createElement('button');
+                btn.className = `w-8 h-8 rounded-full border-2 transition-all ${
+                    isSelected ? 'border-pink-600 scale-110 shadow-md' : 'border-white hover:scale-105'
+                }`;
+                btn.style.backgroundColor = col.primary;
+                btn.title = col.name;
+
+                btn.addEventListener('click', () => {
+                    selectedColor = col;
+                    initColorPalette();
+                    renderPrincess();
+                });
+
+                palette.appendChild(btn);
+            });
+        }
+
+        // --- 5. 特別なボタンアクション ---
+
+        // おまかせ（ランダムコーディネート）
+        document.getElementById('btn-random').addEventListener('click', () => {
+            Object.keys(items).forEach(catKey => {
+                const catItems = items[catKey];
+                const randomItem = catItems[Math.floor(Math.random() * catItems.length)];
+                currentDressUp[catKey] = randomItem.id;
+            });
+
+            // 髪色のランダム化
+            selectedColor = colors[Math.floor(Math.random() * colors.length)];
+
+            initColorPalette();
+            renderItemGrid();
+            renderPrincess();
+        });
+
+        // リセット
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            currentDressUp = {
+                hair: 'hair1',
+                face: 'face1',
+                skin: 'skin1',
+                dress: 'dress1',
+                accessory: 'acc1',
+                shoes: 'shoes1',
+                hand: 'none',
+                background: 'bg1'
+            };
+            selectedColor = colors[0]; // 初期カラー（ブルー）にリセット
+
+            initColorPalette();
+            renderItemGrid();
+            renderPrincess();
+        });
+
+        // --- 6. 画像として保存（SVGをCanvasへレンダリングして保存） ---
+        document.getElementById('btn-save').addEventListener('click', () => {
+            const container = document.getElementById('canvas-container');
+            const bgObj = backgrounds.find(b => b.id === currentDressUp.background);
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = 600;
+            canvas.height = 800; 
+            const ctx = canvas.getContext('2d');
+
+            // 1. 背景の描画
+            const gradient = ctx.createLinearGradient(0, 800, 0, 0);
+            if (bgObj) {
+                if (bgObj.id === 'bg1') {
+                    gradient.addColorStop(0, '#fad0c4');
+                    gradient.addColorStop(1, '#ffd1ff');
+                } else if (bgObj.id === 'bg2') {
+                    gradient.addColorStop(0, '#30cfd0');
+                    gradient.addColorStop(1, '#330867');
+                } else if (bgObj.id === 'bg3') {
+                    gradient.addColorStop(0, '#96fbc4');
+                    gradient.addColorStop(1, '#f9f586');
+                } else if (bgObj.id === 'bg4') {
+                    gradient.addColorStop(0, '#e0c3fc');
+                    gradient.addColorStop(1, '#8ec5fc');
+                }
+            } else {
+                gradient.addColorStop(0, '#ffe5ec');
+                gradient.addColorStop(1, '#ffd1ff');
+            }
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 2. 各SVGレイヤーをCanvasに描画
+            const layers = [
+                'layer-hair-back',
+                'layer-body',
+                'layer-face',
+                'layer-dress',
+                'layer-shoes',
+                'layer-hair-front',
+                'layer-accessory',
+                'layer-hand'
+            ];
+
+            let loadedCount = 0;
+            const imagesToLoad = [];
+
+            layers.forEach((layerId, index) => {
+                const svgEl = document.getElementById(layerId);
+                if (!svgEl) return;
+
+                if (svgEl.innerHTML.trim() === "") {
+                    loadedCount++;
+                    checkAllLoaded();
+                    return;
+                }
+
+                const svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400" width="600" height="800">${svgEl.innerHTML}</svg>`;
+                const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(svgBlob);
+
+                const img = new Image();
+                img.src = url;
+                imagesToLoad.push({ img, index });
+
+                img.onload = () => {
+                    loadedCount++;
+                    URL.revokeObjectURL(url);
+                    checkAllLoaded();
+                };
+                img.onerror = () => {
+                    loadedCount++;
+                    checkAllLoaded();
+                };
+            });
+
+            function checkAllLoaded() {
+                if (loadedCount === layers.length) {
+                    imagesToLoad.sort((a, b) => a.index - b.index);
+                    imagesToLoad.forEach(item => {
+                        ctx.drawImage(item.img, 0, 0, canvas.width, canvas.height);
+                    });
+
+                    // ロゴスタンプ風
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+                    ctx.beginPath();
+                    ctx.roundRect(400, 740, 180, 40, 10);
+                    ctx.fill();
+
+                    ctx.font = "bold 14px 'Kiwi Maru', sans-serif";
+                    ctx.fillStyle = "#db2777";
+                    ctx.textAlign = "center";
+                    ctx.fillText("プリンセスドリーム", 490, 765);
+
+                    try {
+                        const dataUrl = canvas.toDataURL('image/png');
+                        const imgElem = document.getElementById('capture-image');
+                        imgElem.src = dataUrl;
+
+                        const downloadBtn = document.getElementById('btn-download');
+                        downloadBtn.href = dataUrl;
+
+                        document.getElementById('save-modal').classList.remove('hidden');
+                    } catch (e) {
+                        console.error("書き出しエラー", e);
+                    }
+                }
+            }
+        });
+
+        // モーダル
+        document.getElementById('btn-modal-close').addEventListener('click', () => {
+            document.getElementById('save-modal').classList.add('hidden');
+        });
+
+        document.getElementById('save-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'save-modal') {
+                document.getElementById('save-modal').classList.add('hidden');
+            }
+        });
+
+        // --- 7. 初期実行 ---
+        window.onload = () => {
+            initCategoryTabs();
+            renderItemGrid();
+            initColorPalette();
+            renderPrincess();
+        };
+
+    </script>
+</body>
+</html>

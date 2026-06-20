@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ネオン・テーブルテニス (Neon Table Tennis)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans JP', 'Orbitron', sans-serif;
+            background-color: #0d0e15;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* ネオングラスモーフィズム効果 */
+        .glass-panel {
+            background: rgba(20, 21, 33, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* ネオン光彩エフェクト */
+        .neon-shadow-blue {
+            box-shadow: 0 0 20px rgba(0, 191, 255, 0.4);
+        }
+        .neon-shadow-pink {
+            box-shadow: 0 0 20px rgba(255, 20, 147, 0.4);
+        }
+        .neon-text-blue {
+            text-shadow: 0 0 8px rgba(0, 191, 255, 0.6);
+        }
+        .neon-text-pink {
+            text-shadow: 0 0 8px rgba(255, 20, 147, 0.6);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center relative p-3 sm:p-6">
+
+    <!-- ゲーム全体のコンテナ -->
+    <div class="relative w-full max-w-4xl aspect-[16/9] flex flex-col justify-between items-center rounded-2xl overflow-hidden glass-panel border border-slate-800 shadow-2xl z-10">
+        
+        <!-- ヘッダー（スコア表示部） -->
+        <div class="w-full flex justify-between items-center px-6 py-4 z-20 bg-slate-950/40 border-b border-slate-900/40">
+            <!-- プレイヤー1（左） -->
+            <div class="flex items-center space-x-3">
+                <div class="w-4 h-4 rounded-full bg-cyan-400 neon-shadow-blue"></div>
+                <div>
+                    <div class="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider" id="p1-name-label">プレイヤー 1</div>
+                    <div class="text-2xl sm:text-3xl font-black orbitron text-cyan-400 neon-text-blue" id="p1-score">0</div>
+                </div>
+            </div>
+
+            <!-- VS or 難易度表示 -->
+            <div class="text-center">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-widest orbitron" id="game-mode-display">VS AI</span>
+                <div class="text-[9px] sm:text-[10px] text-cyan-400 font-mono mt-1 px-2 py-0.5 rounded bg-slate-900/80 border border-slate-800 hidden" id="difficulty-badge">NORMAL</div>
+            </div>
+
+            <!-- プレイヤー2（右） -->
+            <div class="flex items-center space-x-3 text-right flex-row-reverse">
+                <div class="w-4 h-4 rounded-full bg-pink-500 neon-shadow-pink ml-3"></div>
+                <div>
+                    <div class="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider" id="p2-name-label">AI (ふつう)</div>
+                    <div class="text-2xl sm:text-3xl font-black orbitron text-pink-500 neon-text-pink" id="p2-score">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ゲームキャンバスエリア -->
+        <div class="relative flex-1 w-full flex items-center justify-center p-2 min-h-0" id="canvas-container">
+            <canvas id="gameCanvas" class="w-full h-full rounded-lg bg-slate-950/40 border border-slate-900 shadow-inner touch-none"></canvas>
+            
+            <!-- タッチデバイス向け簡易案内 -->
+            <div id="touch-instruction" class="absolute inset-0 flex items-center justify-between px-12 pointer-events-none opacity-0 transition-opacity duration-500 md:hidden">
+                <div class="text-center text-cyan-400/40 text-[10px] sm:text-xs font-bold">
+                    ↑<br>画面左側をスライドで移動<br>↓
+                </div>
+                <div class="text-center text-pink-500/40 text-[10px] sm:text-xs font-bold">
+                    ↑<br>画面右側をスライドで移動<br>↓
+                </div>
+            </div>
+        </div>
+
+        <!-- スタート / 設定メニュー (初期オーバーレイ) -->
+        <div id="menu-overlay" class="absolute inset-0 bg-slate-950/95 z-30 flex flex-col items-center justify-center p-4 transition-all duration-300">
+            <div class="text-center mb-6 sm:mb-8">
+                <h1 class="text-3xl sm:text-5xl font-black orbitron tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-500 mb-1 sm:mb-2">NEON TENNIS</h1>
+                <p class="text-slate-400 text-[10px] sm:text-sm">最先端のネオン・バーチャル・テーブルテニス</p>
+            </div>
+
+            <div class="w-full max-w-sm space-y-3 sm:space-y-4">
+                <!-- モード選択 -->
+                <div>
+                    <label class="block text-[10px] sm:text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">ゲームモード</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btn-mode-1p" class="py-2 px-3 sm:py-2.5 sm:px-4 rounded-xl border-2 border-cyan-500/80 bg-cyan-950/40 text-cyan-400 font-bold text-xs sm:text-sm transition-all flex flex-col items-center justify-center focus:outline-none">
+                            <span class="text-xs sm:text-base">👤 VS AI</span>
+                            <span class="text-[8px] sm:text-[9px] text-cyan-300/60 mt-0.5">1人プレイ</span>
+                        </button>
+                        <button id="btn-mode-2p" class="py-2 px-3 sm:py-2.5 sm:px-4 rounded-xl border border-slate-800 bg-slate-900/40 hover:bg-slate-900/60 text-slate-400 font-bold text-xs sm:text-sm transition-all flex flex-col items-center justify-center focus:outline-none">
+                            <span class="text-xs sm:text-base">👥 2 PLAYERS</span>
+                            <span class="text-[8px] sm:text-[9px] text-slate-500 mt-0.5">ローカル対戦</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 難易度設定 (1P選択時のみ有効) -->
+                <div id="difficulty-setting-group">
+                    <label class="block text-[10px] sm:text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">AI 難易度</label>
+                    <div class="grid grid-cols-4 gap-1.5">
+                        <button data-diff="easy" class="diff-btn py-1.5 sm:py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold border border-slate-800 text-slate-400 hover:bg-slate-900 transition-all focus:outline-none">かんたん</button>
+                        <button data-diff="medium" class="diff-btn py-1.5 sm:py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold border-2 border-cyan-500/80 text-cyan-400 bg-cyan-950/20 focus:outline-none">ふつう</button>
+                        <button data-diff="hard" class="diff-btn py-1.5 sm:py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold border border-slate-800 text-slate-400 hover:bg-slate-900 transition-all focus:outline-none">むずい</button>
+                        <button data-diff="pro" class="diff-btn py-1.5 sm:py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold border border-slate-800 text-slate-400 hover:bg-slate-900 transition-all focus:outline-none text-red-400">プロ</button>
+                    </div>
+                </div>
+
+                <!-- サウンド切り替え -->
+                <div class="flex items-center justify-between py-1.5 px-3 sm:py-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+                    <div class="flex flex-col">
+                        <span class="text-[11px] sm:text-xs font-bold text-slate-300">レトロ効果音</span>
+                        <span class="text-[8px] sm:text-[9px] text-slate-500">Web Audio合成サウンド</span>
+                    </div>
+                    <button id="btn-sound" class="w-10 h-5 sm:w-12 sm:h-6 rounded-full bg-cyan-500 p-0.5 transition-all duration-200 focus:outline-none relative">
+                        <div class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white shadow-md transform translate-x-5 sm:translate-x-6 transition-all duration-200" id="sound-toggle-knob"></div>
+                    </button>
+                </div>
+
+                <!-- 操作説明 -->
+                <div class="p-2 sm:p-3 rounded-lg bg-slate-900/40 border border-slate-800/50 text-slate-400 text-[10px] sm:text-[11px] space-y-1">
+                    <div class="font-bold text-slate-300 mb-0.5">🎮 操作方法:</div>
+                    <div class="flex justify-between">
+                        <span>左プレイヤー (1P / 2P)</span>
+                        <span class="font-mono text-cyan-400">W / S キー または 左側ドラッグ</span>
+                    </div>
+                    <div class="flex justify-between" id="control-desc-right">
+                        <span>右プレイヤー (AI)</span>
+                        <span class="font-mono text-slate-500">自動操作</span>
+                    </div>
+                </div>
+
+                <!-- スタートボタン -->
+                <button id="btn-start" class="w-full py-2.5 sm:py-3 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-black tracking-widest rounded-xl transition-all shadow-lg hover:shadow-cyan-500/20 focus:outline-none text-xs sm:text-sm uppercase">
+                    GAME START
+                </button>
+            </div>
+        </div>
+
+        <!-- 一時停止 / ポーズ画面 -->
+        <div id="pause-overlay" class="absolute inset-0 bg-slate-950/80 z-20 flex flex-col items-center justify-center hidden">
+            <div class="text-center space-y-6">
+                <h2 class="text-3xl font-black orbitron tracking-wider text-cyan-400 neon-text-blue">PAUSED</h2>
+                <div class="flex flex-col space-y-3 w-48">
+                    <button id="btn-resume" class="py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg text-sm transition-all focus:outline-none">
+                        再開する
+                    </button>
+                    <button id="btn-restart" class="py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold rounded-lg text-sm transition-all border border-slate-800 focus:outline-none">
+                        最初からやり直す
+                    </button>
+                    <button id="btn-back-menu" class="py-2.5 bg-red-950/20 hover:bg-red-950/40 text-red-400 border border-red-900/50 font-bold rounded-lg text-sm transition-all focus:outline-none">
+                        メニューに戻る
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- マッチ終了 (勝利・敗北) 画面 -->
+        <div id="gameover-overlay" class="absolute inset-0 bg-slate-950/90 z-20 flex flex-col items-center justify-center hidden">
+            <div class="text-center space-y-6 max-w-sm px-6">
+                <div class="w-16 h-16 mx-auto rounded-full bg-cyan-500/10 border-2 border-cyan-400 flex items-center justify-center text-2xl" id="winner-crown">
+                    🏆
+                </div>
+                <div>
+                    <h2 class="text-2xl sm:text-3xl font-black tracking-wide" id="winner-title">PLAYER 1 WINS!</h2>
+                    <p class="text-slate-400 text-xs mt-2" id="winner-desc">素晴らしいラリーでした！</p>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-900/50 border border-slate-800/80">
+                    <span class="text-xs text-slate-500 block uppercase tracking-wider mb-1">最終スコア</span>
+                    <div class="text-2xl font-black orbitron text-white">
+                        <span id="final-p1-score" class="text-cyan-400">0</span>
+                        <span class="text-slate-600 px-2">-</span>
+                        <span id="final-p2-score" class="text-pink-500">0</span>
+                    </div>
+                </div>
+                <div class="flex space-x-3 justify-center w-full">
+                    <button id="btn-rematch" class="flex-1 py-2.5 sm:py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold rounded-xl transition-all focus:outline-none text-xs sm:text-sm">
+                        もう一度
+                    </button>
+                    <button id="btn-exit" class="flex-1 py-2.5 sm:py-3 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold rounded-xl transition-all border border-slate-800 focus:outline-none text-xs sm:text-sm">
+                        メニューへ
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 下部バー (ポーズボタン & コントロールガイド) -->
+        <div class="w-full flex justify-between items-center px-6 py-3 border-t border-slate-900/60 z-10 bg-slate-950/30">
+            <div class="text-[10px] text-slate-500 font-semibold flex items-center space-x-4">
+                <span class="hidden sm:inline">ポーズ: <kbd class="px-1.5 py-0.5 bg-slate-900 rounded border border-slate-800">Space</kbd> または <kbd class="px-1.5 py-0.5 bg-slate-900 rounded border border-slate-800">Esc</kbd></span>
+                <span>ラリー数: <span id="rally-counter" class="orbitron font-bold text-slate-400">0</span></span>
+            </div>
+            
+            <button id="btn-pause-toggle" class="p-1 px-2.5 sm:p-1.5 sm:px-3 rounded bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-white transition-all focus:outline-none text-xs font-bold border border-slate-800 flex items-center space-x-1">
+                <span>⏸</span> <span>ポーズ</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- サウンド生成モジュール (Web Audio API) ---
+        class SoundSynth {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                // サスペンド状態の場合は再開
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playPaddleHit() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(300, now + 0.1);
+                
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            }
+
+            playWallHit() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(250, now);
+                
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            }
+
+            playScore() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                
+                const playNote = (freq, delay, duration) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, now + delay);
+                    gain.gain.setValueAtTime(0.12, now + delay);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + delay + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + delay);
+                    osc.stop(now + delay + duration);
+                };
+
+                playNote(523.25, 0, 0.15); // C5
+                playNote(659.25, 0.08, 0.15); // E5
+                playNote(783.99, 0.16, 0.3); // G5
+            }
+
+            playLose() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                
+                const playNote = (freq, delay, duration) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, now + delay);
+                    gain.gain.setValueAtTime(0.12, now + delay);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + delay + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + delay);
+                    osc.stop(now + delay + duration);
+                };
+
+                playNote(392.00, 0, 0.2); // G4
+                playNote(349.23, 0.15, 0.2); // F4
+                playNote(311.13, 0.3, 0.4); // Eb4
+            }
+        }
+
+        const sound = new SoundSynth();
+
+        // --- ゲームエンジン ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 定数 & 基本設定
+        const BASE_WIDTH = 800;
+        const BASE_HEIGHT = 450;
+        const MATCH_POINT = 11; // 11点先取
+
+        // 状態変数
+        let gameMode = '1p'; // '1p' or '2p'
+        let difficulty = 'medium'; // 'easy', 'medium', 'hard', 'pro'
+        let scoreP1 = 0;
+        let scoreP2 = 0;
+        let rallyCount = 0;
+        let isPaused = false;
+        let isStarted = false;
+        let isGameOver = false;
+
+        // スクリーンシェイク用
+        let shakeIntensity = 0;
+        let shakeDecay = 0.9;
+
+        // キー入力状態
+        const keys = {
+            w: false,
+            s: false,
+            ArrowUp: false,
+            ArrowDown: false
+        };
+
+        // AI設定
+        const AI_CONFIGS = {
+            easy: { speed: 3.5, reaction: 0.06, mistakeChance: 0.25 },
+            medium: { speed: 5.5, reaction: 0.10, mistakeChance: 0.15 },
+            hard: { speed: 8.0, reaction: 0.14, mistakeChance: 0.05 },
+            pro: { speed: 11.0, reaction: 0.25, mistakeChance: 0.00 }
+        };
+
+        // エンティティ定義
+        const ball = {
+            x: BASE_WIDTH / 2,
+            y: BASE_HEIGHT / 2,
+            radius: 8,
+            vx: 0,
+            vy: 0,
+            speed: 5,
+            maxSpeed: 16,
+            color: '#ff1493',
+            trail: [],
+            maxTrail: 8,
+
+            reset: function(direction) {
+                this.x = BASE_WIDTH / 2;
+                this.y = BASE_HEIGHT / 2;
+                this.speed = 5;
+                
+                const angle = (Math.random() * 60 - 30) * Math.PI / 180;
+                this.vx = direction * this.speed * Math.cos(angle);
+                this.vy = this.speed * Math.sin(angle);
+                
+                this.trail = [];
+                rallyCount = 0;
+                updateStatsUI();
+            },
+
+            update: function() {
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > this.maxTrail) {
+                    this.trail.shift();
+                }
+
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+        };
+
+        const paddleLeft = {
+            x: 20,
+            y: BASE_HEIGHT / 2 - 40,
+            width: 12,
+            height: 80,
+            color: '#00bfff',
+            score: 0,
+            speed: 8
+        };
+
+        const paddleRight = {
+            x: BASE_WIDTH - 32,
+            y: BASE_HEIGHT / 2 - 40,
+            width: 12,
+            height: 80,
+            color: '#ff1493',
+            score: 0,
+            speed: 8
+        };
+
+        // パーティクルシステム
+        let particles = [];
+        function createSparks(x, y, color) {
+            const count = 12;
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 3 + 2;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: Math.random() * 2.5 + 1,
+                    alpha: 1,
+                    decay: Math.random() * 0.03 + 0.015,
+                    color: color
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= p.decay;
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.shadowBlur = 6;
+                ctx.shadowColor = p.color;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        // --- キャンバスの解像度調整 ---
+        function resizeCanvas() {
+            const container = document.getElementById('canvas-container');
+            if (!container) return;
+            const rect = container.getBoundingClientRect();
+            
+            let width = rect.width;
+            let height = rect.width * (9 / 16);
+            
+            if (height > rect.height) {
+                height = rect.height;
+                width = height * (16 / 9);
+            }
+
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            
+            ctx.scale(dpr, dpr);
+            
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+        }
+
+        // --- 操作イベントリスナー ---
+
+        // キーボード
+        window.addEventListener('keydown', e => {
+            if (['Space', ' ', 'ArrowUp', 'ArrowDown', 'w', 's', 'W', 'S'].includes(e.key)) {
+                if (e.key === 'Space' || e.key === ' ') {
+                    e.preventDefault();
+                }
+            }
+            if (e.key === 'Escape' || e.key === 'Esc' || e.key === ' ' || e.key === 'Space') {
+                if (isStarted && !isGameOver) {
+                    togglePause();
+                }
+            }
+
+            if (e.key === 'w' || e.key === 'W') keys.w = true;
+            if (e.key === 's' || e.key === 'S') keys.s = true;
+            if (e.key === 'ArrowUp') keys.ArrowUp = true;
+            if (e.key === 'ArrowDown') keys.ArrowDown = true;
+        });
+
+        window.addEventListener('keyup', e => {
+            if (e.key === 'w' || e.key === 'W') keys.w = false;
+            if (e.key === 's' || e.key === 'S') keys.s = false;
+            if (e.key === 'ArrowUp') keys.ArrowUp = false;
+            if (e.key === 'ArrowDown') keys.ArrowDown = false;
+        });
+
+        // マウス操作（ゲーム画面内でのみ反応するように変更）
+        canvas.addEventListener('mousemove', e => {
+            if (!isStarted || isPaused || isGameOver) return;
+            const rect = canvas.getBoundingClientRect();
+            const clientY = e.clientY - rect.top;
+            const relativeY = (clientY / rect.height) * BASE_HEIGHT;
+            
+            paddleLeft.y = relativeY - paddleLeft.height / 2;
+            clampPaddle(paddleLeft);
+        });
+
+        // タッチ操作（キャンバス上で直接処理。全画面ブロックを回避！）
+        function handleCanvasTouch(e) {
+            if (!isStarted || isPaused || isGameOver) return;
+            e.preventDefault();
+            
+            const rect = canvas.getBoundingClientRect();
+            const touches = e.touches;
+
+            for (let i = 0; i < touches.length; i++) {
+                const touch = touches[i];
+                const touchX = touch.clientX - rect.left;
+                const touchY = touch.clientY - rect.top;
+
+                // スケールをゲーム解像度に変換
+                const relativeX = (touchX / rect.width) * BASE_WIDTH;
+                const relativeY = (touchY / rect.height) * BASE_HEIGHT;
+
+                // 左半分タッチで左パドル、右半分タッチかつ2Pモードなら右パドル
+                if (relativeX < BASE_WIDTH / 2) {
+                    paddleLeft.y = relativeY - paddleLeft.height / 2;
+                    clampPaddle(paddleLeft);
+                } else if (relativeX >= BASE_WIDTH / 2 && gameMode === '2p') {
+                    paddleRight.y = relativeY - paddleRight.height / 2;
+                    clampPaddle(paddleRight);
+                }
+            }
+        }
+
+        canvas.addEventListener('touchstart', handleCanvasTouch, { passive: false });
+        canvas.addEventListener('touchmove', handleCanvasTouch, { passive: false });
+
+        // --- ゲームコアロジック ---
+
+        function clampPaddle(paddle) {
+            if (paddle.y < 4) paddle.y = 4;
+            if (paddle.y > BASE_HEIGHT - paddle.height - 4) {
+                paddle.y = BASE_HEIGHT - paddle.height - 4;
+            }
+        }
+
+        function updateAI() {
+            const config = AI_CONFIGS[difficulty];
+            const paddleCenter = paddleRight.y + paddleRight.height / 2;
+            
+            if (ball.vx > 0) {
+                const targetY = ball.y + (Math.random() < config.mistakeChance ? (Math.random() * 50 - 25) : 0);
+                const diff = targetY - paddleCenter;
+                if (Math.abs(diff) > 8) {
+                    if (diff > 0) {
+                        paddleRight.y += config.speed * config.reaction;
+                    } else {
+                        paddleRight.y -= config.speed * config.reaction;
+                    }
+                }
+            } else {
+                const centerDiff = (BASE_HEIGHT / 2) - paddleCenter;
+                if (Math.abs(centerDiff) > 10) {
+                    paddleRight.y += (centerDiff > 0 ? 1 : -1) * (config.speed * 0.3);
+                }
+            }
+
+            clampPaddle(paddleRight);
+        }
+
+        function updatePaddles() {
+            if (keys.w) {
+                paddleLeft.y -= paddleLeft.speed;
+            }
+            if (keys.s) {
+                paddleLeft.y += paddleLeft.speed;
+            }
+            clampPaddle(paddleLeft);
+
+            if (gameMode === '2p') {
+                if (keys.ArrowUp) {
+                    paddleRight.y -= paddleRight.speed;
+                }
+                if (keys.ArrowDown) {
+                    paddleRight.y += paddleRight.speed;
+                }
+                clampPaddle(paddleRight);
+            } else {
+                updateAI();
+            }
+        }
+
+        function checkCollision(b, p) {
+            return b.x - b.radius < p.x + p.width &&
+                   b.x + b.radius > p.x &&
+                   b.y - b.radius < p.y + p.height &&
+                   b.y + b.radius > p.y;
+        }
+
+        function update() {
+            if (isPaused || !isStarted || isGameOver) return;
+
+            updatePaddles();
+            ball.update();
+
+            // 壁との衝突
+            if (ball.y - ball.radius < 0) {
+                ball.y = ball.radius;
+                ball.vy = -ball.vy;
+                sound.playWallHit();
+                shakeIntensity = 2;
+            } else if (ball.y + ball.radius > BASE_HEIGHT) {
+                ball.y = BASE_HEIGHT - ball.radius;
+                ball.vy = -ball.vy;
+                sound.playWallHit();
+                shakeIntensity = 2;
+            }
+
+            // パドル衝突
+            let hitPaddle = null;
+            if (ball.vx < 0 && checkCollision(ball, paddleLeft)) {
+                hitPaddle = paddleLeft;
+            } else if (ball.vx > 0 && checkCollision(ball, paddleRight)) {
+                hitPaddle = paddleRight;
+            }
+
+            if (hitPaddle) {
+                const relativeIntersectY = (hitPaddle.y + (hitPaddle.height / 2)) - ball.y;
+                const normalizedIntersectY = relativeIntersectY / (hitPaddle.height / 2);
+                const bounceAngle = normalizedIntersectY * (55 * Math.PI / 180);
+                const direction = hitPaddle === paddleLeft ? 1 : -1;
+                
+                ball.speed = Math.min(ball.speed + 0.6, ball.maxSpeed);
+                ball.vx = direction * ball.speed * Math.cos(bounceAngle);
+                ball.vy = -ball.speed * Math.sin(bounceAngle);
+
+                if (hitPaddle === paddleLeft) {
+                    ball.x = paddleLeft.x + paddleLeft.width + ball.radius;
+                } else {
+                    ball.x = paddleRight.x - ball.radius;
+                }
+
+                rallyCount++;
+                updateStatsUI();
+
+                sound.playPaddleHit();
+                createSparks(ball.x, ball.y, hitPaddle.color);
+                shakeIntensity = 5;
+            }
+
+            // 得点
+            if (ball.x - ball.radius < 0) {
+                scoreP2++;
+                sound.playLose();
+                shakeIntensity = 12;
+                createSparks(ball.x, ball.y, '#ff1493');
+                updateScores();
+                
+                if (scoreP2 >= MATCH_POINT) {
+                    endGame(gameMode === '2p' ? 'PLAYER 2' : 'AI');
+                } else {
+                    ball.reset(1);
+                }
+            } else if (ball.x + ball.radius > BASE_WIDTH) {
+                scoreP1++;
+                sound.playScore();
+                shakeIntensity = 12;
+                createSparks(ball.x, ball.y, '#00bfff');
+                updateScores();
+
+                if (scoreP1 >= MATCH_POINT) {
+                    endGame('PLAYER 1');
+                } else {
+                    ball.reset(-1);
+                }
+            }
+
+            updateParticles();
+
+            if (shakeIntensity > 0) {
+                shakeIntensity *= shakeDecay;
+                if (shakeIntensity < 0.1) shakeIntensity = 0;
+            }
+        }
+
+        function updateScores() {
+            document.getElementById('p1-score').innerText = scoreP1;
+            document.getElementById('p2-score').innerText = scoreP2;
+        }
+
+        function updateStatsUI() {
+            document.getElementById('rally-counter').innerText = rallyCount;
+        }
+
+        // --- 描画 ---
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            if (shakeIntensity > 0) {
+                const dx = (Math.random() - 0.5) * shakeIntensity;
+                const dy = (Math.random() - 0.5) * shakeIntensity;
+                ctx.translate(dx, dy);
+            }
+
+            const scaleFactorX = parseFloat(canvas.style.width) / BASE_WIDTH;
+            const scaleFactorY = parseFloat(canvas.style.height) / BASE_HEIGHT;
+            ctx.scale(scaleFactorX, scaleFactorY);
+
+            // ネットライン
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([10, 15]);
+            ctx.beginPath();
+            ctx.moveTo(BASE_WIDTH / 2, 0);
+            ctx.lineTo(BASE_WIDTH / 2, BASE_HEIGHT);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // ガイドライン
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(4, 4, BASE_WIDTH - 8, BASE_HEIGHT - 8);
+
+            // 左パドル
+            ctx.save();
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = paddleLeft.color;
+            ctx.fillStyle = paddleLeft.color;
+            drawRoundedRect(ctx, paddleLeft.x, paddleLeft.y, paddleLeft.width, paddleLeft.height, 6);
+            ctx.fill();
+            ctx.restore();
+
+            // 右パドル
+            ctx.save();
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = paddleRight.color;
+            ctx.fillStyle = paddleRight.color;
+            drawRoundedRect(ctx, paddleRight.x, paddleRight.y, paddleRight.width, paddleRight.height, 6);
+            ctx.fill();
+            ctx.restore();
+
+            // ボールの軌跡
+            ball.trail.forEach((pos, index) => {
+                ctx.save();
+                ctx.globalAlpha = (index / ball.trail.length) * 0.3;
+                ctx.fillStyle = ball.color;
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, ball.radius * (0.5 + (index / ball.trail.length) * 0.5), 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // ボール
+            ctx.save();
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = ball.color;
+            ctx.fillStyle = ball.color;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(ball.x - 2, ball.y - 2, ball.radius * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // パーティクル
+            drawParticles();
+
+            ctx.restore();
+        }
+
+        function drawRoundedRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y - radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        // --- UI コントロール ---
+
+        const menuOverlay = document.getElementById('menu-overlay');
+        const pauseOverlay = document.getElementById('pause-overlay');
+        const gameoverOverlay = document.getElementById('gameover-overlay');
+        const diffSettingGroup = document.getElementById('difficulty-setting-group');
+        const controlDescRight = document.getElementById('control-desc-right');
+        const p2NameLabel = document.getElementById('p2-name-label');
+        const difficultyBadge = document.getElementById('difficulty-badge');
+        const gameModeDisplay = document.getElementById('game-mode-display');
+        const touchInstruction = document.getElementById('touch-instruction');
+
+        document.getElementById('btn-mode-1p').addEventListener('click', () => {
+            gameMode = '1p';
+            document.getElementById('btn-mode-1p').className = "py-2 px-3 sm:py-2.5 sm:px-4 rounded-xl border-2 border-cyan-500/80 bg-cyan-950/40 text-cyan-400 font-bold text-xs sm:text-sm transition-all flex flex-col items-center justify-center focus:outline-none";
+            document.getElementById('btn-mode-2p').className = "py-2 px-3 sm:py-2.5 sm:px-4 rounded-xl border border-slate-800 bg-slate-900/40 hover:bg-slate-900/60 text-slate-400 font-bold text-xs sm:text-sm transition-all flex flex-col items-center justify-center focus:outline-none";
+            diffSettingGroup.classList.remove('hidden');
+            controlDescRight.innerHTML = `<span>右プレイヤー (AI)</span><span class="font-mono text-slate-500">自動操作</span>`;
+            p2NameLabel.innerText = `AI (${getDiffJp(difficulty)})`;
+            gameModeDisplay.innerText = "VS AI";
+        });
+
+        document.getElementById('btn-mode-2p').addEventListener('click', () => {
+            gameMode = '2p';
+            document.getElementById('btn-mode-2p').className = "py-2 px-3 sm:py-2.5 sm:px-4 rounded-xl border-2 border-pink-500/80 bg-pink-950/20 text-pink-400 font-bold text-xs sm:text-sm transition-all flex flex-col items-center justify-center focus:outline-none";
+            document.getElementById('btn-mode-1p').className = "py-2 px-3 sm:py-2.5 sm:px-4 rounded-xl border border-slate-800 bg-slate-900/40 hover:bg-slate-900/60 text-slate-400 font-bold text-xs sm:text-sm transition-all flex flex-col items-center justify-center focus:outline-none";
+            diffSettingGroup.classList.add('hidden');
+            controlDescRight.innerHTML = `<span>右プレイヤー (2P)</span><span class="font-mono text-pink-400">↑ / ↓ キー または 右側ドラッグ</span>`;
+            p2NameLabel.innerText = "プレイヤー 2";
+            gameModeDisplay.innerText = "2 PLAYERS";
+        });
+
+        const diffButtons = document.querySelectorAll('.diff-btn');
+        diffButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                diffButtons.forEach(b => {
+                    b.className = "diff-btn py-1.5 sm:py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold border border-slate-800 text-slate-400 hover:bg-slate-900 transition-all focus:outline-none";
+                });
+                
+                difficulty = btn.getAttribute('data-diff');
+                
+                if (difficulty === 'pro') {
+                    btn.className = "diff-btn py-1.5 sm:py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold border-2 border-red-500/80 text-red-400 bg-red-950/20 focus:outline-none";
+                } else {
+                    btn.className = "diff-btn py-1.5 sm:py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold border-2 border-cyan-500/80 text-cyan-400 bg-cyan-950/20 focus:outline-none";
+                }
+
+                if (gameMode === '1p') {
+                    p2NameLabel.innerText = `AI (${getDiffJp(difficulty)})`;
+                }
+            });
+        });
+
+        function getDiffJp(diff) {
+            switch(diff) {
+                case 'easy': return 'かんたん';
+                case 'medium': return 'ふつう';
+                case 'hard': return 'むずい';
+                case 'pro': return 'プロ';
+            }
+        }
+
+        const btnSound = document.getElementById('btn-sound');
+        const soundKnob = document.getElementById('sound-toggle-knob');
+        btnSound.addEventListener('click', () => {
+            sound.enabled = !sound.enabled;
+            if (sound.enabled) {
+                btnSound.className = "w-10 h-5 sm:w-12 sm:h-6 rounded-full bg-cyan-500 p-0.5 transition-all duration-200 focus:outline-none relative";
+                soundKnob.className = "w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white shadow-md transform translate-x-5 sm:translate-x-6 transition-all duration-200";
+                sound.playPaddleHit();
+            } else {
+                btnSound.className = "w-10 h-5 sm:w-12 sm:h-6 rounded-full bg-slate-800 p-0.5 transition-all duration-200 focus:outline-none relative border border-slate-700";
+                soundKnob.className = "w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-400 shadow-md transform translate-x-0 transition-all duration-200";
+            }
+        });
+
+        document.getElementById('btn-start').addEventListener('click', () => {
+            sound.init();
+            
+            menuOverlay.classList.add('opacity-0');
+            setTimeout(() => {
+                menuOverlay.classList.add('hidden');
+                initGame();
+            }, 300);
+        });
+
+        document.getElementById('btn-pause-toggle').addEventListener('click', () => {
+            togglePause();
+        });
+        document.getElementById('btn-resume').addEventListener('click', () => {
+            togglePause();
+        });
+        document.getElementById('btn-restart').addEventListener('click', () => {
+            togglePause();
+            initGame();
+        });
+        document.getElementById('btn-back-menu').addEventListener('click', () => {
+            togglePause();
+            backToMenu();
+        });
+
+        document.getElementById('btn-rematch').addEventListener('click', () => {
+            gameoverOverlay.classList.add('hidden');
+            initGame();
+        });
+        document.getElementById('btn-exit').addEventListener('click', () => {
+            gameoverOverlay.classList.add('hidden');
+            backToMenu();
+        });
+
+        function togglePause() {
+            if (!isStarted || isGameOver) return;
+            isPaused = !isPaused;
+            if (isPaused) {
+                pauseOverlay.classList.remove('hidden');
+            } else {
+                pauseOverlay.classList.add('hidden');
+            }
+        }
+
+        function initGame() {
+            scoreP1 = 0;
+            scoreP2 = 0;
+            updateScores();
+            
+            if (gameMode === '1p') {
+                difficultyBadge.innerText = difficulty.toUpperCase();
+                difficultyBadge.classList.remove('hidden');
+                p2NameLabel.innerText = `AI (${getDiffJp(difficulty)})`;
+            } else {
+                difficultyBadge.classList.add('hidden');
+                p2NameLabel.innerText = "プレイヤー 2";
+            }
+
+            paddleLeft.y = BASE_HEIGHT / 2 - paddleLeft.height / 2;
+            paddleRight.y = BASE_HEIGHT / 2 - paddleRight.height / 2;
+            
+            ball.reset(Math.random() < 0.5 ? 1 : -1);
+
+            isPaused = false;
+            isGameOver = false;
+            isStarted = true;
+
+            touchInstruction.classList.remove('opacity-0');
+            setTimeout(() => {
+                touchInstruction.classList.add('opacity-0');
+            }, 3000);
+        }
+
+        function endGame(winnerName) {
+            isGameOver = true;
+            
+            document.getElementById('final-p1-score').innerText = scoreP1;
+            document.getElementById('final-p2-score').innerText = scoreP2;
+            
+            const winnerTitle = document.getElementById('winner-title');
+            const winnerDesc = document.getElementById('winner-desc');
+            const crown = document.getElementById('winner-crown');
+
+            if (winnerName === 'PLAYER 1') {
+                winnerTitle.innerText = 'PLAYER 1 勝利！';
+                winnerTitle.className = 'text-2xl sm:text-3xl font-black text-cyan-400 neon-text-blue';
+                winnerDesc.innerText = '素晴らしいネオンラリーでした！';
+                crown.innerText = '🏆';
+            } else {
+                winnerTitle.innerText = `${winnerName} 勝利！`;
+                winnerTitle.className = 'text-2xl sm:text-3xl font-black text-pink-500 neon-text-pink';
+                winnerDesc.innerText = gameMode === '1p' ? 'AIに一歩及びませんでした。もう一度挑戦しましょう！' : '大熱戦のゲームでした！';
+                crown.innerText = '👑';
+            }
+
+            gameoverOverlay.classList.remove('hidden');
+        }
+
+        function backToMenu() {
+            isStarted = false;
+            isGameOver = false;
+            isPaused = false;
+            menuOverlay.classList.remove('hidden');
+            setTimeout(() => {
+                menuOverlay.classList.remove('opacity-0');
+            }, 50);
+        }
+
+        window.onload = () => {
+            resizeCanvas();
+            requestAnimationFrame(loop);
+        };
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+        });
+    </script>
+</body>
+</html>

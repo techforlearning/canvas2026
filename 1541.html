@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>スイーツ・クラッシュ！お菓子のブロック崩し</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            touch-action: none; /* スクロールやダブルタップズームを防止 */
+            user-select: none;
+        }
+        canvas {
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-b from-pink-100 to-purple-200 min-h-screen flex flex-col items-center justify-between p-4 font-sans text-gray-800">
+
+    <!-- ヘッダー・スコアボード -->
+    <header class="w-full max-w-lg text-center my-2">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-pink-600 drop-shadow-md tracking-wider">🍭 Sweets Crash 🍰</h1>
+        <p class="text-xs text-pink-500 font-bold">時間経過でお菓子が迫ってくる！急いで崩そう！</p>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <div class="w-full max-w-lg bg-white rounded-3xl p-4 shadow-xl border-4 border-pink-300 flex flex-col items-center relative overflow-hidden">
+        
+        <!-- ステータスバー -->
+        <div class="w-full flex justify-between items-center mb-3 px-2 text-sm font-extrabold text-purple-700">
+            <div class="flex items-center gap-1">
+                <span>Score:</span>
+                <span id="score-display" class="text-pink-600 text-lg">0</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span>Level:</span>
+                <span id="level-display" class="text-pink-600 text-lg">1</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span>Next Drop:</span>
+                <span id="timer-display" class="text-red-500 text-lg">15.0s</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span>❤️</span>
+                <span id="lives-display" class="text-red-500 text-lg">3</span>
+            </div>
+        </div>
+
+        <!-- ゲームエリア（Canvasコンテナ） -->
+        <div class="relative w-full aspect-[4/5] bg-pink-50 rounded-2xl border-2 border-pink-200 overflow-hidden shadow-inner">
+            <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+
+            <!-- スタート / ゲームオーバー / クリア 画面のオーバーレイ -->
+            <div id="overlay" class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white p-6 text-center transition-all duration-300">
+                <div id="overlay-content" class="scale-95 transition-transform duration-300">
+                    <h2 id="overlay-title" class="text-3xl font-black text-pink-400 mb-4 drop-shadow">SWEETS CRASH</h2>
+                    <p id="overlay-desc" class="text-sm mb-6 max-w-xs text-gray-200">
+                        お菓子のブロックを崩そう！<br>
+                        時間経過で立体お菓子がどんどん下に降りてくるよ！
+                    </p>
+                    <button id="start-btn" class="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-black px-8 py-3 rounded-full text-lg shadow-lg hover:shadow-xl active:scale-95 transition duration-150">
+                        スタート！
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作説明・コントロール -->
+        <div class="w-full mt-3 px-2 text-center text-xs text-gray-500 font-medium">
+            <span class="hidden md:inline">← → キー または </span>画面ドラッグ / スワイプでパドルを操作できます。
+        </div>
+    </div>
+
+    <!-- フッター -->
+    <footer class="text-xs text-purple-400 my-2">
+        &copy; Sweet Brick Breaker Game
+    </footer>
+
+    <!-- 音を出せない環境向けの簡易オーディオ合成 (Web Audio API) -->
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playTone(freq, type, duration) {
+            try {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                // オーディオ未対応時のエラー防止
+            }
+        }
+        
+        function playHitSound() { playTone(440, 'triangle', 0.08); }
+        function playBreakSound(hp) { playTone(300 + (hp * 100), 'sine', 0.15); }
+        function playPaddleSound() { playTone(220, 'triangle', 0.05); }
+        function playLevelUpSound() { 
+            playTone(523.25, 'sine', 0.1); 
+            setTimeout(() => playTone(659.25, 'sine', 0.1), 100);
+            setTimeout(() => playTone(783.99, 'sine', 0.2), 200);
+        }
+        function playGameOverSound() {
+            playTone(392, 'sawtooth', 0.2);
+            setTimeout(() => playTone(349.23, 'sawtooth', 0.2), 200);
+            setTimeout(() => playTone(311.13, 'sawtooth', 0.4), 400);
+        }
+    </script>
+
+    <!-- お菓子の描画用SVG画像データの定義 -->
+    <script>
+        // お菓子の種類定義
+        // すべてのお菓子をリアルで可愛い立体3D風に描画する
+        const SWEET_TYPES = [
+            {
+                name: 'キャンディ',
+                hp: 1,
+                color: '#FF6B8B',
+                points: 10,
+                draw: (ctx, x, y, w, h) => {
+                    ctx.save();
+                    ctx.translate(x + w/2, y + h/2);
+
+                    // 1. 結び目の立体的な影とベース
+                    ctx.fillStyle = '#D87093';
+                    // 左結び目の厚み
+                    ctx.beginPath();
+                    ctx.moveTo(-w/2.2, -h/4 + 2);
+                    ctx.lineTo(-w/4, 2);
+                    ctx.lineTo(-w/2.2, h/4 + 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    // 右結び目の厚み
+                    ctx.beginPath();
+                    ctx.moveTo(w/2.2, -h/4 + 2);
+                    ctx.lineTo(w/4, 2);
+                    ctx.lineTo(w/2.2, h/4 + 2);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // 2. 結び目の表面
+                    ctx.fillStyle = '#FFAEC9';
+                    ctx.beginPath();
+                    ctx.moveTo(-w/2.2, -h/4);
+                    ctx.lineTo(-w/4, 0);
+                    ctx.lineTo(-w/2.2, h/4);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(w/2.2, -h/4);
+                    ctx.lineTo(w/4, 0);
+                    ctx.lineTo(w/2.2, h/4);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // 結び目の模様
+                    ctx.strokeStyle = '#FF69B4';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(-w/2.2, -h/8); ctx.lineTo(-w/4, 0);
+                    ctx.moveTo(-w/2.2, h/8); ctx.lineTo(-w/4, 0);
+                    ctx.moveTo(w/2.2, -h/8); ctx.lineTo(w/4, 0);
+                    ctx.moveTo(w/2.2, h/8); ctx.lineTo(w/4, 0);
+                    ctx.stroke();
+
+                    // 3. 中央キャンディ球体の立体影（3D球体表現）
+                    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+                    ctx.beginPath();
+                    ctx.arc(1.5, 2.5, h/2.4, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 4. 中央キャンディ球体本体
+                    const radGrad = ctx.createRadialGradient(-w/12, -h/12, 1, 0, 0, h/2.4);
+                    radGrad.addColorStop(0, '#FF8DA1');
+                    radGrad.addColorStop(0.6, '#FF4081');
+                    radGrad.addColorStop(1, '#C71585');
+                    ctx.fillStyle = radGrad;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, h/2.4, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 5. 球体の立体ハイライト
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.beginPath();
+                    ctx.arc(-w/10, -h/10, h/8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                }
+            },
+            {
+                name: 'クッキー',
+                hp: 2,
+                color: '#D2B48C',
+                points: 20,
+                draw: (ctx, x, y, w, h) => {
+                    ctx.save();
+                    ctx.translate(x + w/2, y + h/2);
+
+                    const radius = h / 2.2;
+
+                    // 1. クッキーの立体的な厚み（側面）
+                    ctx.fillStyle = '#8B5A2B'; // 暗いブラウン
+                    ctx.beginPath();
+                    ctx.arc(0, 3, radius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 2. クッキーの表面
+                    ctx.fillStyle = '#DEB887'; // 明るいベージュ
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 3. クッキーの焼き目（縁のシャドウ）
+                    const edgeGrad = ctx.createRadialGradient(0, 0, radius * 0.7, 0, 0, radius);
+                    edgeGrad.addColorStop(0, 'rgba(222, 184, 135, 0)');
+                    edgeGrad.addColorStop(1, '#CD853F');
+                    ctx.fillStyle = edgeGrad;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 4. 立体的なチョコチップ（それぞれに影とハイライト）
+                    const chips = [
+                        {x: -w/6, y: -h/6, r: w/14}, 
+                        {x: w/6, y: -h/8, r: w/16},
+                        {x: -w/8, y: h/6, r: w/15}, 
+                        {x: w/8, y: h/5, r: w/14}, 
+                        {x: 0, y: 0, r: w/15}
+                    ];
+                    
+                    chips.forEach(c => {
+                        // チョコチップの厚み（シャドウ）
+                        ctx.fillStyle = '#3D1F07';
+                        ctx.beginPath();
+                        ctx.arc(c.x + 1, c.y + 1, c.r, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // チョコチップ本体
+                        const chipGrad = ctx.createRadialGradient(c.x - c.r/3, c.y - c.r/3, 0, c.x, c.y, c.r);
+                        chipGrad.addColorStop(0, '#A0522D');
+                        chipGrad.addColorStop(1, '#5C2E0B');
+                        ctx.fillStyle = chipGrad;
+                        ctx.beginPath();
+                        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // チョコチップのハイライト
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                        ctx.beginPath();
+                        ctx.arc(c.x - c.r/3, c.y - c.r/3, c.r/3, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+
+                    ctx.restore();
+                }
+            },
+            {
+                name: 'ドーナツ',
+                hp: 3,
+                color: '#FFB6C1',
+                points: 40,
+                draw: (ctx, x, y, w, h) => {
+                    ctx.save();
+                    ctx.translate(x + w/2, y + h/2);
+
+                    const outerR = h / 2.1;
+                    const innerR = h / 6;
+
+                    // 1. ドーナツ生地の立体的な厚み（側面）
+                    ctx.fillStyle = '#CD853F'; // 生地の下半分（影）
+                    ctx.beginPath();
+                    ctx.arc(0, 3, outerR, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 2. ドーナツ生地本体
+                    ctx.fillStyle = '#F4A460';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, outerR, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 3. いちごチョコがけ（立体的なぷっくり感）
+                    // チョコの厚み（シャドウ）
+                    ctx.fillStyle = '#C71585';
+                    ctx.beginPath();
+                    ctx.arc(0, 1.5, outerR - 1, 0, Math.PI, false);
+                    ctx.bezierCurveTo(-w/3, 5 + 1.5, -w/6, 8 + 1.5, -w/10, 3 + 1.5);
+                    ctx.bezierCurveTo(-w/20, 1.5, w/20, 9 + 1.5, w/8, 4 + 1.5);
+                    ctx.bezierCurveTo(w/4, 1.5, w/3, 4 + 1.5, w/2.4, 2 + 1.5);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // チョコの表面
+                    ctx.fillStyle = '#FF69B4';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, outerR - 1, 0, Math.PI, false);
+                    ctx.bezierCurveTo(-w/3, 5, -w/6, 8, -w/10, 3);
+                    ctx.bezierCurveTo(-w/20, 0, w/20, 9, w/8, 4);
+                    ctx.bezierCurveTo(w/4, 0, w/3, 4, w/2.4, 2);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // チョコの立体的なハイライト（グラデーション）
+                    const pinkGrad = ctx.createRadialGradient(-w/8, -h/8, 2, 0, -2, outerR);
+                    pinkGrad.addColorStop(0, 'rgba(255, 192, 203, 0.6)');
+                    pinkGrad.addColorStop(0.5, 'rgba(255, 105, 180, 0.2)');
+                    pinkGrad.addColorStop(1, 'rgba(199, 21, 133, 0)');
+                    ctx.fillStyle = pinkGrad;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, outerR - 1, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 4. 真ん中の立体的な穴
+                    ctx.fillStyle = '#8B4513'; // 穴の厚み（奥の影）
+                    ctx.beginPath();
+                    ctx.arc(0, 0, innerR, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#FFF5F7'; // 背景と同化させる
+                    ctx.beginPath();
+                    ctx.arc(0, -1.5, innerR, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 5. 立体的なカラースプレー
+                    const sprinkles = [
+                        {x: -w/6, y: -h/4, col: '#00FFFF', angle: 0.3},
+                        {x: 0, y: -h/3, col: '#FFFF00', angle: -0.2},
+                        {x: w/6, y: -h/5, col: '#FFFFFF', angle: 0.8},
+                        {x: -w/4, y: -h/10, col: '#ADFF2F', angle: -0.5}
+                    ];
+                    sprinkles.forEach(s => {
+                        ctx.save();
+                        ctx.translate(s.x, s.y);
+                        ctx.rotate(s.angle);
+                        
+                        // 影
+                        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                        ctx.fillRect(-2 + 1, -4 + 1, 4, 8);
+                        
+                        // 本体
+                        ctx.fillStyle = s.col;
+                        ctx.fillRect(-2, -4, 4, 8);
+                        ctx.restore();
+                    });
+
+                    ctx.restore();
+                }
+            },
+            {
+                name: 'マカロン',
+                hp: 4,
+                color: '#BA55D3',
+                points: 60,
+                draw: (ctx, x, y, w, h) => {
+                    ctx.save();
+                    ctx.translate(x + w/2, y + h/2);
+
+                    const macW = w / 1.3;
+                    const macH = h / 2.5;
+
+                    // 1. マカロン全体の3D立体シャドウ
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+                    ctx.beginPath();
+                    ctx.roundRect(-macW/2 + 2, -macH + 4, macW, macH * 2, 8);
+                    ctx.fill();
+
+                    // 2. 下皮（紫マカロン）
+                    ctx.fillStyle = '#7B1FA2';
+                    ctx.beginPath();
+                    ctx.roundRect(-macW/2, 2, macW, macH, 6);
+                    ctx.fill();
+                    ctx.fillStyle = '#9C27B0';
+                    ctx.beginPath();
+                    ctx.roundRect(-macW/2, 0, macW, macH, 6);
+                    ctx.fill();
+                    ctx.fillStyle = '#6A1B9A';
+                    ctx.fillRect(-macW/2 + 3, 1, macW - 6, 2);
+
+                    // 3. クリーム（白のふっくら層）
+                    ctx.fillStyle = '#E0E0E0';
+                    ctx.beginPath();
+                    ctx.roundRect(-macW/2 + 2, -2 + 1.5, macW - 4, 5, 3);
+                    ctx.fill();
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.beginPath();
+                    ctx.roundRect(-macW/2 + 2, -2, macW - 4, 5, 3);
+                    ctx.fill();
+
+                    // 4. 上皮（紫マカロン）
+                    ctx.fillStyle = '#8E24AA';
+                    ctx.beginPath();
+                    ctx.roundRect(-macW/2, -macH + 2, macW, macH, 6);
+                    ctx.fill();
+                    const topGrad = ctx.createLinearGradient(-macW/2, -macH, -macW/2, 0);
+                    topGrad.addColorStop(0, '#E1BEE7'); 
+                    topGrad.addColorStop(0.5, '#BA55D3');
+                    topGrad.addColorStop(1, '#8E24AA');
+                    ctx.fillStyle = topGrad;
+                    ctx.beginPath();
+                    ctx.roundRect(-macW/2, -macH, macW, macH, 6);
+                    ctx.fill();
+                    ctx.fillStyle = '#7B1FA2';
+                    ctx.fillRect(-macW/2 + 3, -2, macW - 6, 2);
+
+                    ctx.restore();
+                }
+            },
+            {
+                name: 'チョコレート',
+                hp: 5,
+                color: '#8B4513',
+                points: 90,
+                draw: (ctx, x, y, w, h) => {
+                    ctx.save();
+                    
+                    // 1. 板チョコ全体の立体的な厚み（3D側面）
+                    ctx.fillStyle = '#2F1400'; 
+                    ctx.fillRect(x + 2, y + 2, w - 4, h - 2);
+
+                    // 2. 板チョコ上面ベース
+                    ctx.fillStyle = '#4A2206';
+                    ctx.fillRect(x + 2, y + 1, w - 4, h - 5);
+
+                    // 各チョコレートピース（3列×2段）
+                    const cols = 3;
+                    const rows = 2;
+                    const pW = (w - 10) / cols;
+                    const pH = (h - 8) / rows;
+
+                    for (let r = 0; r < rows; r++) {
+                        for (let c = 0; c < cols; c++) {
+                            const px = x + 4 + c * (pW + 1);
+                            const py = y + 3 + r * (pH + 1);
+
+                            ctx.fillStyle = '#2A1100'; 
+                            ctx.fillRect(px, py, pW, pH);
+
+                            const pGrad = ctx.createLinearGradient(px, py, px + pW, py + pH);
+                            pGrad.addColorStop(0, '#9C582B'); 
+                            pGrad.addColorStop(0.3, '#8B4513');
+                            pGrad.addColorStop(1, '#502507'); 
+                            ctx.fillStyle = pGrad;
+                            ctx.fillRect(px + 1, py + 1, pW - 2, pH - 2);
+
+                            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(px + 2, py + pH - 2);
+                            ctx.lineTo(px + 2, py + 2);
+                            ctx.lineTo(px + pW - 2, py + 2);
+                            ctx.stroke();
+                        }
+                    }
+
+                    ctx.restore();
+                }
+            },
+            {
+                name: 'ショートケーキ',
+                hp: 6,
+                color: '#FF0000',
+                points: 130,
+                draw: (ctx, x, y, w, h) => {
+                    ctx.save();
+                    ctx.translate(x + w/2, y + h/2);
+
+                    // 1. スポンジとクリームの3D側面
+                    ctx.fillStyle = '#D2B48C'; 
+                    ctx.beginPath();
+                    ctx.moveTo(-w/2.3, h/2.5);
+                    ctx.lineTo(w/2.3, h/2.5);
+                    ctx.lineTo(w/2.3, h/2.5 - 4);
+                    ctx.lineTo(-w/2.3, h/2.5 - 4);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // 2. ケーキのメインボディ
+                    ctx.fillStyle = '#FFFDD0'; 
+                    ctx.beginPath();
+                    ctx.moveTo(-w/2.3, h/2.5 - 2);
+                    ctx.lineTo(w/2.3, h/2.5 - 2);
+                    ctx.lineTo(0, -h/6);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // 赤いイチゴジャムの層
+                    ctx.fillStyle = '#E60045'; 
+                    ctx.beginPath();
+                    ctx.moveTo(-w/3, h/6 + 1.5);
+                    ctx.lineTo(w/3, h/6 + 1.5);
+                    ctx.lineTo(0, 2);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    ctx.fillStyle = '#FF3366'; 
+                    ctx.beginPath();
+                    ctx.moveTo(-w/3, h/6);
+                    ctx.lineTo(w/3, h/6);
+                    ctx.lineTo(0, 0);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // 生クリームの白層
+                    ctx.fillStyle = '#FFF5F7';
+                    ctx.beginPath();
+                    ctx.moveTo(-w/2.5, h/3);
+                    ctx.lineTo(w/2.5, h/3);
+                    ctx.lineTo(0, -h/10);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // 3. てっぺんの立体イチゴ
+                    const berryY = -h/3;
+                    const berryR = h/5.5;
+
+                    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                    ctx.beginPath();
+                    ctx.arc(1.5, berryY + 2.5, berryR, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    const berryGrad = ctx.createRadialGradient(-2, berryY - 2, 1, 0, berryY, berryR);
+                    berryGrad.addColorStop(0, '#FF4D4D');
+                    berryGrad.addColorStop(0.7, '#E60000');
+                    berryGrad.addColorStop(1, '#800000');
+                    ctx.fillStyle = berryGrad;
+                    ctx.beginPath();
+                    ctx.arc(0, berryY, berryR, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#FFFF80';
+                    ctx.fillRect(-2, berryY - 2, 1.2, 1.2);
+                    ctx.fillRect(2, berryY - 1, 1.2, 1.2);
+                    ctx.fillRect(-1, berryY + 2, 1.2, 1.2);
+                    ctx.fillRect(1, berryY - 4, 1.2, 1.2);
+
+                    // 4. 立体ホイップクリーム
+                    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+                    ctx.beginPath();
+                    ctx.arc(-w/4 + 1, -h/6 + 2, 4.5, 0, Math.PI * 2);
+                    ctx.arc(w/4 + 1, -h/6 + 2, 4.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    const whipGrad = ctx.createRadialGradient(-w/4 - 1, -h/6 - 1, 1, -w/4, -h/6, 4.5);
+                    whipGrad.addColorStop(0, '#FFFFFF');
+                    whipGrad.addColorStop(1, '#ECEFF1');
+                    ctx.fillStyle = whipGrad;
+                    ctx.beginPath();
+                    ctx.arc(-w/4, -h/6, 4.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    const whipGradR = ctx.createRadialGradient(w/4 - 1, -h/6 - 1, 1, w/4, -h/6, 4.5);
+                    whipGradR.addColorStop(0, '#FFFFFF');
+                    whipGradR.addColorStop(1, '#ECEFF1');
+                    ctx.fillStyle = whipGradR;
+                    ctx.beginPath();
+                    ctx.arc(w/4, -h/6, 4.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                }
+            }
+        ];
+    </script>
+
+    <!-- メインゲームロジック -->
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // DOM要素
+        const scoreDisplay = document.getElementById('score-display');
+        const levelDisplay = document.getElementById('level-display');
+        const timerDisplay = document.getElementById('timer-display');
+        const livesDisplay = document.getElementById('lives-display');
+        const overlay = document.getElementById('overlay');
+        const overlayContent = document.getElementById('overlay-content');
+        const overlayTitle = document.getElementById('overlay-title');
+        const overlayDesc = document.getElementById('overlay-desc');
+        const startBtn = document.getElementById('start-btn');
+
+        // 解像度調整
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // ゲームステート
+        let score = 0;
+        let level = 1;
+        let lives = 3;
+        let gameActive = false;
+        let gameOver = false;
+        let gameClear = false;
+
+        // パドル設定
+        const paddle = {
+            width: 80,
+            height: 12,
+            x: 0,
+            y: 0,
+            speed: 8,
+            color: '#FF69B4',
+            isDragging: false
+        };
+
+        // ボール設定（立体お菓子ボール）
+        const ball = {
+            x: 0,
+            y: 0,
+            radius: 11, // お菓子っぽさ・トッピングを見えやすくするために少し大きめに調整
+            dx: 0,
+            dy: 0,
+            speed: 5,
+            maxSpeed: 8,
+            color: '#FF1493'
+        };
+
+        // ブロック設定
+        const brickConfig = {
+            rows: 4,
+            cols: 7,
+            padding: 6,
+            offsetTop: 40,
+            offsetLeft: 6,
+            height: 28,
+            width: 0
+        };
+        let bricks = [];
+
+        // 時間経過によるブロック降下設定
+        let lastDropTime = 0;
+        let dropInterval = 15000; 
+        const minDropInterval = 4000; 
+        let dropTimerId = null;
+        let timeRemaining = 0; 
+        let lastTickTime = 0;
+
+        // キー入力状態
+        const keys = {
+            ArrowLeft: false,
+            ArrowRight: false
+        };
+
+        // イベントリスナー登録
+        window.addEventListener('keydown', (e) => {
+            if (e.key in keys) {
+                keys[e.key] = true;
+                e.preventDefault();
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.key in keys) {
+                keys[e.key] = false;
+            }
+        });
+
+        // タッチ操作
+        function handlePointerMove(clientX) {
+            if (!gameActive || gameOver || gameClear) return;
+            const rect = canvas.getBoundingClientRect();
+            const rootX = clientX - rect.left;
+            paddle.x = (rootX * (canvas.width / rect.width)) - paddle.width / 2;
+            
+            if (paddle.x < 0) paddle.x = 0;
+            if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
+        }
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                handlePointerMove(e.touches[0].clientX);
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('mousemove', (e) => {
+            handlePointerMove(e.clientX);
+        });
+
+        startBtn.addEventListener('click', () => {
+            if (gameOver || gameClear || !gameActive) {
+                initGame();
+                startGame();
+            }
+        });
+
+        function initGame() {
+            score = 0;
+            level = 1;
+            lives = 3;
+            gameOver = false;
+            gameClear = false;
+            dropInterval = 15000;
+
+            paddle.width = 90;
+            paddle.x = (canvas.width - paddle.width) / 2;
+            paddle.y = canvas.height - 40;
+
+            resetBall();
+            generateBricks();
+            updateUI();
+        }
+
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = paddle.y - ball.radius - 4;
+            const angle = -Math.PI / 3 - (Math.random() * Math.PI / 3); 
+            ball.speed = 4.5 + (level * 0.4); 
+            if (ball.speed > ball.maxSpeed) ball.speed = ball.maxSpeed;
+            
+            ball.dx = ball.speed * Math.cos(angle);
+            ball.dy = ball.speed * Math.sin(angle);
+        }
+
+        function generateBricks() {
+            brickConfig.width = (canvas.width - (brickConfig.offsetLeft * 2) - (brickConfig.padding * (brickConfig.cols - 1))) / brickConfig.cols;
+            bricks = [];
+
+            const availableTypesCount = Math.min(3 + (level - 1), SWEET_TYPES.length);
+
+            for (let r = 0; r < brickConfig.rows; r++) {
+                bricks[r] = [];
+                for (let c = 0; c < brickConfig.cols; c++) {
+                    let typeIndex = (brickConfig.rows - 1 - r) + Math.floor(Math.random() * 2);
+                    typeIndex = Math.min(Math.max(0, typeIndex), availableTypesCount - 1);
+
+                    const sweetType = { ...SWEET_TYPES[typeIndex] };
+
+                    bricks[r][c] = {
+                        x: 0,
+                        y: 0,
+                        width: brickConfig.width,
+                        height: brickConfig.height,
+                        status: 1, 
+                        hp: sweetType.hp,
+                        maxHp: sweetType.hp,
+                        type: sweetType
+                    };
+                }
+            }
+            positionBricks();
+        }
+
+        function positionBricks() {
+            for (let r = 0; r < bricks.length; r++) {
+                for (let c = 0; c < bricks[r].length; c++) {
+                    const brickX = (c * (brickConfig.width + brickConfig.padding)) + brickConfig.offsetLeft;
+                    const brickY = (r * (brickConfig.height + brickConfig.padding)) + brickConfig.offsetTop;
+                    bricks[r][c].x = brickX;
+                    bricks[r][c].y = brickY;
+                }
+            }
+        }
+
+        function addNewRowOfBricks() {
+            let reachedBottom = false;
+            const availableTypesCount = Math.min(3 + (level - 1), SWEET_TYPES.length);
+            const newRow = [];
+
+            for (let c = 0; c < brickConfig.cols; c++) {
+                let typeIndex = Math.floor(Math.random() * availableTypesCount);
+                const sweetType = { ...SWEET_TYPES[typeIndex] };
+
+                newRow.push({
+                    x: 0,
+                    y: 0,
+                    width: brickConfig.width,
+                    height: brickConfig.height,
+                    status: 1,
+                    hp: sweetType.hp,
+                    maxHp: sweetType.hp,
+                    type: sweetType
+                });
+            }
+
+            bricks.unshift(newRow);
+            positionBricks();
+
+            for (let r = 0; r < bricks.length; r++) {
+                for (let c = 0; c < bricks[r].length; c++) {
+                    const b = bricks[r][c];
+                    if (b.status === 1 && (b.y + b.height) >= paddle.y) {
+                        reachedBottom = true;
+                    }
+                }
+            }
+
+            if (reachedBottom) {
+                triggerGameOver("お菓子が下まで届いてしまいました！");
+            } else {
+                playTone(180, 'sawtooth', 0.15); 
+            }
+        }
+
+        function startGame() {
+            gameActive = true;
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            overlayContent.classList.add('scale-95');
+            
+            dropInterval = Math.max(15000 - (level - 1) * 2000, minDropInterval);
+            timeRemaining = dropInterval;
+            lastTickTime = performance.now();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function triggerGameOver(message = "お菓子の山に潰されてしまいました！") {
+            gameOver = true;
+            gameActive = false;
+            playGameOverSound();
+            
+            overlayTitle.textContent = "GAME OVER";
+            overlayTitle.className = "text-3xl font-black text-red-500 mb-4 drop-shadow";
+            overlayDesc.innerHTML = `${message}<br><strong class="text-pink-500">最終スコア: ${score} (Level ${level})</strong>`;
+            startBtn.textContent = "もう一度遊ぶ";
+            
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            overlayContent.classList.remove('scale-95');
+        }
+
+        function triggerLevelUp() {
+            level++;
+            playLevelUpSound();
+            
+            paddle.width = Math.max(50, paddle.width - 6);
+            ball.maxSpeed = 8 + (level * 0.5);
+
+            gameActive = false;
+            overlayTitle.textContent = `LEVEL ${level} START!`;
+            overlayTitle.className = "text-3xl font-black text-yellow-400 mb-4 drop-shadow";
+            
+            const availableCount = Math.min(3 + (level - 1), SWEET_TYPES.length);
+            overlayDesc.innerHTML = `お菓子の種類が増えました！ (現在 ${availableCount} 種)<br>ブロックが降りてくるスピードがさらに早くなります！`;
+            startBtn.textContent = "次のレベルへ！";
+
+            generateBricks();
+            resetBall();
+            updateUI();
+
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            overlayContent.classList.remove('scale-95');
+        }
+
+        function handleMiss() {
+            lives--;
+            playTone(150, 'sawtooth', 0.3);
+            updateUI();
+
+            if (lives <= 0) {
+                triggerGameOver("お菓子ボールを落としてしまいました！");
+            } else {
+                resetBall();
+            }
+        }
+
+        function updateUI() {
+            scoreDisplay.textContent = score;
+            levelDisplay.textContent = level;
+            livesDisplay.textContent = lives;
+            timerDisplay.textContent = (timeRemaining / 1000).toFixed(1) + 's';
+        }
+
+        function update(deltaTime) {
+            if (!gameActive || gameOver || gameClear) return;
+
+            if (keys.ArrowLeft) {
+                paddle.x -= paddle.speed;
+                if (paddle.x < 0) paddle.x = 0;
+            }
+            if (keys.ArrowRight) {
+                paddle.x += paddle.speed;
+                if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
+            }
+
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+
+            if (ball.x - ball.radius < 0) {
+                ball.x = ball.radius;
+                ball.dx = -ball.dx;
+                playHitSound();
+            } else if (ball.x + ball.radius > canvas.width) {
+                ball.x = canvas.width - ball.radius;
+                ball.dx = -ball.dx;
+                playHitSound();
+            }
+
+            if (ball.y - ball.radius < 0) {
+                ball.y = ball.radius;
+                ball.dy = -ball.dy;
+                playHitSound();
+            }
+
+            if (ball.y + ball.radius > canvas.height) {
+                handleMiss();
+                return;
+            }
+
+            if (ball.y + ball.radius >= paddle.y && 
+                ball.y - ball.radius <= paddle.y + paddle.height &&
+                ball.x + ball.radius >= paddle.x && 
+                ball.x - ball.radius <= paddle.x + paddle.width) {
+                
+                const collidePoint = ball.x - (paddle.x + paddle.width / 2);
+                const normalizedCollidePoint = collidePoint / (paddle.width / 2); 
+                
+                const angle = normalizedCollidePoint * (Math.PI / 3.5) - Math.PI / 2;
+                
+                ball.dy = ball.speed * Math.sin(angle);
+                ball.dx = ball.speed * Math.cos(angle);
+                
+                ball.y = paddle.y - ball.radius;
+                playPaddleSound();
+            }
+
+            let activeBricksCount = 0;
+            
+            for (let r = 0; r < bricks.length; r++) {
+                for (let c = 0; c < bricks[r].length; c++) {
+                    const b = bricks[r][c];
+                    if (b.status === 1) {
+                        activeBricksCount++;
+
+                        const closestX = Math.max(b.x, Math.min(ball.x, b.x + b.width));
+                        const closestY = Math.max(b.y, Math.min(ball.y, b.y + b.height));
+
+                        const distanceX = ball.x - closestX;
+                        const distanceY = ball.y - closestY;
+                        const distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+
+                        if (distanceSquared < (ball.radius * ball.radius)) {
+                            b.hp--;
+                            score += 5; 
+                            
+                            if (b.hp <= 0) {
+                                b.status = 0;
+                                score += b.type.points; 
+                                playBreakSound(b.type.hp);
+                            } else {
+                                playHitSound();
+                            }
+
+                            const overlapX = ball.radius - Math.abs(distanceX);
+                            const overlapY = ball.radius - Math.abs(distanceY);
+
+                            if (closestX === b.x || closestX === b.x + b.width) {
+                                if (overlapX < overlapY || Math.abs(distanceY) < 1) {
+                                    ball.dx = -ball.dx;
+                                    ball.x += ball.dx > 0 ? overlapX : -overlapX;
+                                } else {
+                                    ball.dy = -ball.dy;
+                                    ball.y += ball.dy > 0 ? overlapY : -overlapY;
+                                }
+                            } else {
+                                ball.dy = -ball.dy;
+                                ball.y += ball.dy > 0 ? overlapY : -overlapY;
+                            }
+                            
+                            updateUI();
+                            break; 
+                        }
+                    }
+                }
+            }
+
+            if (activeBricksCount === 0) {
+                triggerLevelUp();
+                return;
+            }
+
+            const now = performance.now();
+            const elapsed = now - lastTickTime;
+            lastTickTime = now;
+
+            timeRemaining -= elapsed;
+            if (timeRemaining <= 0) {
+                addNewRowOfBricks();
+                dropInterval = Math.max(15000 - (level - 1) * 2000, minDropInterval);
+                timeRemaining = dropInterval;
+            }
+            updateUI();
+        }
+
+        // 描画処理
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 背景の薄いストライプ模様
+            ctx.fillStyle = 'rgba(255, 192, 203, 0.15)';
+            for (let i = 0; i < canvas.width; i += 40) {
+                ctx.fillRect(i, 0, 20, canvas.height);
+            }
+
+            // 1. ブロック(お菓子)の描画
+            for (let r = 0; r < bricks.length; r++) {
+                for (let c = 0; c < bricks[r].length; c++) {
+                    const b = bricks[r][c];
+                    if (b.status === 1) {
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+                        ctx.fillRect(b.x + 3, b.y + 4, b.width, b.height);
+
+                        b.type.draw(ctx, b.x, b.y, b.width, b.height);
+
+                        if (b.hp > 1) {
+                            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                            ctx.fillRect(b.x + 4, b.y + b.height - 5, b.width - 8, 3);
+                            
+                            const hpRatio = b.hp / b.maxHp;
+                            ctx.fillStyle = hpRatio > 0.5 ? '#00FF00' : '#FF0000';
+                            ctx.fillRect(b.x + 4, b.y + b.height - 5, (b.width - 8) * hpRatio, 3);
+                        }
+                    }
+                }
+            }
+
+            // 2. パドル（キャンディバー風）の描画
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.beginPath();
+            ctx.roundRect(paddle.x + 2, paddle.y + 4, paddle.width, paddle.height, 6);
+            ctx.fill();
+
+            const grad = ctx.createLinearGradient(paddle.x, paddle.y, paddle.x, paddle.y + paddle.height);
+            grad.addColorStop(0, '#FFAEC9'); 
+            grad.addColorStop(0.3, '#FF69B4'); 
+            grad.addColorStop(1, '#C71585');   
+            ctx.fillStyle = grad;
+            
+            ctx.beginPath();
+            ctx.roundRect(paddle.x, paddle.y, paddle.width, paddle.height, 6);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 3.5;
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(paddle.x, paddle.y, paddle.width, paddle.height, 6);
+            ctx.clip();
+            for (let i = -10; i < paddle.width; i += 15) {
+                ctx.beginPath();
+                ctx.moveTo(paddle.x + i, paddle.y + paddle.height);
+                ctx.lineTo(paddle.x + i + 10, paddle.y);
+                ctx.stroke();
+            }
+            ctx.restore();
+            ctx.restore();
+
+            // 3. ボール（トッピング付きいちごチョコボール）の描画
+            ctx.save();
+            // ボールの影
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+            ctx.beginPath();
+            ctx.arc(ball.x + 3, ball.y + 4, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // A. 土台となる「いちごチョコ球体」
+            const berryGrad = ctx.createRadialGradient(
+                ball.x - ball.radius/2.5, ball.y - ball.radius/2.5, 1,
+                ball.x, ball.y, ball.radius
+            );
+            berryGrad.addColorStop(0, '#FFF0F5'); // ハイライト
+            berryGrad.addColorStop(0.3, '#FF69B4'); // いちごピンク
+            berryGrad.addColorStop(1, '#C71585');   // 影（ベリー色）
+            ctx.fillStyle = berryGrad;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // B. 上半分にかかっている「とろ〜りミルクチョコレート」の層（立体的な厚みを描画）
+            ctx.save();
+            // チョコレートのクリッピングマスク
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.clip();
+
+            // ミルクチョコのとろ〜りとした液体表現を描く
+            ctx.fillStyle = '#5C2E0B'; // ミルクチョコカラー
+            ctx.beginPath();
+            // ボールの少し上側を起点に、波打つラインを作る
+            ctx.moveTo(ball.x - ball.radius - 2, ball.y - ball.radius);
+            ctx.lineTo(ball.x - ball.radius - 2, ball.y + 1);
+            ctx.bezierCurveTo(
+                ball.x - ball.radius/2, ball.y + 5, 
+                ball.x - ball.radius/4, ball.y - 2, 
+                ball.x, ball.y + 3
+            );
+            ctx.bezierCurveTo(
+                ball.x + ball.radius/2, ball.y + 6, 
+                ball.x + ball.radius * 0.8, ball.y - 1, 
+                ball.x + ball.radius + 2, ball.y + 2
+            );
+            ctx.lineTo(ball.x + ball.radius + 2, ball.y - ball.radius - 2);
+            ctx.closePath();
+            ctx.fill();
+
+            // チョコ上のハイライト（ツヤ）
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.beginPath();
+            ctx.ellipse(ball.x - ball.radius/3, ball.y - ball.radius/2, ball.radius/3, ball.radius/6, -Math.PI/6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // C. チョコにトッピングされた「立体カラースプレー」
+            const ballSprinkles = [
+                { rx: -ball.radius/2, ry: -ball.radius/2.5, w: 4, h: 2, color: '#00FFFF', rot: 0.3 },
+                { rx: ball.radius/3, ry: -ball.radius/1.8, w: 3, h: 2.2, color: '#FFFF00', rot: -0.5 },
+                { rx: -ball.radius/8, ry: -ball.radius/2.2, w: 3.5, h: 2, color: '#ADFF2F', rot: 0.8 },
+                { rx: ball.radius/4, ry: -ball.radius/6, w: 3, h: 1.8, color: '#FFFFFF', rot: 0.1 }
+            ];
+
+            ballSprinkles.forEach(s => {
+                ctx.save();
+                ctx.translate(ball.x + s.rx, ball.y + s.ry);
+                ctx.rotate(s.rot);
+
+                // 立体的な影
+                ctx.fillStyle = '#3D1F07';
+                ctx.fillRect(-s.w/2 + 0.8, -s.h/2 + 0.8, s.w, s.h);
+
+                // カラースプレー本体
+                ctx.fillStyle = s.color;
+                ctx.fillRect(-s.w/2, -s.h/2, s.w, s.h);
+                ctx.restore();
+            });
+
+            ctx.restore(); // クリッピング解除
+
+            // D. ボール全体の最終的なツヤ（ホワイトの反射光を最前面に）
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+            ctx.beginPath();
+            ctx.arc(ball.x - ball.radius/2.5, ball.y - ball.radius/2.5, ball.radius/4.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // メインループ
+        let lastTime = 0;
+        function gameLoop(time) {
+            if (!gameActive) return;
+
+            if (!lastTime) lastTime = time;
+            const deltaTime = time - lastTime;
+            lastTime = time;
+
+            update(deltaTime);
+            draw();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        initGame();
+        draw();
+    </script>
+</body>
+</html>

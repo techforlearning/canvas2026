@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Morning Highway Racer - Super Edition</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            background-color: #000;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        /* 朝日の眩しさを表現するフィルター効果 */
+        .lens-flare-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: radial-gradient(circle at 50% 20%, rgba(255, 200, 120, 0.15) 0%, rgba(255, 140, 50, 0.05) 40%, transparent 80%);
+            z-index: 2;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ゲーム描画コンテナ -->
+    <div id="canvas-container"></div>
+    <div class="lens-flare-overlay"></div>
+
+    <!-- UI レイヤー -->
+    <div class="absolute inset-0 z-10 flex flex-col justify-between pointer-events-none p-4 md:p-6">
+        
+        <!-- ヘッダー情報（速度、順位、タイム） -->
+        <div class="flex justify-between items-start w-full">
+            <!-- 速度 & 距離 -->
+            <div class="bg-black/60 backdrop-blur-md rounded-xl p-3 text-white border border-yellow-500/30 shadow-lg pointer-events-auto">
+                <div class="text-xs text-yellow-400 font-bold uppercase tracking-wider">Speed</div>
+                <div class="text-2xl md:text-3xl font-extrabold italic" id="speed-display">0 <span class="text-sm font-normal not-italic text-gray-400">km/h</span></div>
+                <div class="text-xs text-gray-300 mt-1" id="distance-display">Distance: 0m</div>
+            </div>
+
+            <!-- 順位 -->
+            <div class="bg-black/60 backdrop-blur-md rounded-xl p-3 text-white border border-yellow-500/30 shadow-lg text-center pointer-events-auto">
+                <div class="text-xs text-yellow-400 font-bold uppercase tracking-wider">Position</div>
+                <div class="text-2xl md:text-3xl font-extrabold text-yellow-300 italic" id="position-display">6<span class="text-sm text-gray-400">/6</span></div>
+            </div>
+
+            <!-- タイム / ラップ -->
+            <div class="bg-black/60 backdrop-blur-md rounded-xl p-3 text-white border border-yellow-500/30 shadow-lg text-right pointer-events-auto">
+                <div class="text-xs text-yellow-400 font-bold uppercase tracking-wider">Time</div>
+                <div class="text-2xl md:text-3xl font-mono font-bold" id="time-display">00:00.00</div>
+                <div class="text-xs text-gray-300 mt-1" id="lap-display">Target: 10,000m Goal</div>
+            </div>
+        </div>
+
+        <!-- 🏎️ フローティング実況アナウンス表示用のBOX 🏎️ -->
+        <div class="absolute top-24 left-1/2 transform -translate-x-1/2 bg-black/85 backdrop-blur-md px-6 py-3 rounded-full border border-yellow-500/40 text-white font-bold text-center text-xs md:text-sm hidden pointer-events-none transition-all duration-300 shadow-2xl flex items-center gap-2 max-w-[90vw]" id="announcement-box">
+            <span class="text-yellow-400"><i class="fa-solid fa-bullhorn animate-bounce"></i> [実況] :</span>
+            <span id="announcement-text" class="text-gray-100">レーススタート！</span>
+        </div>
+
+        <!-- タッチ操作用のガイド（モバイル向け表示、PCでは非表示でも機能） -->
+        <div class="flex justify-between w-full mt-auto mb-4 md:hidden">
+            <div class="w-1/2 p-4 flex justify-start items-center text-white/40 pointer-events-auto active:text-white/80 transition" id="touch-left">
+                <i class="fa-solid fa-caret-left text-5xl"></i>
+                <span class="ml-2 text-xs font-bold">LEFT</span>
+            </div>
+            <div class="w-1/2 p-4 flex justify-end items-center text-white/40 pointer-events-auto active:text-white/80 transition" id="touch-right">
+                <span class="mr-2 text-xs font-bold">RIGHT</span>
+                <i class="fa-solid fa-caret-right text-5xl"></i>
+            </div>
+        </div>
+
+        <!-- PC向け操作説明（画面下部中央） -->
+        <div class="hidden md:flex justify-center w-full mb-2">
+            <div class="bg-black/50 backdrop-blur-sm rounded-lg px-4 py-2 text-white text-xs border border-white/10 flex items-center gap-4">
+                <div class="flex items-center gap-1">
+                    <kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-white font-mono">W</kbd><span>アクセル</span>
+                    <kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-white font-mono ml-2">S</kbd><span>ブレーキ</span>
+                    <kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-white font-mono ml-2">A</kbd><span>左</span>
+                    <kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-white font-mono">D</kbd><span>右</span>
+                </div>
+                <span class="h-3 w-px bg-white/20"></span>
+                <span class="text-yellow-300 font-bold">👑 頭上マークに注目！金が1位、銀が2位の目印です！</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- スタート / ゲームオーバー / クリア 画面 (モーダル) -->
+    <div id="menu-overlay" class="absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-tr from-slate-900/90 via-sky-950/85 to-amber-900/60 backdrop-blur-md p-4">
+        <div class="bg-black/80 border-2 border-yellow-500/40 rounded-2xl max-w-md w-full p-6 md:p-8 text-center text-white shadow-2xl">
+            <!-- 朝を象徴するアイコン -->
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 mb-4 shadow-lg shadow-orange-500/20 animate-pulse">
+                <i class="fa-solid fa-sun text-2xl text-white"></i>
+            </div>
+
+            <h1 class="text-3xl md:text-4xl font-extrabold italic tracking-tight mb-2 bg-gradient-to-r from-amber-300 via-orange-400 to-yellow-200 bg-clip-text text-transparent" id="menu-title">
+                MORNING HIGHWAY
+            </h1>
+            <p class="text-sm text-yellow-300 font-bold mb-6" id="menu-desc">
+                ⚡ 特別チューニングのスーパーマシン仕様！10,000mを爆速で駆け抜けろ！
+            </p>
+
+            <!-- スコア/リザルト表示領域 (初期は隠す) -->
+            <div id="result-board" class="hidden bg-white/5 border border-white/10 rounded-xl p-4 mb-6">
+                <div class="grid grid-cols-2 gap-4 text-left">
+                    <div>
+                        <div class="text-xs text-gray-400">タイム</div>
+                        <div class="text-lg font-bold text-yellow-300 font-mono" id="res-time">-</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-400">平均速度</div>
+                        <div class="text-lg font-bold text-white" id="res-speed">-</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-400">最終順位</div>
+                        <div class="text-lg font-bold text-orange-400 italic" id="res-pos">-</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-400">走行距離</div>
+                        <div class="text-lg font-bold text-white" id="res-dist">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作方法確認 -->
+            <div class="mb-6 text-xs text-gray-400 bg-white/5 p-3 rounded-lg flex flex-col gap-1.5 text-left border border-white/5">
+                <div class="flex items-center gap-2"><i class="fa-solid fa-gamepad text-yellow-400"></i> <span class="font-semibold text-gray-300">パワーアップ＆ストーリー：</span></div>
+                <div class="text-green-400">• <span class="font-bold">究極のスーパーマシン:</span> Wキーで最大 350 km/h まで加速！</div>
+                <div class="text-green-400">• <span class="font-bold">1位＆2位に目印を搭載:</span> 頭上に浮かぶ輝く矢印（金＝1位、銀＝2位）でライバルの位置を瞬時に把握！</div>
+                <div class="text-orange-400">• <span class="font-bold">路肩のカラーコーン:</span> ぶつかるとリアルに弾き飛ぶが、少し減速してしまいます！</div>
+                <div class="text-green-400">• <span class="font-bold">2大強敵（ゴールド＆プラチナ）:</span> 激速ボス2台を追いかけろ！</div>
+                <div class="text-orange-400">• <span class="font-bold">ゴール手前で大波乱:</span> 9km地点と9.5km地点で、ボスマシンに予期せぬトラブルが…!?</div>
+                <div class="mt-2">• <span class="text-white">PCキーボード操作:</span></div>
+                <div class="pl-3 text-gray-300">・<span class="text-yellow-400 font-bold">W</span> / <span class="text-yellow-400 font-bold">S</span>：アクセル / ブレーキ</div>
+                <div class="pl-3 text-gray-300">・<span class="text-yellow-400 font-bold">A</span> / <span class="text-yellow-400 font-bold">D</span>：左 / 右にステアリング操作</div>
+            </div>
+
+            <!-- ボタン -->
+            <button id="start-btn" class="w-full bg-gradient-to-r from-yellow-500 via-orange-500 to-red-600 hover:from-yellow-400 hover:to-red-500 text-white font-extrabold py-4 px-6 rounded-xl text-lg tracking-wider transition-all duration-300 transform hover:scale-105 shadow-lg shadow-orange-600/30 pointer-events-auto">
+                スーパーマシンでレース開始！
+            </button>
+        </div>
+    </div>
+
+    <!-- カウントダウン -->
+    <div id="countdown-overlay" class="absolute inset-0 z-15 flex items-center justify-center bg-black/40 pointer-events-none hidden">
+        <span id="countdown-text" class="text-8xl md:text-9xl font-black italic text-yellow-400 drop-shadow-[0_5px_10px_rgba(0,0,0,0.8)] scale-150 transition-all duration-300">3</span>
+    </div>
+
+    <script>
+        // --- ゲーム状態管理 ---
+        const GAME_STATE_MENU = 0;
+        const GAME_STATE_COUNTDOWN = 1;
+        const GAME_STATE_PLAYING = 2;
+        const GAME_STATE_FINISHED = 3;
+        const GAME_STATE_CRASHED = 4; 
+        let gameState = GAME_STATE_MENU;
+
+        // 目標距離（ゴール：10km = 10,000m）
+        const GOAL_DISTANCE = 10000; 
+
+        // プレイヤー車ステート
+        const player = {
+            x: 0,            
+            z: 0,            
+            speed: 0,        
+            maxSpeed: 350,   
+            acceleration: 4.5, 
+            deceleration: 0.3, 
+            brakeForce: 5.0,   
+            crashCooldown: 0, 
+            laneWidth: 12,   
+            color: 0xff1e1e  
+        };
+
+        // ライバル車データ (合計5台、ゴールドとプラチナの2ボス体制！)
+        let rivals = [
+            { id: 1, name: "GTR-Skyline", x: -3.5, z: 120, speed: 175, baseSpeed: 175, color: 0x1e3eff, active: true },
+            { id: 2, name: "Fairlady-Z", x: 3.5, z: 280, speed: 190, baseSpeed: 190, color: 0xffa500, active: true },
+            { id: 3, name: "Supra-HW",   x: -1.2, z: 450, speed: 205, baseSpeed: 205, color: 0x00ff88, active: true },
+            { id: 4, name: "NSX-Racer",  x: 2.0, z: 680, speed: 315, baseSpeed: 315, color: 0xffd700, active: true, isBoss: true, engineBlown: false }, // ゴールドボス
+            { id: 5, name: "GTR-Prototype", x: -2.0, z: 800, speed: 330, baseSpeed: 330, color: 0xe5e4e2, active: true, isBoss2: true, engineBlown: false } // 👑 プラチナボス (最速！)
+        ];
+
+        // 障害車 (一般の低速車。無限に前方生成される)
+        let npcCars = [];
+        const maxNpcs = 8;
+
+        // 路肩の障害物（カラーコーン）データ管理
+        let roadsideObstacles = [];
+
+        // キー入力状態
+        const keys = { Left: false, Right: false, Up: false, Down: false };
+
+        // 走行データ
+        let gameTime = 0; 
+        let startTime = 0;
+        let finalTimeStr = "";
+        let finalAvgSpeed = 0;
+        let speedAccumulator = 0;
+        let speedTicks = 0;
+
+        // ストーリー実況トリガー管理
+        const storyFlags = {
+            start: false,
+            middle: false,
+            preBlown: false,
+            passedBoss: false,
+            passedBoss2: false
+        };
+
+        // Three.js グローバル
+        let scene, camera, renderer;
+        let highwaySegmentLength = 200; 
+        let highwaySegments = []; 
+        let sunLight;
+        let carMesh; 
+        let rivalMeshes = {}; 
+        let npcMeshes = []; 
+        let sunSphere; 
+        let exhaustParticles; 
+        let blownSmokeParticles; // ボスのエンジンブロー用の白煙パーティクル
+
+        // 👑 1位と2位の車を示す目印（マーカー）の3Dオブジェクト
+        let rank1Marker;
+        let rank2Marker;
+
+        // 演出用
+        let speedLines;
+
+        // --- 初期化処理 ---
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            initGameEngine();
+        } else {
+            document.addEventListener('DOMContentLoaded', initGameEngine);
+        }
+
+        function initGameEngine() {
+            initThree();
+            setupEvents();
+            animate();
+        }
+
+        // --- Three.js環境の構築 ---
+        function initThree() {
+            const container = document.getElementById('canvas-container');
+            if (!container) return;
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            // 1. シーン
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xfca26c); 
+            scene.fog = new THREE.FogExp2(0xfca26c, 0.0035);
+
+            // 2. カメラ
+            camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+            camera.position.set(0, 4.5, -9);
+            camera.lookAt(0, 2, 20);
+
+            // 3. レンダラー
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // 4. 光源
+            const ambientLight = new THREE.AmbientLight(0xffdfcb, 0.6);
+            scene.add(ambientLight);
+
+            sunLight = new THREE.DirectionalLight(0xffeedd, 1.8);
+            sunLight.position.set(20, 15, 150); 
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 1024;
+            sunLight.shadow.mapSize.height = 1024;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 300;
+            const d = 30;
+            sunLight.shadow.camera.left = -d;
+            sunLight.shadow.camera.right = d;
+            sunLight.shadow.camera.top = d;
+            sunLight.shadow.camera.bottom = -d;
+            scene.add(sunLight);
+
+            const skyLight = new THREE.HemisphereLight(0x89b0e0, 0xfca26c, 0.4);
+            scene.add(skyLight);
+
+            // 5. 朝日のシンボル
+            const sunGeom = new THREE.SphereGeometry(15, 32, 32);
+            const sunMat = new THREE.MeshBasicMaterial({ color: 0xfff3d1 });
+            sunSphere = new THREE.Mesh(sunGeom, sunMat);
+            sunSphere.position.set(50, 40, 400);
+            scene.add(sunSphere);
+
+            // 6. 道路 segments (循環させて無限に見せる)
+            for (let i = 0; i < 4; i++) {
+                createHighwaySegment(i * highwaySegmentLength);
+            }
+
+            // 7. 自車の作成
+            createPlayerCar();
+
+            // 8. ライバル車の作成
+            createRivals();
+
+            // 9. 一般NPC車の初期生成
+            createInitialNpcs();
+
+            // 10. スピードライン
+            createSpeedLines();
+
+            // 11. 排気ガスパーティクル
+            createExhaustParticles();
+
+            // 12. エンジンブロー用の白煙パーティクル
+            createBlownSmokeParticles();
+
+            // 👑 1位と2位用の目印（3D逆円錐矢印）を生成
+            const markerGeo = new THREE.ConeGeometry(0.35, 0.8, 4);
+            markerGeo.rotateX(Math.PI); // 先端を真下に向ける
+
+            // 1位用（ゴールドメタリックな輝き）
+            const markerMat1 = new THREE.MeshStandardMaterial({ 
+                color: 0xffd700, 
+                emissive: 0xaa8800, 
+                roughness: 0.1, 
+                metalness: 0.9 
+            });
+            rank1Marker = new THREE.Mesh(markerGeo, markerMat1);
+            scene.add(rank1Marker);
+
+            // 2位用（プラチナ/シルバーメタリックな輝き）
+            const markerMat2 = new THREE.MeshStandardMaterial({ 
+                color: 0xcccccc, 
+                emissive: 0x444444, 
+                roughness: 0.1, 
+                metalness: 0.9 
+            });
+            rank2Marker = new THREE.Mesh(markerGeo, markerMat2);
+            scene.add(rank2Marker);
+
+            // ウィンドウサイズ変更対応
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        // --- ジオメトリ生成ヘルパー ---
+
+        // 障害物（カラーコーン）の3Dモデルを生成する関数
+        function createConeMesh() {
+            const coneGroup = new THREE.Group();
+            
+            // コーン（円錐部）
+            const coneGeo = new THREE.CylinderGeometry(0.04, 0.28, 0.8, 8);
+            const coneMat = new THREE.MeshStandardMaterial({ color: 0xff4500, roughness: 0.5 }); // 鮮やかな蛍光オレンジ
+            const cone = new THREE.Mesh(coneGeo, coneMat);
+            cone.position.y = 0.4;
+            cone.castShadow = true;
+            coneGroup.add(cone);
+
+            // コーンの黒い土台
+            const baseGeo = new THREE.BoxGeometry(0.5, 0.08, 0.5);
+            const baseMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
+            const base = new THREE.Mesh(baseGeo, baseMat);
+            base.position.y = 0.04;
+            base.castShadow = true;
+            coneGroup.add(base);
+
+            // コーンの白い反射ライン
+            const stripeGeo = new THREE.CylinderGeometry(0.1, 0.18, 0.16, 8);
+            const stripeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+            stripe.position.y = 0.45;
+            coneGroup.add(stripe);
+
+            return coneGroup;
+        }
+
+        function createHighwaySegment(zPos) {
+            const group = new THREE.Group();
+            group.position.z = zPos;
+            const segmentObstacles = [];
+
+            // 道路本体
+            const roadW = 16;
+            const roadGeo = new THREE.BoxGeometry(roadW, 0.5, highwaySegmentLength);
+            const roadMat = new THREE.MeshStandardMaterial({ 
+                color: 0x33333c, 
+                roughness: 0.8,
+                metalness: 0.1
+            });
+            const road = new THREE.Mesh(roadGeo, roadMat);
+            road.position.y = -0.25;
+            road.receiveShadow = true;
+            group.add(road);
+
+            // 中央分離帯
+            const barrierH = 1.2;
+            const barrierGeo = new THREE.BoxGeometry(0.8, barrierH, highwaySegmentLength);
+            const barrierMat = new THREE.MeshStandardMaterial({ color: 0x888899, roughness: 0.5 });
+            
+            // 左壁
+            const leftBarrier = new THREE.Mesh(barrierGeo, barrierMat);
+            leftBarrier.position.set(-roadW/2 - 0.4, barrierH/2 - 0.25, 0);
+            leftBarrier.castShadow = true;
+            leftBarrier.receiveShadow = true;
+            group.add(leftBarrier);
+
+            // 右壁
+            const rightBarrier = leftBarrier.clone();
+            rightBarrier.position.x = roadW/2 + 0.4;
+            group.add(rightBarrier);
+
+            // 道路上のライン
+            const edgeLineGeo = new THREE.PlaneGeometry(0.2, highwaySegmentLength);
+            const lineMat = new THREE.MeshBasicMaterial({ color: 0xdddddd, side: THREE.DoubleSide });
+            const leftLine = new THREE.Mesh(edgeLineGeo, lineMat);
+            leftLine.rotation.x = -Math.PI / 2;
+            leftLine.position.set(-roadW/3 - 1.2, 0.02, 0);
+            group.add(leftLine);
+
+            const rightLine = leftLine.clone();
+            rightLine.position.x = roadW/3 + 1.2;
+            group.add(rightLine);
+
+            const dashLineColor = 0xffa500; 
+            const dashLineMat = new THREE.MeshBasicMaterial({ color: dashLineColor, side: THREE.DoubleSide });
+            
+            for(let j = -highwaySegmentLength/2; j < highwaySegmentLength/2; j += 15) {
+                const dashGeo = new THREE.PlaneGeometry(0.15, 6);
+                const dash1 = new THREE.Mesh(dashGeo, dashLineMat);
+                dash1.rotation.x = -Math.PI / 2;
+                dash1.position.set(-roadW/6, 0.02, j + 3);
+                group.add(dash1);
+
+                const dash2 = dash1.clone();
+                dash2.position.x = roadW/6;
+                group.add(dash2);
+            }
+
+            // 高架柱
+            const pillarGeo = new THREE.CylinderGeometry(1.5, 1.5, 20, 8);
+            const pillarMat = new THREE.MeshStandardMaterial({ color: 0x44444a });
+            const pillar1 = new THREE.Mesh(pillarGeo, pillarMat);
+            pillar1.position.set(-roadW/2 - 5, -10, -highwaySegmentLength/4);
+            group.add(pillar1);
+            const pillar2 = pillar1.clone();
+            pillar2.position.x = roadW/2 + 5;
+            group.add(pillar2);
+
+            // ビル群
+            const bMat = new THREE.MeshStandardMaterial({ color: 0x6e8095, roughness: 0.6, metalness: 0.4 });
+            for (let b = 0; b < 6; b++) {
+                const bH = 30 + Math.random() * 60;
+                const bW = 15 + Math.random() * 15;
+                const bGeo = new THREE.BoxGeometry(bW, bH, bW);
+                const building = new THREE.Mesh(bGeo, bMat);
+                
+                const side = Math.random() > 0.5 ? 1 : -1;
+                building.position.set(side * (roadW/2 + 25 + Math.random()*40), bH/2 - 10, (Math.random() - 0.5) * highwaySegmentLength);
+                building.castShadow = true;
+                building.receiveShadow = true;
+                group.add(building);
+            }
+
+            // 街灯
+            const lightPoleGeo = new THREE.CylinderGeometry(0.1, 0.1, 8, 4);
+            const poleMat = new THREE.MeshStandardMaterial({ color: 0x66666f });
+            for(let l = -highwaySegmentLength/2; l < highwaySegmentLength/2; l += 50) {
+                const pole = new THREE.Mesh(lightPoleGeo, poleMat);
+                pole.position.set(-roadW/2 - 0.2, 4, l);
+                const armGeo = new THREE.BoxGeometry(1.5, 0.1, 0.1);
+                const arm = new THREE.Mesh(armGeo, poleMat);
+                arm.position.set(0.7, 4, 0);
+                pole.add(arm);
+                
+                group.add(pole);
+            }
+
+            // 路肩の障害物（カラーコーン）を左右に規則的に配置 (50mおき)
+            for (let offsetZ = -highwaySegmentLength/2 + 25; offsetZ < highwaySegmentLength/2; offsetZ += 50) {
+                // 左路肩 (x = -6.2付近、白線のすぐ外側)
+                const coneL = createConeMesh();
+                coneL.position.set(-6.2, 0, offsetZ);
+                group.add(coneL);
+                const obsL = { x: -6.2, relativeZ: offsetZ, z: zPos + offsetZ, hit: false, mesh: coneL };
+                segmentObstacles.push(obsL);
+                roadsideObstacles.push(obsL);
+
+                // 右路肩 (x = 6.2付近)
+                const coneR = createConeMesh();
+                coneR.position.set(6.2, 0, offsetZ);
+                group.add(coneR);
+                const obsR = { x: 6.2, relativeZ: offsetZ, z: zPos + offsetZ, hit: false, mesh: coneR };
+                segmentObstacles.push(obsR);
+                roadsideObstacles.push(obsR);
+            }
+
+            scene.add(group);
+            highwaySegments.push({ group: group, zPos: zPos, obstacles: segmentObstacles });
+        }
+
+        function createCarMesh(colorHex, isPlayer = false) {
+            const carGroup = new THREE.Group();
+
+            // シャーシ
+            const bodyGeo = new THREE.BoxGeometry(1.8, 0.5, 4.2);
+            const bodyMat = new THREE.MeshStandardMaterial({ 
+                color: colorHex, 
+                roughness: (colorHex === 0xffd700 || colorHex === 0xe5e4e2) ? 0.05 : 0.2, 
+                metalness: (colorHex === 0xffd700 || colorHex === 0xe5e4e2) ? 0.95 : 0.8 
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.4;
+            body.castShadow = true;
+            body.receiveShadow = true;
+            carGroup.add(body);
+
+            // キャビン
+            const cabinGeo = new THREE.BoxGeometry(1.5, 0.6, 2.2);
+            const cabinMat = new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.1, metalness: 0.9 });
+            const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+            cabin.position.set(0, 0.9, -0.2);
+            cabin.castShadow = true;
+            carGroup.add(cabin);
+
+            // ヘッドライト
+            const lightGeo = new THREE.BoxGeometry(0.3, 0.15, 0.1);
+            const yellowLightMat = new THREE.MeshBasicMaterial({ color: 0xfff0b0 });
+            const headL = new THREE.Mesh(lightGeo, yellowLightMat);
+            headL.position.set(-0.6, 0.4, 2.1);
+            const headR = headL.clone();
+            headR.position.x = 0.6;
+            carGroup.add(headL);
+            carGroup.add(headR);
+
+            // テールランプ
+            const tailGeo = new THREE.BoxGeometry(0.35, 0.1, 0.1);
+            const tailLightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const tailL = new THREE.Mesh(tailGeo, tailLightMat);
+            tailL.position.set(-0.6, 0.45, -2.1);
+            const tailR = tailL.clone();
+            tailR.position.x = 0.6;
+            carGroup.add(tailL);
+            carGroup.add(tailR);
+
+            // タイヤ
+            const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.4, 12);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.9 });
+            wheelGeo.rotateZ(Math.PI / 2);
+
+            const wheels = [
+                { x: -0.95, y: 0.38, z: 1.3 },
+                { x: 0.95, y: 0.38, z: 1.3 },
+                { x: -0.95, y: 0.38, z: -1.3 },
+                { x: 0.95, y: 0.38, z: -1.3 }
+            ];
+
+            wheels.forEach(wPos => {
+                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                wheel.position.set(wPos.x, wPos.y, wPos.z);
+                wheel.castShadow = true;
+                carGroup.add(wheel);
+            });
+
+            // スポイラー
+            if (isPlayer || colorHex !== 0x777777) {
+                const spoilerWingGeo = new THREE.BoxGeometry(1.9, 0.1, 0.4);
+                const wing = new THREE.Mesh(spoilerWingGeo, bodyMat);
+                wing.position.set(0, 0.95, -1.9);
+                wing.castShadow = true;
+                
+                const spoilerStrutGeo = new THREE.BoxGeometry(0.1, 0.5, 0.1);
+                const strutL = new THREE.Mesh(spoilerStrutGeo, bodyMat);
+                strutL.position.set(-0.7, 0.7, -1.9);
+                const strutR = strutL.clone();
+                strutR.position.x = 0.7;
+
+                carGroup.add(wing);
+                carGroup.add(strutL);
+                carGroup.add(strutR);
+            }
+
+            return carGroup;
+        }
+
+        function createPlayerCar() {
+            carMesh = createCarMesh(player.color, true);
+            scene.add(carMesh);
+            carMesh.position.set(player.x, 0, player.z);
+        }
+
+        function createRivals() {
+            rivals.forEach(rival => {
+                const rMesh = createCarMesh(rival.color, false);
+                scene.add(rMesh);
+                rMesh.position.set(rival.x, 0, rival.z);
+                rivalMeshes[rival.id] = rMesh;
+            });
+        }
+
+        function createInitialNpcs() {
+            const colors = [0xeeeeee, 0x555555, 0x226688, 0x888888, 0xdd9933];
+            for(let i = 0; i < maxNpcs; i++) {
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const z = 100 + i * 140 + Math.random() * 50;
+                const lanes = [-4.5, -1.5, 1.5, 4.5];
+                const x = lanes[Math.floor(Math.random() * lanes.length)];
+                
+                const npcMesh = createCarMesh(color, false);
+                scene.add(npcMesh);
+                npcMesh.position.set(x, 0, z);
+
+                npcCars.push({
+                    mesh: npcMesh,
+                    x: x,
+                    z: z,
+                    speed: 80 + Math.random() * 30,
+                    width: 1.8,
+                    length: 4.2
+                });
+            }
+        }
+
+        function createSpeedLines() {
+            const linesCount = 40;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(linesCount * 2 * 3);
+
+            for(let i=0; i < linesCount; i++) {
+                const idx = i * 6;
+                positions[idx] = (Math.random() - 0.5) * 30;
+                positions[idx+1] = Math.random() * 8 + 0.1;
+                positions[idx+2] = Math.random() * 200;
+                positions[idx+3] = positions[idx];
+                positions[idx+4] = positions[idx+1];
+                positions[idx+5] = positions[idx+2] - 15;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const material = new THREE.LineBasicMaterial({ 
+                color: 0xfff6dd, 
+                transparent: true, 
+                opacity: 0.15 
+            });
+
+            speedLines = new THREE.LineSegments(geometry, material);
+            scene.add(speedLines);
+        }
+
+        function createExhaustParticles() {
+            const count = 30;
+            const geo = new THREE.BufferGeometry();
+            const pos = new Float32Array(count * 3);
+            const speeds = [];
+
+            for (let i = 0; i < count; i++) {
+                pos[i*3] = 0;
+                pos[i*3+1] = -100;
+                pos[i*3+2] = 0;
+                speeds.push({
+                    x: (Math.random() - 0.5) * 0.1,
+                    y: Math.random() * 0.1 + 0.05,
+                    z: -(Math.random() * 0.5 + 0.2),
+                    age: 0,
+                    maxAge: 30 + Math.random() * 30
+                });
+            }
+
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            
+            const mat = new THREE.PointsMaterial({
+                color: 0xffeecc,
+                size: 0.6,
+                transparent: true,
+                opacity: 0.4,
+                blending: THREE.AdditiveBlending
+            });
+
+            exhaustParticles = {
+                points: new THREE.Points(geo, mat),
+                speeds: speeds,
+                index: 0
+            };
+            scene.add(exhaustParticles.points);
+        }
+
+        // ボスのエンジンブロー用の白煙パーティクルシステム
+        function createBlownSmokeParticles() {
+            const count = 200; 
+            const geo = new THREE.BufferGeometry();
+            const pos = new Float32Array(count * 3);
+            const speeds = [];
+
+            for (let i = 0; i < count; i++) {
+                pos[i*3] = 0;
+                pos[i*3+1] = -100; 
+                pos[i*3+2] = 0;
+                speeds.push({
+                    x: (Math.random() - 0.5) * 0.4,
+                    y: Math.random() * 0.2 + 0.15,
+                    z: -(Math.random() * 1.0 + 0.5),
+                    age: 0,
+                    maxAge: 50 + Math.random() * 50
+                });
+            }
+
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            
+            const mat = new THREE.PointsMaterial({
+                color: 0xeeeeee, 
+                size: 1.8,       
+                transparent: true,
+                opacity: 0.7,
+                blending: THREE.NormalBlending
+            });
+
+            blownSmokeParticles = {
+                points: new THREE.Points(geo, mat),
+                speeds: speeds,
+                index: 0
+            };
+            scene.add(blownSmokeParticles.points);
+        }
+
+        function emitExhaust() {
+            if (!carMesh || gameState !== GAME_STATE_PLAYING) return;
+            const posAttr = exhaustParticles.points.geometry.attributes.position;
+            const count = posAttr.count;
+
+            const index = exhaustParticles.index;
+            const side = Math.random() > 0.5 ? -0.7 : 0.7;
+
+            posAttr.setXYZ(index, carMesh.position.x + side, carMesh.position.y + 0.3, carMesh.position.z - 2.1);
+            
+            const currentPSpd = player.speed / 10;
+            exhaustParticles.speeds[index].z = -currentPSpd * 0.1 - (Math.random() * 0.4);
+            exhaustParticles.speeds[index].age = 0;
+
+            exhaustParticles.index = (index + 1) % count;
+            posAttr.needsUpdate = true;
+        }
+
+        // ボスのブロー白煙を射出
+        function emitBlownSmoke(boss) {
+            if (!blownSmokeParticles || !boss) return;
+            const posAttr = blownSmokeParticles.points.geometry.attributes.position;
+            const count = posAttr.count;
+
+            for (let k = 0; k < 3; k++) {
+                const index = blownSmokeParticles.index;
+                const offset = (Math.random() - 0.5) * 0.5;
+                
+                posAttr.setXYZ(
+                    index, 
+                    boss.x + offset, 
+                    0.5 + Math.random() * 0.4, 
+                    boss.z - 2.1
+                );
+                
+                blownSmokeParticles.speeds[index].x = (Math.random() - 0.5) * 0.4;
+                blownSmokeParticles.speeds[index].y = Math.random() * 0.25 + 0.15;
+                blownSmokeParticles.speeds[index].z = - (boss.speed / 3.6) * 0.1 - (Math.random() * 0.6);
+                blownSmokeParticles.speeds[index].age = 0;
+
+                blownSmokeParticles.index = (index + 1) % count;
+            }
+            posAttr.needsUpdate = true;
+        }
+
+        // パーティクルの更新
+        function updateParticles() {
+            if (exhaustParticles) {
+                const posAttr = exhaustParticles.points.geometry.attributes.position;
+                const count = posAttr.count;
+
+                for (let i = 0; i < count; i++) {
+                    const age = exhaustParticles.speeds[i].age;
+                    const maxAge = exhaustParticles.speeds[i].maxAge;
+
+                    if (age < maxAge) {
+                        let x = posAttr.getX(i) + exhaustParticles.speeds[i].x;
+                        let y = posAttr.getY(i) + exhaustParticles.speeds[i].y;
+                        let z = posAttr.getZ(i) + exhaustParticles.speeds[i].z;
+
+                        posAttr.setXYZ(i, x, y, z);
+                        exhaustParticles.speeds[i].age++;
+                    } else {
+                        posAttr.setXYZ(i, 0, -100, 0);
+                    }
+                }
+                posAttr.needsUpdate = true;
+            }
+
+            if (blownSmokeParticles) {
+                const posAttrBlown = blownSmokeParticles.points.geometry.attributes.position;
+                const countBlown = posAttrBlown.count;
+
+                for (let i = 0; i < countBlown; i++) {
+                    const age = blownSmokeParticles.speeds[i].age;
+                    const maxAge = blownSmokeParticles.speeds[i].maxAge;
+
+                    if (age < maxAge) {
+                        let x = posAttrBlown.getX(i) + blownSmokeParticles.speeds[i].x;
+                        let y = posAttrBlown.getY(i) + blownSmokeParticles.speeds[i].y;
+                        let z = posAttrBlown.getZ(i) + blownSmokeParticles.speeds[i].z;
+
+                        posAttrBlown.setXYZ(i, x, y, z);
+                        blownSmokeParticles.speeds[i].age++;
+                    } else {
+                        posAttrBlown.setXYZ(i, 0, -100, 0);
+                    }
+                }
+                posAttrBlown.needsUpdate = true;
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // --- 実況アナウンス機能 ---
+        function showAnnouncement(text, duration = 4000) {
+            const box = document.getElementById('announcement-box');
+            const textBox = document.getElementById('announcement-text');
+            if (!box || !textBox) return;
+            textBox.textContent = text;
+            box.classList.remove('hidden');
+            
+            box.style.opacity = '1';
+            box.style.transform = 'translate(-50%, 0) scale(1)';
+
+            if (window.announcementTimeout) {
+                clearTimeout(window.announcementTimeout);
+            }
+
+            window.announcementTimeout = setTimeout(() => {
+                box.style.opacity = '0';
+                box.style.transform = 'translate(-50%, -20px) scale(0.9)';
+                setTimeout(() => {
+                    box.classList.add('hidden');
+                }, 300);
+            }, duration);
+        }
+
+        // --- イベント＆操作設定 ---
+        function setupEvents() {
+            window.addEventListener('click', function() {
+                window.focus();
+            });
+
+            // キーボード操作（押し下げ時）
+            window.addEventListener('keydown', function(e) {
+                if (gameState !== GAME_STATE_PLAYING) return;
+                
+                const code = e.code;
+                const key = e.key;
+
+                if (code === 'KeyA' || key === 'a' || key === 'A' || key === 'ArrowLeft') {
+                    keys.Left = true;
+                }
+                if (code === 'KeyD' || key === 'd' || key === 'D' || key === 'ArrowRight') {
+                    keys.Right = true;
+                }
+                if (code === 'KeyW' || key === 'w' || key === 'W' || key === 'ArrowUp') {
+                    keys.Up = true;
+                }
+                if (code === 'KeyS' || key === 's' || key === 'S' || key === 'ArrowDown') {
+                    keys.Down = true;
+                }
+            });
+
+            // キーボード操作（離したとき）
+            window.addEventListener('keyup', function(e) {
+                const code = e.code;
+                const key = e.key;
+
+                if (code === 'KeyA' || key === 'a' || key === 'A' || key === 'ArrowLeft') {
+                    keys.Left = false;
+                }
+                if (code === 'KeyD' || key === 'd' || key === 'D' || key === 'ArrowRight') {
+                    keys.Right = false;
+                }
+                if (code === 'KeyW' || key === 'w' || key === 'W' || key === 'ArrowUp') {
+                    keys.Up = false;
+                }
+                if (code === 'KeyS' || key === 's' || key === 'S' || key === 'ArrowDown') {
+                    keys.Down = false;
+                }
+            });
+
+            window.addEventListener('blur', function() {
+                keys.Left = false;
+                keys.Right = false;
+                keys.Up = false;
+                keys.Down = false;
+            });
+
+            // モバイルタッチ操作
+            const touchLeft = document.getElementById('touch-left');
+            const touchRight = document.getElementById('touch-right');
+
+            if (touchLeft && touchRight) {
+                touchLeft.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    keys.Left = true;
+                    keys.Up = true;
+                }, { passive: false });
+                touchRight.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    keys.Right = true;
+                    keys.Up = true;
+                }, { passive: false });
+
+                touchLeft.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    keys.Left = false;
+                    keys.Up = false;
+                }, { passive: false });
+                touchRight.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    keys.Right = false;
+                    keys.Up = false;
+                }, { passive: false });
+            }
+
+            // マウスクリック対応
+            window.addEventListener('mousedown', function(e) {
+                if (gameState !== GAME_STATE_PLAYING) return;
+                if (e.target.closest('#start-btn') || e.target.closest('.pointer-events-auto')) return;
+                
+                keys.Up = true;
+                if (e.clientX < window.innerWidth / 2) {
+                    keys.Left = true;
+                } else {
+                    keys.Right = true;
+                }
+            });
+
+            window.addEventListener('mouseup', function() {
+                keys.Left = false;
+                keys.Right = false;
+                keys.Up = false;
+            });
+
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) {
+                startBtn.addEventListener('click', function() {
+                    window.focus();
+                    if (gameState === GAME_STATE_MENU || gameState === GAME_STATE_FINISHED || gameState === GAME_STATE_CRASHED) {
+                        resetGame();
+                        startCountdown();
+                    }
+                });
+            }
+        }
+
+        // --- ゲーム管理メソッド ---
+
+        function resetGame() {
+            player.x = 0;
+            player.z = 0;
+            player.speed = 0;
+            player.crashCooldown = 0;
+            if (carMesh) {
+                carMesh.position.set(0, 0, 0);
+            }
+
+            keys.Left = false;
+            keys.Right = false;
+            keys.Up = false;
+            keys.Down = false;
+
+            // ストーリー状況のリセット
+            storyFlags.start = false;
+            storyFlags.middle = false;
+            storyFlags.preBlown = false;
+            storyFlags.passedBoss = false;
+            storyFlags.passedBoss2 = false;
+
+            // コーンの衝突判定 & 位置リセット
+            roadsideObstacles.forEach(obs => {
+                obs.hit = false;
+                if (obs.mesh) {
+                    obs.mesh.position.set(obs.x, 0, obs.relativeZ);
+                    obs.mesh.rotation.set(0, 0, 0);
+                }
+            });
+
+            rivals = [
+                { id: 1, name: "GTR-Skyline", x: -3.5, z: 120, speed: 175, baseSpeed: 175, color: 0x1e3eff, active: true },
+                { id: 2, name: "Fairlady-Z", x: 3.5, z: 280, speed: 190, baseSpeed: 190, color: 0xffa500, active: true },
+                { id: 3, name: "Supra-HW",   x: -1.2, z: 450, speed: 205, baseSpeed: 205, color: 0x00ff88, active: true },
+                { id: 4, name: "NSX-Racer",  x: 2.0, z: 680, speed: 315, baseSpeed: 315, color: 0xffd700, active: true, isBoss: true, engineBlown: false }, // ゴールドボス
+                { id: 5, name: "GTR-Prototype", x: -2.0, z: 800, speed: 330, baseSpeed: 330, color: 0xe5e4e2, active: true, isBoss2: true, engineBlown: false } // プラチナボス (最速！)
+            ];
+
+            rivals.forEach(rival => {
+                const mesh = rivalMeshes[rival.id];
+                if (mesh) {
+                    mesh.position.set(rival.x, 0, rival.z);
+                    mesh.rotation.set(0, 0, 0);
+                    mesh.visible = true;
+                }
+                rival.active = true;
+            });
+
+            npcCars.forEach((npc, idx) => {
+                const lanes = [-4.5, -1.5, 1.5, 4.5];
+                npc.x = lanes[Math.floor(Math.random() * lanes.length)];
+                npc.z = 150 + idx * 130 + Math.random() * 40;
+                npc.speed = 80 + Math.random() * 35;
+                npc.mesh.position.set(npc.x, 0, npc.z);
+                npc.mesh.visible = true;
+            });
+
+            highwaySegments.forEach((seg, idx) => {
+                seg.zPos = idx * highwaySegmentLength;
+                seg.group.position.z = seg.zPos;
+                // 各セグメント内のコーン位置も初期位置へ再バインド
+                if (seg.obstacles) {
+                    seg.obstacles.forEach(obs => {
+                        obs.z = seg.zPos + obs.relativeZ;
+                        obs.hit = false;
+                        obs.mesh.position.set(obs.x, 0, obs.relativeZ);
+                        obs.mesh.rotation.set(0, 0, 0);
+                    });
+                }
+            });
+
+            gameTime = 0;
+            speedAccumulator = 0;
+            speedTicks = 0;
+
+            // マーカーをリセット
+            if (rank1Marker) rank1Marker.position.set(0, -100, 0);
+            if (rank2Marker) rank2Marker.position.set(0, -100, 0);
+
+            document.getElementById('menu-overlay').classList.add('hidden');
+            document.getElementById('result-board').classList.add('hidden');
+            document.getElementById('announcement-box').classList.add('hidden');
+        }
+
+        function startCountdown() {
+            gameState = GAME_STATE_COUNTDOWN;
+            const overlay = document.getElementById('countdown-overlay');
+            const text = document.getElementById('countdown-text');
+            if (!overlay || !text) return;
+            overlay.classList.remove('hidden');
+
+            let count = 3;
+            text.textContent = count;
+            text.style.transform = "scale(1.8)";
+
+            const interval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    text.textContent = count;
+                    text.style.transform = "scale(1.8)";
+                    setTimeout(() => { text.style.transform = "scale(1.0)"; }, 100);
+                } else if (count === 0) {
+                    text.textContent = "GO!";
+                    text.style.transform = "scale(2.0)";
+                    text.className = "text-8xl md:text-9xl font-black italic text-orange-500 drop-shadow-[0_5px_10px_rgba(0,0,0,0.8)]";
+                    setTimeout(() => { text.style.transform = "scale(1.0)"; }, 100);
+                } else {
+                    clearInterval(interval);
+                    overlay.classList.add('hidden');
+                    gameState = GAME_STATE_PLAYING;
+                    startTime = performance.now();
+                }
+            }, 1000);
+        }
+
+        function finishRace() {
+            gameState = GAME_STATE_FINISHED;
+            
+            let aheadCount = 0;
+            rivals.forEach(rival => {
+                if (rival.z > player.z) {
+                    aheadCount++;
+                }
+            });
+            const finalPos = aheadCount + 1;
+
+            const avgSpd = Math.round(speedAccumulator / Math.max(1, speedTicks));
+            
+            document.getElementById('menu-title').textContent = "GOAL FINISH!!";
+            document.getElementById('menu-title').className = "text-3xl md:text-4xl font-extrabold italic tracking-tight mb-2 bg-gradient-to-r from-green-400 via-yellow-400 to-orange-400 bg-clip-text text-transparent";
+            document.getElementById('menu-desc').textContent = "おめでとうございます！圧倒的なスピードで1位を獲得しました！";
+            
+            document.getElementById('res-time').textContent = finalTimeStr;
+            document.getElementById('res-speed').textContent = `${avgSpd} km/h`;
+            document.getElementById('res-pos').textContent = `${finalPos}位 / 6台`;
+            document.getElementById('res-dist').textContent = `${Math.round(player.z)} m`;
+
+            document.getElementById('result-board').classList.remove('hidden');
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) startBtn.textContent = "RETRY RACE";
+            document.getElementById('menu-overlay').classList.remove('hidden');
+        }
+
+        // --- ゲームループ & 物理更新 ---
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (gameState === GAME_STATE_PLAYING) {
+                updatePhysics();
+                gameTime = (performance.now() - startTime) / 1000;
+                updateHUD();
+                
+                if (Math.random() < 0.4 && player.speed > 10) {
+                    emitExhaust();
+                }
+            } else if (gameState === GAME_STATE_COUNTDOWN) {
+                if (carMesh) {
+                    carMesh.position.y = Math.sin(performance.now() * 0.05) * 0.02;
+                    carMesh.position.x = player.x;
+                }
+            } else if (gameState === GAME_STATE_FINISHED) {
+                player.speed = Math.max(0, player.speed - 2);
+                player.z += (player.speed / 3.6) * 0.016;
+                if (carMesh) {
+                    carMesh.position.z = player.z;
+                }
+                updateHighwayInfinite();
+                updateCamera();
+            }
+
+            updateParticles();
+
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+
+        function updatePhysics() {
+            // A. 自車の移動＆加減速制御
+            if (player.crashCooldown > 0) {
+                player.crashCooldown -= 0.016;
+                player.x += Math.sin(performance.now() * 0.1) * 0.05;
+                player.speed = Math.max(80, player.speed - 1); 
+            } else {
+                // Wキー：アクセル
+                if (keys.Up) {
+                    if (player.speed < player.maxSpeed) {
+                        player.speed += player.acceleration;
+                    }
+                } 
+                // Sキー：ブレーキ
+                else if (keys.Down) {
+                    if (player.speed > 0) {
+                        player.speed -= player.brakeForce;
+                    } else {
+                        player.speed = 0;
+                    }
+                } 
+                // 空気抵抗（自然減速）
+                else {
+                    if (player.speed > 0) {
+                        player.speed -= player.deceleration;
+                    } else {
+                        player.speed = 0;
+                    }
+                }
+
+                // A / D キーによるハンドル移動
+                const moveSpeed = 0.22 * (player.speed / 100 + 0.3);
+                if (keys.Left) {
+                    player.x -= moveSpeed;
+                }
+                if (keys.Right) {
+                    player.x += moveSpeed;
+                }
+            }
+
+            // 道路の端のガードレール衝突判定
+            const maxRoadBoundary = 7.0;
+            if (player.x < -maxRoadBoundary) {
+                player.x = -maxRoadBoundary;
+                triggerCrashWall();
+            } else if (player.x > maxRoadBoundary) {
+                player.x = maxRoadBoundary;
+                triggerCrashWall();
+            }
+
+            // 自車モデルへ位置を反映 (Z軸が走行距離)
+            const distanceDelta = (player.speed / 3.6) * 0.016;
+            player.z += distanceDelta;
+            
+            if (carMesh) {
+                carMesh.position.x = player.x;
+                carMesh.position.z = player.z;
+                // 左右キー入力に合わせた傾き
+                let targetRotY = 0;
+                let targetRotZ = 0;
+                if (keys.Left && player.crashCooldown <= 0 && player.speed > 5) {
+                    targetRotY = 0.08;
+                    targetRotZ = 0.05;
+                } else if (keys.Right && player.crashCooldown <= 0 && player.speed > 5) {
+                    targetRotY = -0.08;
+                    targetRotZ = -0.05;
+                }
+                carMesh.rotation.y += (targetRotY - carMesh.rotation.y) * 0.1;
+                carMesh.rotation.z += (targetRotZ - carMesh.rotation.z) * 0.1;
+            }
+
+            updateHighwayInfinite();
+            updateRivalsAI(distanceDelta);
+            updateNpcsAI();
+            updateCamera();
+            updateSpeedLinesPositions();
+            checkCollisions();
+
+            // 👑 1位と2位のエントリーの頭上に目印マーカーを表示
+            updateRankMarkers();
+
+            // ストーリー実況の進捗監視
+            updateStoryTrigger();
+
+            if (player.z >= GOAL_DISTANCE) {
+                finishRace();
+            }
+
+            if (player.speed > 0) {
+                speedAccumulator += player.speed;
+                speedTicks++;
+            }
+        }
+
+        // 朝日の無限循環スクロール
+        function updateHighwayInfinite() {
+            const minZ = player.z - 100;
+            
+            highwaySegments.forEach(seg => {
+                if (seg.zPos + highwaySegmentLength < minZ) {
+                    let maxZ = 0;
+                    highwaySegments.forEach(s => {
+                        if (s.zPos > maxZ) maxZ = s.zPos;
+                    });
+                    
+                    seg.zPos = maxZ + highwaySegmentLength;
+                    seg.group.position.z = seg.zPos;
+
+                    // このセグメントに属しているカラーコーン障害物の位置を前方にワープ、衝突フラグをクリア
+                    if (seg.obstacles) {
+                        seg.obstacles.forEach(obs => {
+                            obs.z = seg.zPos + obs.relativeZ;
+                            obs.hit = false;
+                            obs.mesh.position.set(obs.x, 0, obs.relativeZ);
+                            obs.mesh.rotation.set(0, 0, 0);
+                        });
+                    }
+                }
+            });
+
+            if (sunLight) {
+                sunLight.position.z = player.z + 180;
+            }
+            if (sunSphere) {
+                sunSphere.position.z = player.z + 380;
+            }
+        }
+
+        // 👑 リアルタイムで順位を特定し、1位と2位の頭上に矢印マーカーを追従させる処理
+        function updateRankMarkers() {
+            if (!rank1Marker || !rank2Marker) return;
+
+            // 自車およびライバル全車を一つの配列にまとめる
+            const entries = [];
+            entries.push({ name: "player", z: player.z, mesh: carMesh });
+            rivals.forEach(rival => {
+                entries.push({ name: rival.name, z: rival.z, mesh: rivalMeshes[rival.id] });
+            });
+
+            // 走行距離（Z座標）の順に並び替え
+            entries.sort((a, b) => b.z - a.z);
+
+            const time = performance.now() * 0.003;
+
+            // 1位の頭上にゴールドの矢印を表示
+            if (entries[0] && entries[0].mesh) {
+                const targetMesh = entries[0].mesh;
+                // 車線中央、車の上部、Z座標をスムーズに追従
+                rankIndicatorSmoothMove(rank1 = true, targetMesh, time);
+            }
+
+            // 2位の頭上にシルバー（プラチナ風）の矢印を表示
+            if (entries[1] && entries[1].mesh) {
+                const targetMesh = entries[1].mesh;
+                rankIndicatorSmoothMove(rank1 = false, targetMesh, time + 2.0); // 浮遊のアニメーション位相をずらす
+            }
+        }
+
+        // マーカー位置のスムーズな補間移動とアニメーション処理
+        function rankIndicatorSmoothMove(isRank1, targetMesh, animTime) {
+            const marker = isRank1 ? rank1Marker : rank2Marker;
+            if (!marker) return;
+
+            // 矢印のターゲット座標を計算
+            const targetX = targetMesh.position.x;
+            const targetY = 2.4 + Math.sin(animTime) * 0.18; // 浮遊アニメーション
+            const targetZ = targetMesh.position.z;
+
+            // 初回やリセット時はテレポート、通常時は滑らかに追尾（Lerp処理）
+            if (marker.position.y < -50) {
+                marker.position.set(targetX, targetY, targetZ);
+            } else {
+                marker.position.x += (targetX - marker.position.x) * 0.3;
+                marker.position.y += (targetY - marker.position.y) * 0.3;
+                marker.position.z += (targetZ - marker.position.z) * 0.4;
+            }
+
+            // 矢印を回転させて存在感を出す
+            marker.rotation.y = animTime * 1.5;
+        }
+
+        // 実況トリガーの制御
+        function updateStoryTrigger() {
+            if (player.z > 50 && !storyFlags.start) {
+                storyFlags.start = true;
+                showAnnouncement("プラチナGTRとゴールドNSXが高速道路のトップを独走中！");
+            }
+            if (player.z > 5000 && !storyFlags.middle) {
+                storyFlags.middle = true;
+                showAnnouncement("10kmレースもいよいよ中盤戦！先頭集団のスピードは異次元だ！");
+            }
+            // ゴールドボスを追い越したとき
+            const boss = rivals.find(r => r.isBoss);
+            if (boss && boss.engineBlown && player.z > boss.z && !storyFlags.passedBoss) {
+                storyFlags.passedBoss = true;
+                showAnnouncement("🔥ゴールドNSXを捉えてパス！プレイヤー、残るはプラチナGTRのみ！");
+            }
+            // プラチナボスを追い越したとき（残り500m以下）
+            const boss2 = rivals.find(r => r.isBoss2);
+            if (boss2 && boss2.engineBlown && player.z > boss2.z && !storyFlags.passedBoss2) {
+                storyFlags.passedBoss2 = true;
+                showAnnouncement("🏁なんとプラチナGTRも抜き去った！プレイヤー、ついに王座を奪い単独トップでゴールへ！");
+            }
+        }
+
+        // ライバルのAI
+        function updateRivalsAI(playerDelta) {
+            rivals.forEach(rival => {
+                if (!rival.active) return;
+
+                let defaultX = (rival.id === 1) ? -3.5 : (rival.id === 2) ? 3.5 : (rival.id === 3) ? -1.2 : (rival.id === 4) ? 2.0 : -2.0;
+                let targetX = defaultX;
+
+                let obstacleAhead = null;
+                let minObstacleDist = 50; 
+
+                // 1. プレイヤーを検出
+                if (player.z > rival.z && (player.z - rival.z) < minObstacleDist) {
+                    if (Math.abs(player.x - rival.x) < 2.0) {
+                        obstacleAhead = player;
+                        minObstacleDist = player.z - rival.z;
+                    }
+                }
+
+                // 2. 他のライバル車を検出
+                rivals.forEach(other => {
+                    if (other.id !== rival.id && other.z > rival.z && (other.z - rival.z) < minObstacleDist) {
+                        if (Math.abs(other.x - rival.x) < 2.0) {
+                            obstacleAhead = other;
+                            minObstacleDist = other.z - rival.z;
+                        }
+                    }
+                });
+
+                // 3. 一般NPC車を検出
+                npcCars.forEach(npc => {
+                    if (npc.z > rival.z && (npc.z - rival.z) < minObstacleDist) {
+                        if (Math.abs(npc.x - rival.x) < 2.0) {
+                            obstacleAhead = npc;
+                            minObstacleDist = npc.z - rival.z;
+                        }
+                    }
+                });
+
+                // 前方に車があった場合は、避ける車線を計算する
+                if (obstacleAhead) {
+                    let avoidDir = 1; 
+
+                    if (rival.x > obstacleAhead.x) {
+                        avoidDir = 1;
+                    } else if (rival.x < obstacleAhead.x) {
+                        avoidDir = -1;
+                    } else {
+                        avoidDir = (rival.x > 0) ? -1 : 1;
+                    }
+
+                    let proposedX = rival.x + avoidDir * 2.5;
+
+                    if (proposedX < -5.5) proposedX = rival.x + 2.5;
+                    if (proposedX > 5.5) proposedX = rival.x - 2.5;
+
+                    targetX = proposedX;
+                }
+
+                // スムーズなレーンチェンジ
+                let lerpFactor = obstacleAhead ? 0.08 : 0.03;
+                rival.x += (targetX - rival.x) * lerpFactor;
+                rival.x = Math.max(-5.5, Math.min(5.5, rival.x));
+
+                // 各ボスの特別なトラブル演出と減速ロジック
+                if (rival.isBoss) {
+                    // ゴールドボス：ゴールの1km手前（z = 9,000m 地点）でエンジンブロー
+                    if (rival.z >= 9000 && !rival.engineBlown) {
+                        rival.engineBlown = true;
+                        showAnnouncement("⚠️トラブル発生！ゴールドNSX-Racerから激しい白煙！ペースダウン！");
+                    }
+
+                    if (rival.engineBlown) {
+                        rival.speed = Math.max(40, rival.speed - 4);
+                        emitBlownSmoke(rival);
+                    } else {
+                        const raceProgress = player.z / GOAL_DISTANCE;
+                        rival.speed = rival.baseSpeed + (raceProgress * 15);
+                    }
+                } else if (rival.isBoss2) {
+                    // プラチナボス：ゴールの500m手前（z = 9,500m 地点）でエンジンブロー
+                    if (rival.z >= 9500 && !rival.engineBlown) {
+                        rival.engineBlown = true;
+                        showAnnouncement("⚠️大波乱！なんと首位を走るプラチナGTRもエンジンから異常な白煙！ストップ寸前！");
+                    }
+
+                    if (rival.engineBlown) {
+                        rival.speed = Math.max(30, rival.speed - 5);
+                        emitBlownSmoke(rival);
+                    } else {
+                        const raceProgress = player.z / GOAL_DISTANCE;
+                        rival.speed = rival.baseSpeed + (raceProgress * 18);
+                    }
+                } else {
+                    // 一般ライバル車の速度
+                    const raceProgress = player.z / GOAL_DISTANCE;
+                    const timeFactor = performance.now() * 0.001 * (rival.id + 1);
+                    rival.speed = rival.baseSpeed + (raceProgress * 15) + (Math.sin(timeFactor * 0.5) * 5);
+                }
+
+                const rDelta = (rival.speed / 3.6) * 0.016;
+                rival.z += rDelta;
+
+                const mesh = rivalMeshes[rival.id];
+                if (mesh) {
+                    mesh.position.x = rival.x;
+                    mesh.position.z = rival.z;
+                    
+                    let targetRotation = (targetX - rival.x) * 0.15;
+                    mesh.rotation.y += (targetRotation - mesh.rotation.y) * 0.1;
+                }
+            });
+        }
+
+        function updateNpcsAI() {
+            npcCars.forEach(npc => {
+                const delta = (npc.speed / 3.6) * 0.016;
+                npc.z += delta;
+                npc.mesh.position.z = npc.z;
+
+                if (npc.z < player.z - 50) {
+                    const lanes = [-5.0, -1.8, 1.8, 5.0];
+                    npc.x = lanes[Math.floor(Math.random() * lanes.length)];
+                    npc.z = player.z + 200 + Math.random() * 100;
+                    npc.speed = 80 + Math.random() * 35;
+                    npc.mesh.position.set(npc.x, 0, npc.z);
+                }
+            });
+        }
+
+        function updateCamera() {
+            if (!carMesh) return;
+
+            const speedRatio = player.speed / player.maxSpeed;
+            const targetFov = 60 + (speedRatio * 20); 
+            if (camera.fov !== targetFov) {
+                camera.fov += (targetFov - camera.fov) * 0.1;
+                camera.updateProjectionMatrix();
+            }
+
+            const camDistance = -8.5 - (speedRatio * 4);
+            const camHeight = 3.8 + (speedRatio * 1.0);
+            
+            const shake = player.crashCooldown > 0 ? (Math.random() - 0.5) * 0.2 : 0; 
+
+            const targetCamX = player.x * 0.65 + shake;
+            const targetCamY = player.z + camDistance;
+
+            camera.position.x += (targetCamX - camera.position.x) * 0.15;
+            camera.position.y += (camHeight - camera.position.y) * 0.1;
+            camera.position.z += (targetCamY - camera.position.z) * 0.2;
+
+            const lookTarget = new THREE.Vector3(player.x * 0.4, 1.8 + shake, player.z + 25);
+            camera.lookAt(lookTarget);
+        }
+
+        function updateSpeedLinesPositions() {
+            const posAttr = speedLines.geometry.attributes.position;
+            const count = posAttr.count;
+            
+            const speedRatio = player.speed / player.maxSpeed;
+            const speedVal = (player.speed / 3.6) * 0.16;
+
+            for(let i = 0; i < count; i += 2) {
+                let zStart = posAttr.getZ(i);
+                let zEnd = posAttr.getZ(i+1);
+
+                zStart -= speedVal;
+                zEnd -= speedVal;
+
+                if (zStart < player.z - 20) {
+                    const x = (Math.random() - 0.5) * 25;
+                    const y = Math.random() * 6 + 0.5;
+                    zStart = player.z + 150 + Math.random() * 50;
+                    zEnd = zStart - (15 + speedRatio * 25); 
+
+                    posAttr.setXYZ(i, x, y, zStart);
+                    posAttr.setXYZ(i+1, x, y, zEnd);
+                } else {
+                    posAttr.setZ(i, zStart);
+                    posAttr.setZ(i+1, zEnd);
+                }
+            }
+            posAttr.needsUpdate = true;
+            
+            speedLines.material.opacity = 0.02 + (speedRatio * 0.25);
+        }
+
+        function checkCollisions() {
+            if (player.crashCooldown > 0) return;
+
+            // 1. ライバル車との衝突
+            rivals.forEach(rival => {
+                if (!rival.active) return;
+                
+                if (Math.abs(rival.z - player.z) < 4.2) {
+                    if (Math.abs(rival.x - player.x) < 1.7) {
+                        triggerCrash(rival.x);
+                    }
+                }
+            });
+
+            // 2. 一般車(NPC)との衝突
+            npcCars.forEach(npc => {
+                if (Math.abs(npc.z - player.z) < 4.2) {
+                    if (Math.abs(npc.x - player.x) < 1.7) {
+                        triggerCrash(npc.x);
+                    }
+                }
+            });
+
+            // 3. 路肩の障害物（コーン）との衝突判定
+            roadsideObstacles.forEach(obs => {
+                if (!obs.hit) {
+                    const distZ = Math.abs(obs.z - player.z);
+                    const distX = Math.abs(obs.x - player.x);
+                    
+                    if (distZ < 2.0 && distX < 1.0) {
+                        obs.hit = true;
+                        
+                        const forceDirection = obs.x > 0 ? 1 : -1;
+                        obs.mesh.position.x += forceDirection * 4.0;
+                        obs.mesh.position.y += 1.5;
+                        obs.mesh.rotation.z += forceDirection * 2.0;
+                        obs.mesh.rotation.y += Math.random() * 3.0;
+
+                        triggerObstacleCollision();
+                    }
+                }
+            });
+        }
+
+        // 壁衝突
+        function triggerCrashWall() {
+            player.crashCooldown = 0.4; 
+            player.speed = Math.max(180, Math.floor(player.speed * 0.85)); 
+            
+            document.body.style.backgroundColor = "#ff3333";
+            setTimeout(() => {
+                document.body.style.backgroundColor = "#000000";
+            }, 80);
+        }
+
+        // 他の車と衝突
+        function triggerCrash(targetX) {
+            player.crashCooldown = 0.5; 
+
+            if (player.x > targetX) {
+                player.x += 1.2;
+            } else {
+                player.x -= 1.2;
+            }
+
+            player.speed = Math.max(200, Math.floor(player.speed * 0.9)); 
+
+            document.body.style.backgroundColor = "#ff5500";
+            setTimeout(() => {
+                document.body.style.backgroundColor = "#000000";
+            }, 80);
+        }
+
+        // コーンに当たった際のちょっとした警告と減速ペナルティ
+        function triggerObstacleCollision() {
+            player.crashCooldown = 0.2; 
+            player.speed = Math.max(120, Math.floor(player.speed * 0.85)); 
+            
+            document.body.style.backgroundColor = "#ff9900"; 
+            setTimeout(() => {
+                document.body.style.backgroundColor = "#000000";
+            }, 60);
+        }
+
+        function updateHUD() {
+            const speedDisplay = document.getElementById('speed-display');
+            const distanceDisplay = document.getElementById('distance-display');
+            const timeDisplay = document.getElementById('time-display');
+            
+            if (speedDisplay) {
+                speedDisplay.innerHTML = `${Math.round(player.speed)} <span class="text-sm font-normal not-italic text-gray-400">km/h</span>`;
+            }
+            if (distanceDisplay) {
+                distanceDisplay.textContent = `Distance: ${Math.round(player.z)}m / ${GOAL_DISTANCE}m`;
+            }
+
+            const minutes = Math.floor(gameTime / 60);
+            const seconds = Math.floor(gameTime % 60);
+            const milliseconds = Math.floor((gameTime % 1) * 100);
+            const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(2, '0')}`;
+            
+            if (timeDisplay) {
+                timeDisplay.textContent = timeStr;
+            }
+            finalTimeStr = timeStr;
+
+            let position = 6;
+            let aheadCount = 0;
+            rivals.forEach(rival => {
+                if (rival.z > player.z) {
+                    aheadCount++;
+                }
+            });
+            position = aheadCount + 1;
+            
+            const posDisplay = document.getElementById('position-display');
+            if (posDisplay) {
+                posDisplay.innerHTML = `${position}<span class="text-sm text-gray-400">位/6</span>`;
+            }
+        }
+    </script>
+</body>
+</html>

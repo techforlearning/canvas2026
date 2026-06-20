@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SUPER CUBE WORLD</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+JP:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #0f172a;
+            touch-action: none; /* スマホでの誤スクロール防止 */
+            user-select: none;
+        }
+        
+        .font-retro {
+            font-family: 'Press Start 2P', monospace;
+        }
+
+        /* レトロなドット絵風の影や枠線 */
+        .pixel-border {
+            border: 4px solid #000;
+        }
+        
+        .pixel-shadow {
+            box-shadow: 4px 4px 0px #000;
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col justify-between overflow-hidden">
+
+    <!-- ヘッダー -->
+    <header class="bg-slate-950 border-b-4 border-black py-3 px-6 z-30">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-red-600 p-2 border-2 border-black pixel-shadow text-white">
+                    <i data-lucide="gamepad-2" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="text-xs md:text-sm font-retro text-yellow-400 tracking-widest">
+                        SUPER CUBE WORLD
+                    </h1>
+                    <p class="text-[9px] text-slate-400 mt-1">横スクロール2Dアクション</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button id="btn-how-to" class="text-xs bg-slate-900 border-2 border-black px-2.5 py-1.5 pixel-shadow transition-all flex items-center gap-1 text-slate-300 hover:bg-slate-800">
+                    <i data-lucide="help-circle" class="w-3.5 h-3.5 text-blue-400"></i>
+                    <span>遊び方</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="flex-grow flex flex-col items-center justify-center p-2 md:p-4">
+        
+        <!-- ゲームコンテナ -->
+        <div class="w-full max-w-2xl flex flex-col gap-2">
+            
+            <!-- スコア＆ステータスボード -->
+            <div class="grid grid-cols-4 gap-1.5 bg-slate-950 border-4 border-black p-2 rounded-lg text-center font-retro text-[9px] md:text-xs text-white">
+                <div>
+                    <div class="text-slate-500 uppercase">Score</div>
+                    <div id="score" class="text-yellow-400 font-bold mt-1">000000</div>
+                </div>
+                <div>
+                    <div class="text-slate-500 uppercase">Coins</div>
+                    <div id="coins" class="text-amber-300 font-bold mt-1">🪙 x00</div>
+                </div>
+                <div>
+                    <div class="text-slate-500 uppercase">World</div>
+                    <div class="text-white font-bold mt-1">1-1</div>
+                </div>
+                <div>
+                    <div class="text-slate-500 uppercase">State</div>
+                    <div id="player-state-text" class="text-red-500 font-bold mt-1">CHIBI</div>
+                </div>
+            </div>
+
+            <!-- キャンバス画面 -->
+            <div class="relative w-full aspect-[16/9] bg-sky-400 rounded-xl border-4 border-black overflow-hidden pixel-shadow">
+                <canvas id="game-canvas" class="w-full h-full block"></canvas>
+                
+                <!-- スタート前 / クリア / ゲームオーバーのオーバーレイ -->
+                <div id="overlay" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center z-20">
+                    <div id="overlay-content" class="max-w-md transform transition-all">
+                        <div id="overlay-icon" class="inline-flex p-4 bg-red-600 border-4 border-black pixel-shadow text-white mb-4">
+                            <i data-lucide="play" class="w-10 h-10"></i>
+                        </div>
+                        <h3 id="overlay-title" class="text-lg md:text-xl font-retro text-yellow-400 mb-3 tracking-wider">CUBE WORLD</h3>
+                        <p id="overlay-desc" class="text-xs md:text-sm text-slate-300 mb-6 leading-relaxed">
+                            ジャンプで敵を踏みつけ、キノコでパワーアップ！<br>
+                            右端にあるゴールの旗を目指そう！
+                        </p>
+                        <button id="btn-action" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-retro text-xs border-4 border-black pixel-shadow transition-all flex items-center justify-center gap-2 mx-auto">
+                            <span id="btn-text">スタート!</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作アシスト表示（PC・モバイル切り替え対応） -->
+            <!-- PC用 -->
+            <div class="hidden md:flex justify-between items-center text-[11px] text-slate-400 bg-slate-950/60 p-2 border-2 border-black rounded-lg">
+                <span>移動: <kbd class="bg-slate-800 px-1 py-0.5 border border-slate-700 text-white font-mono">◀ / ▶</kbd> または <kbd class="bg-slate-800 px-1 py-0.5 border border-slate-700 text-white font-mono">A / D</kbd></span>
+                <span>ジャンプ: <kbd class="bg-slate-800 px-2 py-0.5 border border-slate-700 text-white font-mono">SPACE</kbd> または <kbd class="bg-slate-800 px-1 py-0.5 border border-slate-700 text-white font-mono">▲ / W</kbd> (長押しで高く飛ぶ)</span>
+            </div>
+
+            <!-- スマホ・タブレット用バーチャルパッド -->
+            <div class="md:hidden flex justify-between items-center bg-slate-900/80 p-3 border-4 border-black rounded-xl gap-4 mt-1">
+                <!-- 左右移動ボタン -->
+                <div class="flex gap-2">
+                    <button id="btn-left" class="w-16 h-14 bg-slate-800 active:bg-blue-600 border-4 border-black text-white rounded-lg flex items-center justify-center">
+                        <i data-lucide="arrow-left" class="w-7 h-7"></i>
+                    </button>
+                    <button id="btn-right" class="w-16 h-14 bg-slate-800 active:bg-blue-600 border-4 border-black text-white rounded-lg flex items-center justify-center">
+                        <i data-lucide="arrow-right" class="w-7 h-7"></i>
+                    </button>
+                </div>
+                
+                <!-- ジャンプボタン -->
+                <button id="btn-jump" class="w-20 h-16 bg-red-600 active:bg-red-700 border-4 border-black text-white rounded-full font-retro text-[10px] flex flex-col items-center justify-center shadow-inner">
+                    <span>JUMP</span>
+                    <i data-lucide="arrow-up" class="w-5 h-5 mt-0.5"></i>
+                </button>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- フッター -->
+    <footer class="border-t-4 border-black bg-slate-950 py-3 text-center text-[10px] text-slate-500 font-retro">
+        <p>© 2026 CUBE WORLD. RETRO PLATFORMER.</p>
+    </footer>
+
+    <!-- 遊び方 モーダル -->
+    <div id="modal-how-to" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-slate-900 border-4 border-black rounded-xl p-5 max-w-sm w-full relative pixel-shadow text-slate-200">
+            <button id="btn-close-modal" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            
+            <h3 class="text-sm font-retro text-yellow-400 mb-4 flex items-center gap-2">
+                <i data-lucide="help-circle" class="w-5 h-5"></i>
+                <span>HOW TO PLAY</span>
+            </h3>
+
+            <div class="space-y-4 text-xs leading-relaxed">
+                <p>赤いキューブの主人公を操作し、様々な障害物を乗り越えて右端にあるゴールドのフラッグを目指すアクションゲームです。</p>
+                
+                <div>
+                    <h4 class="font-bold text-green-400 mb-1">■ 基本テクニック</h4>
+                    <ul class="list-disc list-inside space-y-1 ml-1 text-slate-400">
+                        <li><strong>ジャンプ調整:</strong> キー長押しで高くジャンプできます。</li>
+                        <li><strong>踏みつけ倒し:</strong> 敵の上に落下すると、敵を倒しつつ大ジャンプできます。</li>
+                        <li><strong>レンガ破壊:</strong> デカい状態で頭突きするとレンガを壊せます。</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-yellow-400 mb-1">■ アイテムの種類</h4>
+                    <div class="grid grid-cols-2 gap-2 text-[10px] text-slate-400 mt-1">
+                        <div class="flex items-center gap-2 bg-slate-950 p-1.5 border border-slate-800 rounded">
+                            <span class="inline-block w-3 h-3 bg-red-500 rounded"></span>
+                            <span>🍄 キノコ (巨大化/ライフ+1)</span>
+                        </div>
+                        <div class="flex items-center gap-2 bg-slate-950 p-1.5 border border-slate-800 rounded">
+                            <span class="inline-block w-3 h-3 bg-yellow-400 rounded-full"></span>
+                            <span>🪙 コイン (スコア +200)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="btn-close-how-to" class="w-full mt-5 bg-blue-600 hover:bg-blue-500 text-white font-retro text-[10px] py-2.5 border-4 border-black pixel-shadow transition-all">
+                OK! PLAY NOW
+            </button>
+        </div>
+    </div>
+
+    <!-- ゲームロジック用JavaScript -->
+    <script>
+        lucide.createIcons();
+
+        // Canvas要素設定
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // ゲーム設計定数
+        const VIEW_WIDTH = 480; // 画面の幅 (仮想)
+        const VIEW_HEIGHT = 270; // 画面の高さ (仮想)
+        const GRAVITY = 0.35; // 重力
+        const FRICTION = 0.85; // 地面の摩擦係数
+
+        // ゲーム全体ステート
+        const state = {
+            status: 'init', // init, playing, dead, win
+            score: 0,
+            coins: 0,
+            cameraX: 0,
+            levelWidth: 2000, // ステージの総全長
+            
+            // プレイヤー
+            player: {
+                x: 50,
+                y: 100,
+                vx: 0,
+                vy: 0,
+                width: 14,
+                height: 14,
+                baseHeight: 14,
+                isGrounded: false,
+                isSuper: false, // デカ状態
+                invincibleFrames: 0, // 無敵フレーム
+                jumpPressed: false,
+                facingLeft: false
+            },
+
+            // 各種ゲームオブジェクト
+            blocks: [],
+            enemies: [],
+            items: [],
+            particles: [],
+
+            // 操作入力
+            inputs: {
+                left: false,
+                right: false,
+                jump: false
+            }
+        };
+
+        // --- ステージ作成データ (1-1ベース) ---
+        function buildLevel() {
+            state.blocks = [];
+            state.enemies = [];
+            state.items = [];
+            state.particles = [];
+
+            // 地面の配置 (平地と穴)
+            const addGround = (start, end) => {
+                state.blocks.push({
+                    type: 'ground',
+                    x: start,
+                    y: VIEW_HEIGHT - 32,
+                    width: end - start,
+                    height: 32,
+                    color: '#15803d' // 緑の地面
+                });
+            };
+
+            // 地面のセグメント (穴をあけるため)
+            addGround(0, 450);
+            addGround(520, 900);
+            addGround(980, 1500);
+            addGround(1560, 2000);
+
+            // ブロック定義ヘルパー
+            const addBrick = (x, y) => {
+                state.blocks.push({ type: 'brick', x: x, y: y, width: 16, height: 16, originalY: y });
+            };
+            const addQuestion = (x, y, content) => {
+                state.blocks.push({ type: 'question', x: x, y: y, width: 16, height: 16, content: content, used: false, originalY: y });
+            };
+            const addPipe = (x, height) => {
+                state.blocks.push({
+                    type: 'pipe',
+                    x: x,
+                    y: VIEW_HEIGHT - 32 - height,
+                    width: 24,
+                    height: height
+                });
+            };
+
+            // 前半ブロック配置
+            addQuestion(150, VIEW_HEIGHT - 80, 'coin');
+            addBrick(200, VIEW_HEIGHT - 80);
+            addQuestion(216, VIEW_HEIGHT - 80, 'mushroom'); // キノコ
+            addBrick(232, VIEW_HEIGHT - 80);
+            addQuestion(248, VIEW_HEIGHT - 80, 'coin');
+            addBrick(264, VIEW_HEIGHT - 80);
+
+            // 土管
+            addPipe(340, 24);
+            addPipe(420, 36);
+
+            // 穴あきエリアの後
+            addBrick(580, VIEW_HEIGHT - 80);
+            addBrick(596, VIEW_HEIGHT - 80);
+            addQuestion(612, VIEW_HEIGHT - 80, 'coin');
+            addBrick(628, VIEW_HEIGHT - 80);
+
+            // 高い足場
+            addBrick(700, VIEW_HEIGHT - 120);
+            addQuestion(716, VIEW_HEIGHT - 120, 'mushroom');
+            addBrick(732, VIEW_HEIGHT - 120);
+
+            // 巨大土管と階段ギミック
+            addPipe(850, 48);
+
+            // 階段ブロック (ピラミッド)
+            const addPyramid = (startX, steps, reverse = false) => {
+                const bSize = 16;
+                for (let r = 0; r < steps; r++) {
+                    const rowBlocks = steps - r;
+                    const y = VIEW_HEIGHT - 32 - (r + 1) * bSize;
+                    for (let c = 0; c < rowBlocks; c++) {
+                        const x = reverse ? (startX + c * bSize) : (startX + (r + c) * bSize);
+                        state.blocks.push({ type: 'hardblock', x: x, y: y, width: bSize, height: bSize });
+                    }
+                }
+            };
+
+            addPyramid(1050, 4);
+            addPyramid(1130, 4, true);
+
+            addPyramid(1280, 4);
+            addPyramid(1380, 4, true);
+
+            // ラスト土管
+            addPipe(1460, 30);
+
+            // ゴール階段
+            addPyramid(1700, 7);
+
+            // ゴールポール
+            state.blocks.push({
+                type: 'goal',
+                x: 1820,
+                y: VIEW_HEIGHT - 32 - 130,
+                width: 6,
+                height: 130
+            });
+
+            // 敵キャラクターの配置 (クリボー風)
+            const addEnemy = (x) => {
+                state.enemies.push({
+                    x: x,
+                    y: VIEW_HEIGHT - 50,
+                    vx: -0.8,
+                    vy: 0,
+                    width: 14,
+                    height: 14,
+                    isDead: false,
+                    deadTimer: 0
+                });
+            };
+
+            addEnemy(220);
+            addEnemy(380);
+            addEnemy(600);
+            addEnemy(650);
+            addEnemy(910);
+            addEnemy(1100);
+            addEnemy(1200);
+            addEnemy(1420);
+            addEnemy(1630);
+        }
+
+        // --- キャンバス調整 ---
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = VIEW_WIDTH;
+            canvas.height = VIEW_HEIGHT;
+        }
+
+        // 衝突判定 AABB
+        function isColliding(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+
+        // パーティクル生成 (レンガ破壊 / 煙 / コインきらめき)
+        function spawnParticle(x, y, color, vx, vy, life) {
+            state.particles.push({
+                x: x,
+                y: y,
+                vx: vx || (Math.random() - 0.5) * 3,
+                vy: vy || -Math.random() * 4 - 1,
+                size: Math.random() * 3 + 2,
+                color: color || '#f59e0b',
+                alpha: 1,
+                decay: 1 / (life || 30)
+            });
+        }
+
+        // プレイヤーのジャンプ処理
+        function playerJump() {
+            if (state.player.isGrounded) {
+                state.player.vy = -5.8; // 初速ジャンプ力
+                state.player.isGrounded = false;
+                state.player.jumpPressed = true;
+            }
+        }
+
+        // プレイヤーのサイズ更新
+        function setPlayerSize(isSuper) {
+            state.player.isSuper = isSuper;
+            if (isSuper) {
+                state.player.height = state.player.baseHeight * 1.5;
+                document.getElementById('player-state-text').innerText = 'SUPER';
+                document.getElementById('player-state-text').className = 'text-green-500 font-bold mt-1';
+            } else {
+                state.player.height = state.player.baseHeight;
+                document.getElementById('player-state-text').innerText = 'CHIBI';
+                document.getElementById('player-state-text').className = 'text-red-500 font-bold mt-1';
+            }
+        }
+
+        // ダメージを受けた時の処理
+        function damagePlayer() {
+            if (state.player.invincibleFrames > 0) return;
+
+            if (state.player.isSuper) {
+                // スーパー状態からチビに戻る
+                setPlayerSize(false);
+                state.player.invincibleFrames = 90; // 無敵時間（約1.5秒）
+                spawnBreakEffect(state.player.x, state.player.y, '#38bdf8', 12);
+            } else {
+                // ゲームオーバー
+                state.status = 'dead';
+                state.player.vy = -5; // 上に跳ねて落下
+                state.player.invincibleFrames = 999; 
+                setTimeout(() => {
+                    endGame(false);
+                }, 1500);
+            }
+        }
+
+        // エフェクト
+        function spawnBreakEffect(x, y, color, count = 6) {
+            for (let i = 0; i < count; i++) {
+                spawnParticle(x + 6, y + 6, color, (Math.random() - 0.5) * 4, -Math.random() * 3 - 1, 20);
+            }
+        }
+
+        // --- 物理更新ループ ---
+        function update() {
+            if (state.status !== 'playing' && state.status !== 'dead') return;
+
+            const p = state.player;
+
+            // 1. 無敵時間のカウント
+            if (p.invincibleFrames > 0) {
+                p.invincibleFrames--;
+            }
+
+            // 2. プレイヤーの移動入力処理 (死亡時は操作不能)
+            if (state.status === 'playing') {
+                if (state.inputs.left) {
+                    p.vx -= 0.3;
+                    p.facingLeft = true;
+                } else if (state.inputs.right) {
+                    p.vx += 0.3;
+                    p.facingLeft = false;
+                } else {
+                    p.vx *= FRICTION; // 地面の慣性減速
+                }
+
+                // 走る速度上限
+                const maxSpeed = 2.4;
+                if (p.vx > maxSpeed) p.vx = maxSpeed;
+                if (p.vx < -maxSpeed) p.vx = -maxSpeed;
+
+                // ジャンプの高さ調節 (空中でのキー離し検出による加減速)
+                if (state.inputs.jump) {
+                    if (p.jumpPressed && p.vy < 0) {
+                        p.vy -= 0.08; // 長押しでさらに浮遊力追加
+                    }
+                } else {
+                    p.jumpPressed = false;
+                }
+            } else if (state.status === 'dead') {
+                p.vx = 0;
+            }
+
+            // 重力
+            p.vy += GRAVITY;
+            if (p.vy > 8) p.vy = 8; // 落下終端速度
+
+            // 3. プレイヤー移動（X方向）と衝突判定
+            p.x += p.vx;
+            
+            // X方向のステージ外ガード
+            if (p.x < 0) {
+                p.x = 0;
+                p.vx = 0;
+            }
+
+            // X方向ブロック衝突判定
+            state.blocks.forEach(block => {
+                if (isColliding(p, block)) {
+                    if (block.type === 'goal') {
+                        // ゴール判定！
+                        state.status = 'win';
+                        p.vx = 0;
+                        p.vy = 1.2; // スルスル滑り落ちる
+                        state.score += 2000;
+                        updateUI();
+                        setTimeout(() => {
+                            endGame(true);
+                        }, 2500);
+                        return;
+                    }
+
+                    if (p.vx > 0) {
+                        p.x = block.x - p.width;
+                        p.vx = 0;
+                    } else if (p.vx < 0) {
+                        p.x = block.x + block.width;
+                        p.vx = 0;
+                    }
+                }
+            });
+
+            // 4. プレイヤー移動（Y方向）と衝突判定
+            p.y += p.vy;
+            p.isGrounded = false;
+
+            state.blocks.forEach(block => {
+                if (isColliding(p, block)) {
+                    if (block.type === 'goal') return;
+
+                    if (p.vy > 0) { // 下降時衝突（着地）
+                        p.y = block.y - p.height;
+                        p.vy = 0;
+                        p.isGrounded = true;
+                    } else if (p.vy < 0) { // 上昇時衝突（頭突き）
+                        p.y = block.y + block.height;
+                        p.vy = 0;
+                        handleHeadbutt(block);
+                    }
+                }
+            });
+
+            // 穴落下判定
+            if (p.y > VIEW_HEIGHT) {
+                if (state.status === 'playing') {
+                    state.status = 'dead';
+                    setTimeout(() => {
+                        endGame(false);
+                    }, 1200);
+                }
+            }
+
+            // 5. 敵キャラクター更新
+            state.enemies.forEach(enemy => {
+                if (enemy.isDead) {
+                    enemy.deadTimer--;
+                    return;
+                }
+
+                // 物理演算
+                enemy.vy += GRAVITY;
+                enemy.x += enemy.vx;
+
+                // X軸のブロック壁衝突判定
+                state.blocks.forEach(block => {
+                    if (isColliding(enemy, block)) {
+                        if (enemy.vx > 0) {
+                            enemy.x = block.x - enemy.width;
+                            enemy.vx = -enemy.vx;
+                        } else if (enemy.vx < 0) {
+                            enemy.x = block.x + block.width;
+                            enemy.vx = -enemy.vx;
+                        }
+                    }
+                });
+
+                enemy.y += enemy.vy;
+                
+                // Y軸のブロック着地衝突
+                state.blocks.forEach(block => {
+                    if (isColliding(enemy, block)) {
+                        if (enemy.vy > 0) {
+                            enemy.y = block.y - enemy.height;
+                            enemy.vy = 0;
+                        }
+                    }
+                });
+
+                // プレイヤーとの衝突
+                if (state.status === 'playing' && isColliding(p, enemy)) {
+                    // 踏みつけたかどうか（落下中で、かつプレイヤーのお尻が敵のやや上にあること）
+                    if (p.vy > 0 && p.y + p.height - p.vy <= enemy.y + 4) {
+                        enemy.isDead = true;
+                        enemy.deadTimer = 30; // ぺちゃんこ維持フレーム
+                        p.vy = -4.5; // ポーンと大ジャンプ
+                        state.score += 200;
+                        updateUI();
+                        spawnBreakEffect(enemy.x, enemy.y, '#b91c1c', 4);
+                    } else {
+                        damagePlayer();
+                    }
+                }
+            });
+
+            // 不要になった死体の敵をフィルタ
+            state.enemies = state.enemies.filter(e => !e.isDead || e.deadTimer > 0);
+
+            // 6. 出現したアイテム（キノコなど）の物理・獲得判定
+            state.items.forEach((item, index) => {
+                if (item.type === 'mushroom') {
+                    // キノコの移動・着地
+                    item.vy += GRAVITY;
+                    item.x += item.vx;
+
+                    state.blocks.forEach(block => {
+                        if (isColliding(item, block)) {
+                            if (item.vx > 0) {
+                                item.x = block.x - item.width;
+                                item.vx = -item.vx;
+                            } else if (item.vx < 0) {
+                                item.x = block.x + block.width;
+                                item.vx = -item.vx;
+                            }
+                        }
+                    });
+
+                    item.y += item.vy;
+                    state.blocks.forEach(block => {
+                        if (isColliding(item, block)) {
+                            if (item.vy > 0) {
+                                item.y = block.y - item.height;
+                                item.vy = 0;
+                            }
+                        }
+                    });
+
+                    // プレイヤーによる回収
+                    if (isColliding(p, item)) {
+                        setPlayerSize(true);
+                        state.score += 1000;
+                        state.items.splice(index, 1);
+                        updateUI();
+                        // 獲得エフェクト
+                        spawnBreakEffect(item.x, item.y, '#f43f5e', 12);
+                    }
+                }
+            });
+
+            // 7. カメラ位置更新 (カメラの追従スクロール)
+            const targetCamX = p.x - VIEW_WIDTH / 3;
+            // 右端と左端にクランプ
+            state.cameraX += (targetCamX - state.cameraX) * 0.1;
+            if (state.cameraX < 0) state.cameraX = 0;
+            if (state.cameraX > state.levelWidth - VIEW_WIDTH) state.cameraX = state.levelWidth - VIEW_WIDTH;
+
+            // 8. パーティクル更新
+            state.particles.forEach((part, idx) => {
+                part.x += part.vx;
+                part.y += part.vy;
+                part.vy += 0.1; // 重力
+                part.alpha -= part.decay;
+                if (part.alpha <= 0) {
+                    state.particles.splice(idx, 1);
+                }
+            });
+        }
+
+        // 頭突き発生時
+        function handleHeadbutt(block) {
+            // アニメーション用にちょっと弾ませる
+            block.y -= 4;
+            setTimeout(() => block.y = block.originalY, 80);
+
+            if (block.type === 'brick') {
+                if (state.player.isSuper) {
+                    // スーパー状態ならレンガを粉砕！
+                    state.blocks = state.blocks.filter(b => b !== block);
+                    state.score += 50;
+                    updateUI();
+                    spawnBreakEffect(block.x, block.y, '#b45309', 10);
+                } else {
+                    // ちび状態なら破壊不可、軽く弾むのみ
+                    spawnBreakEffect(block.x, block.y, '#9a3412', 3);
+                }
+            } 
+            else if (block.type === 'question' && !block.used) {
+                block.used = true;
+                
+                if (block.content === 'coin') {
+                    state.coins++;
+                    state.score += 200;
+                    updateUI();
+                    
+                    // コイン飛び出しエフェクト
+                    for (let i = 0; i < 5; i++) {
+                        spawnParticle(block.x + 8, block.y - 8, '#f59e0b', (Math.random() - 0.5) * 2, -3 - Math.random() * 2, 20);
+                    }
+                } 
+                else if (block.content === 'mushroom') {
+                    // キノコをブロックの上にポップアップさせる
+                    state.items.push({
+                        type: 'mushroom',
+                        x: block.x + 1,
+                        y: block.y - 15,
+                        vx: 1.0,
+                        vy: -2.0,
+                        width: 14,
+                        height: 14,
+                        color: '#ef4444'
+                    });
+                }
+            }
+        }
+
+        // UIのリアルタイム更新
+        function updateUI() {
+            document.getElementById('score').innerText = String(state.score).padStart(6, '0');
+            document.getElementById('coins').innerText = `🪙 x` + String(state.coins).padStart(2, '0');
+        }
+
+        // --- 描画システム (Canvas) ---
+        function draw() {
+            ctx.clearRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+
+            ctx.save();
+            // カメラのスクロール補正を適用
+            ctx.translate(-Math.floor(state.cameraX), 0);
+
+            // 1. 背景の山や空（グラデーション/装飾）の描画
+            drawBackgroundDecoration();
+
+            // 2. ブロックオブジェクトの描画
+            state.blocks.forEach(block => {
+                if (block.x + block.width < state.cameraX || block.x > state.cameraX + VIEW_WIDTH) {
+                    return; // 画面外は描画スキップ (軽量化)
+                }
+
+                if (block.type === 'ground') {
+                    // 草原の表土
+                    ctx.fillStyle = '#22c55e'; // 明るい緑
+                    ctx.fillRect(block.x, block.y, block.width, 6);
+                    ctx.fillStyle = '#15803d'; // 濃い土色ベース
+                    ctx.fillRect(block.x, block.y + 6, block.width, block.height - 6);
+                    
+                    // 地面のスリット装飾
+                    ctx.fillStyle = '#166534';
+                    for (let lx = block.x; lx < block.x + block.width; lx += 24) {
+                        ctx.fillRect(lx, block.y + 8, 4, 12);
+                    }
+                } 
+                else if (block.type === 'brick') {
+                    // レンガのディテール
+                    ctx.fillStyle = '#b45309'; // レンガ色
+                    ctx.fillRect(block.x, block.y, block.width, block.height);
+                    
+                    ctx.strokeStyle = '#78350f';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(block.x, block.y, block.width, block.height);
+                    
+                    // レンガのライン
+                    ctx.beginPath();
+                    ctx.moveTo(block.x, block.y + 8);
+                    ctx.lineTo(block.x + 16, block.y + 8);
+                    ctx.moveTo(block.x + 8, block.y);
+                    ctx.lineTo(block.x + 8, block.y + 8);
+                    ctx.moveTo(block.x + 4, block.y + 8);
+                    ctx.lineTo(block.x + 4, block.y + 16);
+                    ctx.moveTo(block.x + 12, block.y + 8);
+                    ctx.lineTo(block.x + 12, block.y + 16);
+                    ctx.stroke();
+                } 
+                else if (block.type === 'question') {
+                    // クエスチョンブロック
+                    ctx.fillStyle = block.used ? '#64748b' : '#f59e0b';
+                    ctx.fillRect(block.x, block.y, block.width, block.height);
+                    ctx.strokeStyle = block.used ? '#334155' : '#b45309';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(block.x, block.y, block.width, block.height);
+
+                    // はてなマーク
+                    if (!block.used) {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = 'bold 9px monospace';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('?', block.x + 8, block.y + 8);
+                        
+                        // 角の装飾
+                        ctx.fillStyle = '#b45309';
+                        ctx.fillRect(block.x + 2, block.y + 2, 2, 2);
+                        ctx.fillRect(block.x + 12, block.y + 2, 2, 2);
+                        ctx.fillRect(block.x + 2, block.y + 12, 2, 2);
+                        ctx.fillRect(block.x + 12, block.y + 12, 2, 2);
+                    }
+                } 
+                else if (block.type === 'pipe') {
+                    // 土管
+                    ctx.fillStyle = '#16a34a'; // 明るい緑
+                    ctx.fillRect(block.x, block.y, block.width, block.height);
+                    
+                    // 土管のフチ頭部
+                    ctx.fillStyle = '#15803d';
+                    ctx.fillRect(block.x - 2, block.y, block.width + 4, 8);
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(block.x - 2, block.y, block.width + 4, 8);
+                    
+                    ctx.strokeRect(block.x, block.y + 8, block.width, block.height - 8);
+
+                    // 光沢ライン
+                    ctx.fillStyle = '#4ade80';
+                    ctx.fillRect(block.x + 3, block.y + 1, 3, block.height - 2);
+                }
+                else if (block.type === 'hardblock') {
+                    // お城の階段などの硬いブロック
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillRect(block.x, block.y, block.width, block.height);
+                    ctx.strokeStyle = '#475569';
+                    ctx.strokeRect(block.x, block.y, block.width, block.height);
+                    
+                    // リベット装飾
+                    ctx.fillStyle = '#475569';
+                    ctx.fillRect(block.x + 2, block.y + 2, 2, 2);
+                    ctx.fillRect(block.x + 12, block.y + 2, 2, 2);
+                    ctx.fillRect(block.x + 2, block.y + 12, 2, 2);
+                    ctx.fillRect(block.x + 12, block.y + 12, 2, 2);
+                }
+                else if (block.type === 'goal') {
+                    // ゴールポール
+                    ctx.fillStyle = '#e2e8f0'; // 白のポール
+                    ctx.fillRect(block.x + 2, block.y, 2, block.height);
+                    
+                    // 先端の金玉
+                    ctx.beginPath();
+                    ctx.arc(block.x + 3, block.y, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.fill();
+                    ctx.strokeStyle = '#d97706';
+                    ctx.stroke();
+
+                    // ゴールフラッグ (ポールの先端近くから左側に出す)
+                    const flagY = block.y + 16;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(block.x - 18, flagY, 20, 14);
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(block.x - 18, flagY, 20, 14);
+
+                    // フラッグのドクロ/マークの代わりのグリーンキューブ
+                    ctx.fillStyle = '#16a34a';
+                    ctx.fillRect(block.x - 13, flagY + 4, 6, 6);
+                }
+            });
+
+            // 3. アイテムの描画
+            state.items.forEach(item => {
+                if (item.type === 'mushroom') {
+                    // 赤キノコ
+                    ctx.fillStyle = '#ef4444'; // カサ
+                    ctx.fillRect(item.x, item.y, item.width, 8);
+                    ctx.fillStyle = '#fef08a'; // 柄
+                    ctx.fillRect(item.x + 2, item.y + 8, item.width - 4, 6);
+                    
+                    // 水玉模様
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(item.x + 2, item.y + 2, 3, 3);
+                    ctx.fillRect(item.x + 9, item.y + 2, 3, 3);
+                    
+                    // 黒目
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(item.x + 4, item.y + 9, 1, 3);
+                    ctx.fillRect(item.x + 9, item.y + 9, 1, 3);
+                }
+            });
+
+            // 4. 敵の描画
+            state.enemies.forEach(enemy => {
+                if (enemy.isDead) {
+                    // ぺちゃんこ死体
+                    ctx.fillStyle = '#7f1d1d';
+                    ctx.fillRect(enemy.x, enemy.y + 10, enemy.width, 4);
+                } else {
+                    // 栗饅頭ボディ (クリボー風)
+                    ctx.fillStyle = '#9a3412';
+                    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+
+                    // 怒り目
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(enemy.x + 2, enemy.y + 3, 3, 3);
+                    ctx.fillRect(enemy.x + 9, enemy.y + 3, 3, 3);
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(enemy.x + 3, enemy.y + 4, 1, 2);
+                    ctx.fillRect(enemy.x + 10, enemy.y + 4, 1, 2);
+
+                    // 足 (明滅/交互歩行アニメーション風)
+                    const walking = Math.floor(Date.now() / 150) % 2 === 0;
+                    ctx.fillStyle = '#3f3f46';
+                    ctx.fillRect(enemy.x + 1, enemy.y + 12, 4, 2);
+                    ctx.fillRect(enemy.x + 9, enemy.y + 12, 4, 2);
+                }
+            });
+
+            // 5. プレイヤーの描画
+            const p = state.player;
+            // 無敵時点滅処理
+            if (p.invincibleFrames === 0 || Math.floor(p.invincibleFrames / 3) % 2 === 0) {
+                // 赤いオーバーオールと帽子
+                ctx.fillStyle = p.isSuper ? '#dc2626' : '#ef4444';
+                ctx.fillRect(p.x, p.y, p.width, p.height);
+
+                // 顔(肌色)のドット風オーバーレイ
+                ctx.fillStyle = '#fed7aa';
+                if (p.facingLeft) {
+                    ctx.fillRect(p.x, p.y + 2, p.width - 4, p.height / 2);
+                    // ひげ/目
+                    ctx.fillStyle = '#7c2d12';
+                    ctx.fillRect(p.x, p.y + p.height / 2, 4, 2);
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(p.x + 3, p.y + 3, 2, 2);
+                } else {
+                    ctx.fillRect(p.x + 4, p.y + 2, p.width - 4, p.height / 2);
+                    // ひげ/目
+                    ctx.fillStyle = '#7c2d12';
+                    ctx.fillRect(p.x + p.width - 4, p.y + p.height / 2, 4, 2);
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(p.x + p.width - 5, p.y + 3, 2, 2);
+                }
+
+                // 青のサスペンダーライン
+                ctx.fillStyle = '#2563eb';
+                ctx.fillRect(p.x + 3, p.y + p.height - 5, p.width - 6, 2);
+            }
+
+            // 6. パーティクルの描画
+            state.particles.forEach(part => {
+                ctx.fillStyle = part.color;
+                ctx.globalAlpha = part.alpha;
+                ctx.fillRect(part.x, part.y, part.size, part.size);
+            });
+            ctx.globalAlpha = 1.0; // リセット
+
+            ctx.restore();
+        }
+
+        // 背景の装飾（山、雲など）
+        function drawBackgroundDecoration() {
+            // 空のグラデーション
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, VIEW_HEIGHT);
+            skyGrad.addColorStop(0, '#38bdf8');
+            skyGrad.addColorStop(1, '#7dd3fc');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(state.cameraX, 0, VIEW_WIDTH, VIEW_HEIGHT);
+
+            // 太陽を描画
+            ctx.beginPath();
+            ctx.arc(state.cameraX + VIEW_WIDTH - 60, 40, 15, 0, Math.PI * 2);
+            ctx.fillStyle = '#fef08a';
+            ctx.fill();
+
+            // 山（三角のピクセル風山）
+            const drawMountain = (x, size, color) => {
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(x - size, VIEW_HEIGHT - 32);
+                ctx.lineTo(x, VIEW_HEIGHT - 32 - size);
+                ctx.lineTo(x + size, VIEW_HEIGHT - 32);
+                ctx.closePath();
+                ctx.fill();
+            };
+
+            drawMountain(120, 80, '#22c55e40');
+            drawMountain(280, 110, '#15803d30');
+            drawMountain(600, 90, '#22c55e40');
+            drawMountain(1100, 120, '#15803d30');
+            drawMountain(1500, 80, '#22c55e40');
+
+            // 雲の描画
+            ctx.fillStyle = '#ffffffbb';
+            const drawCloud = (cx, cy) => {
+                ctx.fillRect(cx, cy, 32, 10);
+                ctx.fillRect(cx + 8, cy - 6, 16, 6);
+            };
+
+            // スクロール速度の緩い遠景の雲
+            const cloudOffset1 = (state.cameraX * 0.3) % 400;
+            const cloudOffset2 = (state.cameraX * 0.15) % 400;
+
+            drawCloud(state.cameraX + 50 - cloudOffset1, 50);
+            drawCloud(state.cameraX + 250 - cloudOffset1, 30);
+            drawCloud(state.cameraX + 150 - cloudOffset2, 80);
+            drawCloud(state.cameraX + 380 - cloudOffset2, 60);
+        }
+
+        // --- ゲームループ制御 ---
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        // ゲームリセット＆ステージ初期化
+        function initGame() {
+            state.score = 0;
+            state.coins = 0;
+            state.cameraX = 0;
+            state.player.x = 50;
+            state.player.y = 100;
+            state.player.vx = 0;
+            state.player.vy = 0;
+            state.player.isGrounded = false;
+            setPlayerSize(false);
+            state.player.invincibleFrames = 0;
+
+            buildLevel();
+            updateUI();
+        }
+
+        // ゲームオーバー/クリアの画面遷移
+        function endGame(isWin) {
+            state.status = isWin ? 'win' : 'dead';
+            const overlay = document.getElementById('overlay');
+            const title = document.getElementById('overlay-title');
+            const desc = document.getElementById('overlay-desc');
+            const icon = document.getElementById('overlay-icon');
+            const btnText = document.getElementById('btn-text');
+
+            overlay.classList.remove('hidden');
+            
+            if (isWin) {
+                icon.innerHTML = '<i data-lucide="trophy" class="w-10 h-10"></i>';
+                icon.className = "inline-flex p-4 bg-yellow-400 border-4 border-black pixel-shadow text-black animate-bounce";
+                title.innerText = "STAGE CLEAR!";
+                desc.innerHTML = `おめでとうございます！ステージを完全制覇しました！<br><span class="text-green-400 font-retro text-[10px]">TOTAL SCORE: ${state.score}pt</span>`;
+                btnText.innerText = "もう一度遊ぶ";
+            } else {
+                icon.innerHTML = '<i data-lucide="skull" class="w-10 h-10"></i>';
+                icon.className = "inline-flex p-4 bg-slate-800 border-4 border-black pixel-shadow text-rose-500";
+                title.innerText = "GAME OVER";
+                desc.innerHTML = `穴に落ちるか、敵にぶつかってやられてしまった！<br><span class="text-red-400 font-retro text-[10px]">FINAL SCORE: ${state.score}pt</span>`;
+                btnText.innerText = "リトライ!";
+            }
+            lucide.createIcons();
+        }
+
+        // --- インプット・操作イベント管理 ---
+
+        // キーボード
+        document.addEventListener('keydown', (e) => {
+            if (['ArrowLeft', 'a', 'A'].includes(e.key)) state.inputs.left = true;
+            if (['ArrowRight', 'd', 'D'].includes(e.key)) state.inputs.right = true;
+            if (['ArrowUp', 'w', 'W', ' '].includes(e.key)) {
+                state.inputs.jump = true;
+                playerJump();
+            }
+            
+            // 矢印キーでの不要な画面スクロールを抑止
+            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (['ArrowLeft', 'a', 'A'].includes(e.key)) state.inputs.left = false;
+            if (['ArrowRight', 'd', 'D'].includes(e.key)) state.inputs.right = false;
+            if (['ArrowUp', 'w', 'W', ' '].includes(e.key)) {
+                state.inputs.jump = false;
+                state.player.jumpPressed = false;
+            }
+        });
+
+        // モバイル：バーチャルボタンのバインド
+        const touchLeft = document.getElementById('btn-left');
+        const touchRight = document.getElementById('btn-right');
+        const touchJump = document.getElementById('btn-jump');
+
+        const bindTouchButton = (element, inputProp) => {
+            element.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                state.inputs[inputProp] = true;
+                if (inputProp === 'jump') playerJump();
+            });
+            element.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                state.inputs[inputProp] = false;
+                if (inputProp === 'jump') state.player.jumpPressed = false;
+            });
+        };
+
+        bindTouchButton(touchLeft, 'left');
+        bindTouchButton(touchRight, 'right');
+        bindTouchButton(touchJump, 'jump');
+
+        // アクションボタン（スタート・リスタート）
+        document.getElementById('btn-action').addEventListener('click', () => {
+            document.getElementById('overlay').classList.add('hidden');
+            initGame();
+            state.status = 'playing';
+        });
+
+        // 遊び方モーダルの制御
+        const modal = document.getElementById('modal-how-to');
+        document.getElementById('btn-how-to').addEventListener('click', () => {
+            modal.classList.remove('hidden');
+        });
+        document.getElementById('btn-close-modal').addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+        document.getElementById('btn-close-how-to').addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+
+        // ロード時の初期化
+        window.addEventListener('resize', resizeCanvas);
+        window.onload = function() {
+            resizeCanvas();
+            initGame();
+            requestAnimationFrame(loop);
+        };
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pastel Tetris</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* かわいい丸文字フォントを導入 */
+        @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;900&family=Quicksand:wght@500;700;900&display=swap');
+        
+        body {
+            font-family: 'M PLUS Rounded 1c', 'Quicksand', sans-serif;
+            background: linear-gradient(135deg, #ffe5ec 0%, #f0e6ff 50%, #e8f0fe 100%);
+            touch-action: none;
+            overflow: hidden;
+        }
+        
+        .quicksand {
+            font-family: 'Quicksand', sans-serif;
+        }
+
+        /* ぷにぷにシャドウ効果 */
+        .cute-shadow {
+            box-shadow: 0 8px 0px rgba(0, 0, 0, 0.05), 0 15px 20px rgba(0, 0, 0, 0.05);
+        }
+        .cute-pop {
+            transition: transform 0.1s ease;
+        }
+        .cute-pop:active {
+            transform: scale(0.95) translateY(2px);
+        }
+
+        /* ふんわりとしたグリッドの背景 */
+        .game-grid {
+            background-size: 30px 30px;
+            background-image: 
+                linear-gradient(to right, rgba(138, 140, 180, 0.12) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(138, 140, 180, 0.12) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="text-slate-700 min-h-screen flex flex-col justify-between p-2 md:p-4 select-none">
+
+    <header class="w-full max-w-md mx-auto flex justify-between items-center py-2 px-4 bg-white/70 backdrop-blur-md rounded-3xl border border-pink-100 cute-shadow">
+        <div class="flex items-center gap-2">
+            <span class="text-pink-400 text-2xl animate-bounce"><i class="fa-solid fa-star"></i></span>
+            <h1 class="text-2xl font-black tracking-wider text-pink-400 quicksand">PASTEL TOY</h1>
+        </div>
+        <div class="flex gap-2">
+            <button id="sound-toggle-btn" class="w-10 h-10 rounded-2xl bg-pink-50 border border-pink-100 flex items-center justify-center text-pink-400 hover:bg-pink-100 transition-colors cute-pop">
+                <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+            </button>
+            <button id="info-btn" class="w-10 h-10 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-400 hover:bg-purple-100 transition-colors cute-pop">
+                <i class="fa-solid fa-circle-question"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow flex flex-col md:flex-row items-center justify-center gap-4 my-2 max-w-5xl mx-auto w-full">
+        
+        <div class="hidden md:flex flex-col gap-4 w-40">
+            <div class="bg-white/70 backdrop-blur-md border border-pink-100 p-4 rounded-3xl flex flex-col items-center cute-shadow">
+                <span class="text-sm font-bold text-pink-400 mb-2 quicksand">HOLD</span>
+                <div class="w-24 h-24 bg-pink-50/50 rounded-2xl flex items-center justify-center border border-pink-100/50">
+                    <canvas id="hold-canvas" width="96" height="96"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white/70 backdrop-blur-md border border-purple-100 p-4 rounded-3xl flex flex-col gap-3 cute-shadow">
+                <div>
+                    <span class="text-xs font-bold text-purple-400 block">SCORE</span>
+                    <span id="score-val" class="text-2xl font-black text-slate-700 quicksand">0</span>
+                </div>
+                <div>
+                    <span class="text-xs font-bold text-purple-400 block">LINES</span>
+                    <span id="lines-val" class="text-2xl font-black text-slate-700 quicksand">0</span>
+                </div>
+                <div>
+                    <span class="text-xs font-bold text-purple-400 block">LEVEL</span>
+                    <span id="level-val" class="text-2xl font-black text-pink-400 quicksand">1</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex md:hidden justify-between w-full max-w-[320px] bg-white/70 backdrop-blur-md border border-pink-100 p-3 rounded-2xl gap-2 text-center cute-shadow">
+            <div class="flex-1">
+                <span class="text-[10px] font-bold text-slate-400 block">SCORE</span>
+                <span id="score-val-m" class="text-base font-bold text-pink-400 quicksand">0</span>
+            </div>
+            <div class="w-px bg-pink-100"></div>
+            <div class="flex-1">
+                <span class="text-[10px] font-bold text-slate-400 block">HOLD</span>
+                <div class="flex justify-center items-center h-6">
+                    <canvas id="hold-canvas-m" width="40" height="20" class="scale-125 origin-center"></canvas>
+                </div>
+            </div>
+            <div class="w-px bg-pink-100"></div>
+            <div class="flex-1">
+                <span class="text-[10px] font-bold text-slate-400 block">NEXT</span>
+                <div class="flex justify-center items-center h-6">
+                    <canvas id="next-canvas-m" width="40" height="20" class="scale-125 origin-center"></canvas>
+                </div>
+            </div>
+            <div class="w-px bg-pink-100"></div>
+            <div class="flex-1">
+                <span class="text-[10px] font-bold text-slate-400 block">LEVEL</span>
+                <span id="level-val-m" class="text-base font-bold text-purple-400 quicksand">1</span>
+            </div>
+        </div>
+
+        <div class="relative">
+            <div class="p-2.5 bg-white border-4 border-pink-200 rounded-[32px] cute-shadow overflow-hidden">
+                <canvas id="game-canvas" class="game-grid rounded-3xl block bg-slate-50/50" width="300" height="600"></canvas>
+            </div>
+
+            <div id="overlay" class="absolute inset-0 bg-white/90 backdrop-blur-sm rounded-[32px] flex flex-col items-center justify-center p-6 text-center z-20">
+                <div id="overlay-start" class="flex flex-col items-center gap-6">
+                    <span class="text-pink-400 text-5xl animate-bounce"><i class="fa-solid fa-heart"></i></span>
+                    <h2 class="text-3xl font-black text-pink-400 quicksand">PASTEL PLAY</h2>
+                    <p class="text-slate-500 text-sm max-w-[240px]">ブロックをきれいに ならべて消そう！</p>
+                    <button id="start-btn" class="px-8 py-3 bg-gradient-to-r from-pink-400 to-orange-300 hover:opacity-90 text-white font-extrabold rounded-full shadow-lg shadow-pink-300/30 tracking-wider hover:scale-105 transition-all cute-pop">
+                        スタート！
+                    </button>
+                </div>
+
+                <div id="overlay-pause" class="hidden flex flex-col items-center gap-6">
+                    <span class="text-purple-400 text-5xl"><i class="fa-solid fa-face-smile"></i></span>
+                    <h2 class="text-3xl font-black text-purple-400">おやすみ中</h2>
+                    <p class="text-slate-500 text-sm">ゲームは一時停止しているよ</p>
+                    <button id="resume-btn" class="px-8 py-3 bg-purple-400 text-white font-bold rounded-full shadow-lg hover:scale-105 transition-all cute-pop">
+                        再開する！
+                    </button>
+                </div>
+
+                <div id="overlay-gameover" class="hidden flex flex-col items-center gap-4">
+                    <span class="text-pink-400 text-5xl mb-2"><i class="fa-solid fa-face-sad-tear"></i></span>
+                    <h2 class="text-3xl font-black text-pink-400">ゲームオーバー</h2>
+                    <div>
+                        <span class="text-slate-400 text-xs block uppercase font-bold">TOTAL SCORE</span>
+                        <span id="final-score" class="text-4xl font-black text-slate-700 quicksand">0</span>
+                    </div>
+                    <button id="restart-btn" class="px-8 py-3 mt-2 bg-gradient-to-r from-pink-400 to-purple-400 text-white font-bold rounded-full shadow-lg hover:scale-105 transition-all cute-pop">
+                        もう一回あそぶ！
+                    </button>
+                </div>
+            </div>
+
+            <button id="ingame-pause-btn" class="absolute top-4 right-4 w-9 h-9 rounded-2xl bg-white/80 border border-pink-100 flex items-center justify-center text-pink-400 hover:bg-pink-50 transition-colors z-10 hidden cute-pop">
+                <i class="fa-solid fa-pause"></i>
+            </button>
+        </div>
+
+        <div class="hidden md:flex flex-col gap-4 w-40">
+            <div class="bg-white/70 backdrop-blur-md border border-pink-100 p-4 rounded-3xl flex flex-col items-center cute-shadow">
+                <span class="text-sm font-bold text-pink-400 mb-2 quicksand">NEXT</span>
+                <div class="w-24 h-24 bg-pink-50/50 rounded-2xl flex items-center justify-center border border-pink-100/50">
+                    <canvas id="next-canvas" width="96" height="96"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white/70 backdrop-blur-md border border-purple-100 p-4 rounded-3xl text-xs text-slate-500 flex flex-col gap-1.5 cute-shadow">
+                <span class="font-black text-purple-400 border-b border-purple-100 pb-1 mb-1">コントローラー</span>
+                <div class="flex justify-between"><span>←/→ :</span> <span class="font-bold">いどう</span></div>
+                <div class="flex justify-between"><span>↑/X :</span> <span class="font-bold">みぎかいてん</span></div>
+                <div class="flex justify-between"><span>Z :</span> <span class="font-bold">ひだりかいてん</span></div>
+                <div class="flex justify-between"><span>↓ :</span> <span class="font-bold">ゆっくりおとす</span></div>
+                <div class="flex justify-between"><span>Space :</span> <span class="font-bold">すぐおとす</span></div>
+                <div class="flex justify-between"><span>C / Shift :</span> <span class="font-bold">キープ</span></div>
+                <div class="flex justify-between"><span>P / Esc :</span> <span class="font-bold">ポーズ</span></div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="w-full max-w-md mx-auto mb-2 md:hidden">
+        <div class="grid grid-cols-5 gap-2 px-2">
+            <button id="touch-hold" class="cute-pop bg-yellow-100 border border-yellow-200 text-yellow-600 rounded-2xl py-3 flex flex-col items-center justify-center gap-0.5">
+                <i class="fa-solid fa-repeat text-sm"></i>
+                <span class="text-[9px] font-bold">キープ</span>
+            </button>
+            <button id="touch-rotate-ccw" class="cute-pop bg-purple-100 border border-purple-200 text-purple-600 rounded-2xl py-3 flex flex-col items-center justify-center gap-0.5">
+                <i class="fa-solid fa-arrow-rotate-left text-sm"></i>
+                <span class="text-[9px] font-bold">左回転</span>
+            </button>
+            <button id="touch-rotate-cw" class="cute-pop bg-pink-100 border border-pink-200 text-pink-600 rounded-2xl py-3 flex flex-col items-center justify-center col-span-1 gap-0.5">
+                <i class="fa-solid fa-arrow-rotate-right text-sm"></i>
+                <span class="text-[9px] font-bold">右回転</span>
+            </button>
+            <button id="touch-hard" class="cute-pop bg-gradient-to-b from-sky-400 to-sky-500 text-white rounded-2xl py-3 col-span-2 flex flex-col items-center justify-center gap-0.5">
+                <i class="fa-solid fa-angles-down text-sm"></i>
+                <span class="text-[9px] font-bold">すぐおとす</span>
+            </button>
+
+            <button id="touch-left" class="cute-pop bg-white border border-pink-100 text-pink-400 rounded-2xl py-3 col-span-1 flex items-center justify-center">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </button>
+            <button id="touch-down" class="cute-pop bg-white border border-pink-100 text-pink-400 rounded-2xl py-3 col-span-3 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-arrow-down text-base"></i>
+                <span class="text-xs font-bold tracking-widest text-slate-400">おとす</span>
+            </button>
+            <button id="touch-right" class="cute-pop bg-white border border-pink-100 text-pink-400 rounded-2xl py-3 col-span-1 flex items-center justify-center">
+                <i class="fa-solid fa-arrow-right text-lg"></i>
+            </button>
+        </div>
+    </footer>
+
+    <div id="info-modal" class="fixed inset-0 bg-black/45 backdrop-blur-md flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white border-2 border-pink-100 rounded-3xl max-w-sm w-full p-6 text-center cute-shadow">
+            <h3 class="text-2xl font-black text-pink-400 mb-4">あそびかた 🌟</h3>
+            <div class="text-left text-sm text-slate-600 space-y-3 mb-6">
+                <p>ふってくる 7つのカラフルなブロックをならべて、よこ一列をそろえると消えるよ！たくさん消してハイスコアをめざそう！</p>
+                <div class="border-t border-pink-100 pt-3">
+                    <p class="font-bold text-pink-400 mb-1">スコア:</p>
+                    <ul class="list-disc pl-5 space-y-1 text-xs">
+                        <li>1列消す: 100点</li>
+                        <li>2列消す: 300点</li>
+                        <li>3列消す: 500点</li>
+                        <li>4列消す (テトリス!): 800点</li>
+                    </ul>
+                </div>
+            </div>
+            <button id="close-info-btn" class="w-full py-2 bg-pink-400 hover:bg-pink-300 text-white font-bold rounded-2xl transition-all cute-pop">
+                とじる
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- サウンドシステム (Web Audio API) ---
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            toggle() {
+                this.enabled = !this.enabled;
+                return this.enabled;
+            }
+
+            // 移動音（かわいく、トイキーボード風に高音で）
+            playMove() {
+                if (!this.enabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, this.ctx.currentTime); // ラ(A4)
+                osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.05);
+
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.05);
+            }
+
+            // 回転音（弾むようなハープサウンド）
+            playRotate() {
+                if (!this.enabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, this.ctx.currentTime); // ド(C5)
+                osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.08);
+
+                gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.08);
+            }
+
+            // 消去音（きらきらと輝くファンファーレ風）
+            playClear(lines) {
+                if (!this.enabled) return;
+                this.init();
+                const duration = lines === 4 ? 0.5 : 0.3;
+                const rootFreq = lines === 4 ? 523.25 : 587.33; // ド / レ
+
+                // 和音を作るために複数のオシレーターを作成
+                [1, 1.25, 1.5, 2].forEach((multiplier, index) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(rootFreq * multiplier, this.ctx.currentTime + index * 0.03);
+                    osc.frequency.linearRampToValueAtTime(rootFreq * multiplier * 1.2, this.ctx.currentTime + duration);
+
+                    gain.gain.setValueAtTime(0.08, this.ctx.currentTime + index * 0.03);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+
+                    osc.start(this.ctx.currentTime + index * 0.03);
+                    osc.stop(this.ctx.currentTime + duration);
+                });
+            }
+
+            // ゲームオーバー（おもちゃが壊れたようなコミカルな脱力音）
+            playGameOver() {
+                if (!this.enabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(392, this.ctx.currentTime); // ソ
+                osc.frequency.linearRampToValueAtTime(150, this.ctx.currentTime + 0.6);
+
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.6);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.6);
+            }
+        }
+
+        const sfx = new SoundEffects();
+
+        // --- ゲームの基本定数と設定 ---
+        const COLS = 10;
+        const ROWS = 20;
+        const BLOCK_SIZE = 30; // 画面幅に合わせた描画サイズ
+
+        // やさしいマカロン・パステルカラーに変更
+        const COLORS = {
+            'I': '#89cff0', // パステルブルー（そらいろ）
+            'O': '#fdfd96', // パステルイエロー（れもん）
+            'T': '#b39eb5', // パステルラベンダー（ふじいろ）
+            'S': '#befd73', // パステルグリーン（めぐみ）
+            'Z': '#ffb7b2', // パステルピンク（いちご）
+            'J': '#abc4ff', // パステルパープルブルー（うすあい）
+            'L': '#ffdac1'  // パステルオレンジ（あんず）
+        };
+
+        const SHAPES = {
+            'I': [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]],
+            'O': [[1,1], [1,1]],
+            'T': [[0,1,0], [1,1,1], [0,0,0]],
+            'S': [[0,1,1], [1,1,0], [0,0,0]],
+            'Z': [[1,1,0], [0,1,1], [0,0,0]],
+            'J': [[1,0,0], [1,1,1], [0,0,0]],
+            'L': [[0,0,1], [1,1,1], [0,0,0]]
+        };
+
+        // キャンバス取得とコンテキスト初期化
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // サイド情報キャンバス
+        const nextCanvas = document.getElementById('next-canvas');
+        const nextCtx = nextCanvas.getContext('2d');
+        const holdCanvas = document.getElementById('hold-canvas');
+        const holdCtx = holdCanvas.getContext('2d');
+
+        // モバイル情報用キャンバス
+        const nextCanvasM = document.getElementById('next-canvas-m');
+        const nextCtxM = nextCanvasM.getContext('2d');
+        const holdCanvasM = document.getElementById('hold-canvas-m');
+        const holdCtxM = holdCanvasM.getContext('2d');
+
+        // 状態変数
+        let board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+        let score = 0;
+        let lines = 0;
+        let level = 1;
+        let gameOver = false;
+        let isPaused = false;
+        let isPlaying = false;
+
+        let currentPiece = null;
+        let nextPiece = null;
+        let holdPiece = null;
+        let hasHeld = false; // 1ターンの間にホールドできるのは1回のみ
+
+        let dropCounter = 0;
+        let dropInterval = 1000; // 初期落下速度(ミリ秒)
+        let lastTime = 0;
+
+        // --- ピース作成クラス ---
+        class Piece {
+            constructor(type) {
+                this.type = type;
+                this.matrix = SHAPES[type].map(row => [...row]);
+                this.color = COLORS[type];
+                // 開始位置 (上部中央)
+                this.x = Math.floor((COLS - this.matrix[0].length) / 2);
+                this.y = type === 'I' ? -1 : 0;
+            }
+
+            // 右回転
+            rotateCW() {
+                const n = this.matrix.length;
+                const rotated = Array.from({ length: n }, () => Array(n).fill(0));
+                for (let r = 0; r < n; r++) {
+                    for (let c = 0; c < n; c++) {
+                        rotated[c][n - 1 - r] = this.matrix[r][c];
+                    }
+                }
+                this.matrix = rotated;
+            }
+
+            // 左回転
+            rotateCCW() {
+                const n = this.matrix.length;
+                const rotated = Array.from({ length: n }, () => Array(n).fill(0));
+                for (let r = 0; r < n; r++) {
+                    for (let c = 0; c < n; c++) {
+                        rotated[n - 1 - c][r] = this.matrix[r][c];
+                    }
+                }
+                this.matrix = rotated;
+            }
+        }
+
+        // --- 乱数に基づくピースプール (7袋システム) ---
+        let bag = [];
+        function getRandomPieceType() {
+            if (bag.length === 0) {
+                bag = Object.keys(SHAPES);
+                // フィッシャー–イェーツのシャッフル
+                for (let i = bag.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [bag[i], bag[j]] = [bag[j], bag[i]];
+                }
+            }
+            return bag.pop();
+        }
+
+        // 衝突判定
+        function collide(board, piece, offset = {x: 0, y: 0}) {
+            for (let r = 0; r < piece.matrix.length; r++) {
+                for (let c = 0; c < piece.matrix[r].length; c++) {
+                    if (piece.matrix[r][c] !== 0) {
+                        const nextX = piece.x + c + offset.x;
+                        const nextY = piece.y + r + offset.y;
+
+                        // 壁判定
+                        if (nextX < 0 || nextX >= COLS) return true;
+                        // 底判定
+                        if (nextY >= ROWS) return true;
+                        // 設置済みブロックとの衝突
+                        if (nextY >= 0 && board[nextY][nextX] !== 0) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // ピースをボードにマージする
+        function merge(board, piece) {
+            piece.matrix.forEach((row, r) => {
+                row.forEach((val, c) => {
+                    if (val !== 0) {
+                        const boardY = piece.y + r;
+                        const boardX = piece.x + c;
+                        if (boardY >= 0) {
+                            board[boardY][boardX] = piece.color;
+                        }
+                    }
+                });
+            });
+        }
+
+        // ゴーストブロックのY位置を計算（一瞬で落下させるガイドライン）
+        function getGhostY() {
+            let ghostY = currentPiece.y;
+            while (!collide(board, currentPiece, { x: 0, y: ghostY - currentPiece.y + 1 })) {
+                ghostY++;
+            }
+            return ghostY;
+        }
+
+        // --- 描画関数群 ---
+
+        // ブロック(四角形)を描画する（ぷにぷにした丸っこい形状、くっきりとしたフチにする）
+        function drawBlock(context, x, y, size, color, isGhost = false) {
+            const padding = 2.5; // すこし隙間を空けて丸みを強調する
+            const rx = x + padding;
+            const ry = y + padding;
+            const rsize = size - padding * 2;
+            const radius = 6; // 角丸の半径
+
+            // パス定義用の共通関数
+            function defineRoundedRectPath() {
+                context.beginPath();
+                context.moveTo(rx + radius, ry);
+                context.lineTo(rx + rsize - radius, ry);
+                context.quadraticCurveTo(rx + rsize, ry, rx + rsize, ry + radius);
+                context.lineTo(rx + rsize, ry + rsize - radius);
+                context.quadraticCurveTo(rx + rsize, ry + rsize, rx + rsize - radius, ry + rsize);
+                context.lineTo(rx + radius, ry + rsize);
+                context.quadraticCurveTo(rx, ry + rsize, rx, ry + rsize - radius);
+                context.lineTo(rx, ry + radius);
+                context.quadraticCurveTo(rx, ry, rx + radius, ry);
+                context.closePath();
+            }
+
+            if (isGhost) {
+                // ゴースト（おやさしい点線表示、こちらも少し見やすく調整）
+                defineRoundedRectPath();
+                context.strokeStyle = color;
+                context.setLineDash([4, 2]);
+                context.lineWidth = 2; // 少しだけ太くして見やすく
+                context.stroke();
+                context.setLineDash([]); // リセット
+                context.fillStyle = 'rgba(255, 255, 255, 0.35)'; // 透過度を少し下げて見やすく
+                context.fill();
+                return;
+            }
+
+            // メインの塗りつぶし（ソフトな3D感）
+            defineRoundedRectPath();
+            const grad = context.createLinearGradient(rx, ry, rx + rsize, ry + rsize);
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(0.25, color);
+            grad.addColorStop(1, color); // グラデーションの下端が暗くなりすぎないように調整
+            context.fillStyle = grad;
+            context.fill();
+
+            // かわいいツヤを入れる（左上に白いハイライトを円で描く）
+            context.beginPath();
+            context.arc(rx + rsize * 0.3, ry + rsize * 0.3, rsize * 0.12, 0, Math.PI * 2);
+            context.fillStyle = 'rgba(255, 255, 255, 0.85)'; // ツヤを少しはっきりと
+            context.fill();
+
+            // 縁の色を「チョコレートブラウン」にして、イラスト風にくっきり太く囲む！
+            defineRoundedRectPath();
+            context.strokeStyle = '#5a4d4a'; // やさしい焦げ茶色でパステルを引き締める
+            context.lineWidth = 2; // フチを2pxに太くしてくっきり見やすく
+            context.stroke();
+        }
+
+        // ゲーム画面全体の描画
+        function draw() {
+            // 背景クリア（ほんのりピンクがかった明るい不透明の背景にしてコントラストアップ）
+            ctx.fillStyle = '#fffafb';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 1. ボードに固定されたブロックの描画
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (board[r][c] !== 0) {
+                        drawBlock(ctx, c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE, board[r][c]);
+                    }
+                }
+            }
+
+            // 2. 現在操作中のピースとゴーストの描画
+            if (currentPiece) {
+                // ゴースト
+                const ghostY = getGhostY();
+                currentPiece.matrix.forEach((row, r) => {
+                    row.forEach((val, c) => {
+                        if (val !== 0) {
+                            const blockY = ghostY + r;
+                            if (blockY >= 0) {
+                                drawBlock(ctx, (currentPiece.x + c) * BLOCK_SIZE, blockY * BLOCK_SIZE, BLOCK_SIZE, currentPiece.color, true);
+                            }
+                        }
+                    });
+                });
+
+                // 本体
+                currentPiece.matrix.forEach((row, r) => {
+                    row.forEach((val, c) => {
+                        if (val !== 0) {
+                            const blockY = currentPiece.y + r;
+                            if (blockY >= 0) {
+                                drawBlock(ctx, (currentPiece.x + c) * BLOCK_SIZE, blockY * BLOCK_SIZE, BLOCK_SIZE, currentPiece.color);
+                            }
+                        }
+                    });
+                });
+            }
+        }
+
+        // サイドパネル(Next, Hold)の描画
+        function drawPreview(context, type, bgWidth, bgHeight, isMobile = false) {
+            context.clearRect(0, 0, bgWidth, bgHeight);
+            if (!type) return;
+
+            const matrix = SHAPES[type];
+            const size = isMobile ? 12 : 18; 
+            const color = COLORS[type];
+
+            const n = matrix.length;
+            const offsetX = (bgWidth - n * size) / 2;
+            const offsetY = (bgHeight - n * size) / 2;
+
+            matrix.forEach((row, r) => {
+                row.forEach((val, c) => {
+                    if (val !== 0) {
+                        drawBlock(context, offsetX + c * size, offsetY + r * size, size, color);
+                    }
+                });
+            });
+        }
+
+        // 全プレビューを更新する
+        function updatePreviews() {
+            // デスクトップ
+            drawPreview(nextCtx, nextPiece ? nextPiece.type : null, 96, 96);
+            drawPreview(holdCtx, holdPiece ? holdPiece.type : null, 96, 96);
+            // モバイル
+            drawPreview(nextCtxM, nextPiece ? nextPiece.type : null, 40, 20, true);
+            drawPreview(holdCtxM, holdPiece ? holdPiece.type : null, 40, 20, true);
+        }
+
+        // --- ゲーム状態変更ロジック ---
+
+        // UI情報の更新
+        function updateUI() {
+            document.getElementById('score-val').innerText = score;
+            document.getElementById('lines-val').innerText = lines;
+            document.getElementById('level-val').innerText = level;
+
+            // モバイル用UI
+            document.getElementById('score-val-m').innerText = score;
+            document.getElementById('level-val-m').innerText = level;
+        }
+
+        // レベルと落下スピードの更新
+        function updateLevel() {
+            level = Math.floor(lines / 10) + 1;
+            dropInterval = Math.max(120, 1000 - (level - 1) * 90);
+        }
+
+        // 新しいピースのスポーン
+        function spawnPiece() {
+            if (!nextPiece) {
+                nextPiece = new Piece(getRandomPieceType());
+            }
+            currentPiece = nextPiece;
+            nextPiece = new Piece(getRandomPieceType());
+            hasHeld = false;
+
+            updatePreviews();
+
+            if (collide(board, currentPiece)) {
+                triggerGameOver();
+            }
+        }
+
+        // ホールド機能
+        function hold() {
+            if (hasHeld || !isPlaying || isPaused) return;
+
+            sfx.playRotate();
+            if (!holdPiece) {
+                holdPiece = new Piece(currentPiece.type);
+                spawnPiece();
+            } else {
+                const temp = holdPiece.type;
+                holdPiece = new Piece(currentPiece.type);
+                currentPiece = new Piece(temp);
+            }
+            hasHeld = true;
+            updatePreviews();
+        }
+
+        // ライン消去
+        function clearLines() {
+            let cleared = 0;
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (board[r].every(val => val !== 0)) {
+                    board.splice(r, 1);
+                    board.unshift(Array(COLS).fill(0));
+                    cleared++;
+                    r++; 
+                }
+            }
+
+            if (cleared > 0) {
+                const lineScores = [0, 100, 300, 500, 800];
+                score += lineScores[cleared] * level;
+                lines += cleared;
+
+                sfx.playClear(cleared);
+                updateLevel();
+                updateUI();
+            }
+        }
+
+        // ソフトドロップ (1行下に落とす)
+        function drop() {
+            if (gameOver || isPaused || !isPlaying) return;
+            currentPiece.y++;
+            if (collide(board, currentPiece)) {
+                currentPiece.y--;
+                lockPiece();
+            } else {
+                dropCounter = 0;
+            }
+        }
+
+        // ハードドロップ (一瞬で落としてロックする)
+        function hardDrop() {
+            if (gameOver || isPaused || !isPlaying) return;
+            let droppedLines = 0;
+            while (!collide(board, currentPiece, { x: 0, y: 1 })) {
+                currentPiece.y++;
+                droppedLines++;
+            }
+            score += droppedLines * 2;
+            sfx.playMove();
+            lockPiece();
+        }
+
+        // ピースを固定する
+        function lockPiece() {
+            merge(board, currentPiece);
+            clearLines();
+            spawnPiece();
+            updateUI();
+        }
+
+        // 移動
+        function move(dir) {
+            if (gameOver || isPaused || !isPlaying) return;
+            currentPiece.x += dir;
+            if (collide(board, currentPiece)) {
+                currentPiece.x -= dir;
+            } else {
+                sfx.playMove();
+            }
+        }
+
+        // 回転操作
+        function rotate(clockwise = true) {
+            if (gameOver || isPaused || !isPlaying) return;
+            
+            if (clockwise) {
+                currentPiece.rotateCW();
+            } else {
+                currentPiece.rotateCCW();
+            }
+
+            // 壁キック
+            let offset = 0;
+            if (collide(board, currentPiece)) {
+                currentPiece.x -= 1;
+                if (collide(board, currentPiece)) {
+                    currentPiece.x += 2;
+                    if (collide(board, currentPiece)) {
+                        currentPiece.x -= 1;
+                        if (clockwise) {
+                            currentPiece.rotateCCW();
+                        } else {
+                            currentPiece.rotateCW();
+                        }
+                        return; 
+                    }
+                }
+            }
+            sfx.playRotate();
+        }
+
+        // 一時停止の切り替え
+        function togglePause() {
+            if (!isPlaying || gameOver) return;
+            isPaused = !isPaused;
+
+            const overlay = document.getElementById('overlay');
+            const pauseOverlay = document.getElementById('overlay-pause');
+            const ingamePauseBtn = document.getElementById('ingame-pause-btn');
+
+            if (isPaused) {
+                overlay.classList.remove('hidden');
+                pauseOverlay.classList.remove('hidden');
+                ingamePauseBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+            } else {
+                overlay.classList.add('hidden');
+                pauseOverlay.classList.add('hidden');
+                ingamePauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+                lastTime = performance.now();
+                requestAnimationFrame(updateLoop);
+            }
+        }
+
+        // ゲームオーバー処理
+        function triggerGameOver() {
+            gameOver = true;
+            isPlaying = false;
+            sfx.playGameOver();
+
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('overlay').classList.remove('hidden');
+            document.getElementById('overlay-gameover').classList.remove('hidden');
+            document.getElementById('ingame-pause-btn').classList.add('hidden');
+        }
+
+        // 新規ゲームの開始/リセット
+        function initGame() {
+            board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+            score = 0;
+            lines = 0;
+            level = 1;
+            dropInterval = 1000;
+            gameOver = false;
+            isPaused = false;
+            isPlaying = true;
+            holdPiece = null;
+            nextPiece = null;
+            bag = [];
+
+            updateUI();
+            spawnPiece();
+
+            document.getElementById('overlay').classList.add('hidden');
+            document.getElementById('overlay-start').classList.add('hidden');
+            document.getElementById('overlay-pause').classList.add('hidden');
+            document.getElementById('overlay-gameover').classList.add('hidden');
+            document.getElementById('ingame-pause-btn').classList.remove('hidden');
+            document.getElementById('ingame-pause-btn').innerHTML = '<i class="fa-solid fa-pause"></i>';
+
+            lastTime = performance.now();
+            requestAnimationFrame(updateLoop);
+        }
+
+        // メインゲームループ
+        function updateLoop(time = 0) {
+            if (gameOver || isPaused || !isPlaying) return;
+
+            const deltaTime = time - lastTime;
+            lastTime = time;
+
+            dropCounter += deltaTime;
+            if (dropCounter > dropInterval) {
+                drop();
+            }
+
+            draw();
+            requestAnimationFrame(updateLoop);
+        }
+
+        // --- キーボードイベントリスナー ---
+        window.addEventListener('keydown', event => {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(event.key)) {
+                event.preventDefault(); 
+            }
+
+            if (gameOver || !isPlaying) return;
+
+            switch (event.key) {
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    move(-1);
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    move(1);
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    drop();
+                    break;
+                case 'ArrowUp':
+                case 'x':
+                case 'X':
+                    rotate(true); 
+                    break;
+                case 'z':
+                case 'Z':
+                    rotate(false); 
+                    break;
+                case ' ':
+                    hardDrop();
+                    break;
+                case 'c':
+                case 'C':
+                case 'Shift':
+                    hold();
+                    break;
+                case 'p':
+                case 'P':
+                case 'Escape':
+                    togglePause();
+                    break;
+            }
+        });
+
+        // --- イベント登録群 ---
+        document.getElementById('start-btn').addEventListener('click', () => {
+            sfx.init(); 
+            initGame();
+        });
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            initGame();
+        });
+        document.getElementById('resume-btn').addEventListener('click', () => {
+            togglePause();
+        });
+        document.getElementById('ingame-pause-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            togglePause();
+        });
+
+        // サウンドのオンオフ切り替え
+        const soundBtn = document.getElementById('sound-toggle-btn');
+        const soundIcon = document.getElementById('sound-icon');
+        soundBtn.addEventListener('click', () => {
+            const isEnabled = sfx.toggle();
+            if (isEnabled) {
+                soundIcon.className = "fa-solid fa-volume-high";
+                soundBtn.classList.remove('bg-red-50', 'text-red-400');
+                soundBtn.classList.add('bg-pink-50', 'text-pink-400');
+            } else {
+                soundIcon.className = "fa-solid fa-volume-xmark";
+                soundBtn.classList.add('bg-red-50', 'text-red-400');
+                soundBtn.classList.remove('bg-pink-50', 'text-pink-400');
+            }
+        });
+
+        // 説明モーダル
+        const infoBtn = document.getElementById('info-btn');
+        const infoModal = document.getElementById('info-modal');
+        const closeInfoBtn = document.getElementById('close-info-btn');
+
+        infoBtn.addEventListener('click', () => {
+            infoModal.classList.remove('hidden');
+        });
+        closeInfoBtn.addEventListener('click', () => {
+            infoModal.classList.add('hidden');
+        });
+
+        // --- タッチコントローラー用イベント (スマホ等) ---
+        const touchLeft = document.getElementById('touch-left');
+        const touchRight = document.getElementById('touch-right');
+        const touchDown = document.getElementById('touch-down');
+        const touchCw = document.getElementById('touch-rotate-cw');
+        const touchCcw = document.getElementById('touch-rotate-ccw');
+        const touchHardBtn = document.getElementById('touch-hard');
+        const touchHoldBtn = document.getElementById('touch-hold');
+
+        let leftInterval, rightInterval, downInterval;
+
+        function clearTouchIntervals() {
+            clearInterval(leftInterval);
+            clearInterval(rightInterval);
+            clearInterval(downInterval);
+        }
+
+        touchLeft.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            move(-1);
+            leftInterval = setInterval(() => move(-1), 120);
+        });
+        touchLeft.addEventListener('touchend', clearTouchIntervals);
+
+        touchRight.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            move(1);
+            rightInterval = setInterval(() => move(1), 120);
+        });
+        touchRight.addEventListener('touchend', clearTouchIntervals);
+
+        touchDown.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            drop();
+            downInterval = setInterval(() => drop(), 70);
+        });
+        touchDown.addEventListener('touchend', clearTouchIntervals);
+
+        touchCw.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            rotate(true);
+        });
+
+        touchCcw.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            rotate(false);
+        });
+
+        touchHardBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            hardDrop();
+        });
+
+        touchHoldBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            hold();
+        });
+
+        window.addEventListener('touchend', clearTouchIntervals);
+
+        // 最初のロード
+        window.onload = function() {
+            ctx.fillStyle = '#fffafb';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            updatePreviews();
+        }
+    </script>
+</body>
+</html>

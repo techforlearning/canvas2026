@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>歴史クイズ野球ゲーム - ヒストリー・スタジアム</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome (for icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap');
+        body {
+            font-family: 'M PLUS Rounded 1c', 'Kosugi Maru', sans-serif;
+            background-color: #1a2e1a;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .stadium-bg {
+            background: radial-gradient(circle at bottom, #2d5a27 0%, #153512 80%);
+        }
+        /* アニメーション用クラス */
+        @keyframes swing-bat {
+            0% { transform: rotate(0deg); }
+            30% { transform: rotate(-45deg); }
+            80% { transform: rotate(90deg); }
+            100% { transform: rotate(0deg); }
+        }
+        .swinging {
+            animation: swing-bat 0.4s ease-in-out;
+            transform-origin: bottom left;
+        }
+        @keyframes ball-pitch {
+            0% { transform: scale(0.3) translate(0, 0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { transform: scale(1.5) translate(var(--pitch-x, 0px), 180px); opacity: 1; }
+            100% { transform: scale(2) translate(var(--pitch-x, 0px), 220px); opacity: 0; }
+        }
+        .pitching {
+            animation: ball-pitch 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+        @keyframes ball-hit {
+            0% { transform: scale(1.5) translate(var(--pitch-x, 0px), 180px); opacity: 1; }
+            100% { transform: scale(0.2) translate(var(--hit-x, 0px), -250px); opacity: 0; }
+        }
+        .hitting {
+            animation: ball-hit 1s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-white flex flex-col items-center justify-between overflow-x-hidden stadium-bg p-2 md:p-4">
+
+    <!-- ヘッダー / スコアボード -->
+    <header class="w-full max-w-4xl bg-black/60 backdrop-blur-md border border-yellow-600/30 rounded-xl p-3 mb-3 shadow-2xl">
+        <div class="flex justify-between items-center mb-2">
+            <h1 class="text-xl md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-amber-200 flex items-center gap-2">
+                <i class="fa-solid fa-baseball-bat-ball text-yellow-500 animate-pulse"></i>
+                <span>歴JQSスタジアム</span>
+            </h1>
+            <div class="flex items-center gap-2">
+                <!-- BGM切り替えボタン -->
+                <button id="btn-bgm-toggle" class="bg-indigo-900/60 hover:bg-indigo-800 border border-indigo-500/50 px-3 py-1 rounded-lg text-xs flex items-center gap-1.5 transition-all">
+                    <i id="bgm-icon" class="fa-solid fa-music text-yellow-400"></i>
+                    <span id="bgm-text">BGM: ON</span>
+                </button>
+                <div class="bg-gray-900 border border-gray-700 px-3 py-1 rounded text-xs text-gray-400 font-mono">
+                    VS レジェンズ
+                </div>
+            </div>
+        </div>
+
+        <!-- 野球電光掲示板風スコアボード -->
+        <div class="grid grid-cols-12 gap-1 bg-neutral-900 border-2 border-neutral-700 p-2 rounded-lg font-mono text-center text-sm md:text-base">
+            <!-- チーム名 -->
+            <div class="col-span-3 flex flex-col justify-around text-left pl-2 border-r border-neutral-800 text-xs md:text-sm">
+                <div class="text-gray-400">レジェンズ</div>
+                <div class="text-yellow-400 font-bold">あなた (JQS)</div>
+            </div>
+            <!-- イニング (1〜5回) -->
+            <div class="col-span-6 grid grid-cols-5 gap-1">
+                <div class="text-xs text-gray-500">1</div>
+                <div class="text-xs text-gray-500">2</div>
+                <div class="text-xs text-gray-500">3</div>
+                <div class="text-xs text-gray-500">4</div>
+                <div class="text-xs text-gray-500">5</div>
+                <div id="score-enemy-1" class="text-gray-300">0</div>
+                <div id="score-enemy-2" class="text-gray-300">-</div>
+                <div id="score-enemy-3" class="text-gray-300">-</div>
+                <div id="score-enemy-4" class="text-gray-300">-</div>
+                <div id="score-enemy-5" class="text-gray-300">-</div>
+                <div id="score-player-1" class="text-yellow-400 font-bold">0</div>
+                <div id="score-player-2" class="text-yellow-400 font-bold">-</div>
+                <div id="score-player-3" class="text-yellow-400 font-bold">-</div>
+                <div id="score-player-4" class="text-yellow-400 font-bold">-</div>
+                <div id="score-player-5" class="text-yellow-400 font-bold">-</div>
+            </div>
+            <!-- R H E (得点・安打・エラー) -->
+            <div class="col-span-3 grid grid-cols-3 gap-1 border-l border-neutral-800 font-bold">
+                <div class="text-xs text-red-400">R</div>
+                <div class="text-xs text-blue-400">H</div>
+                <div class="text-xs text-yellow-500">E</div>
+                
+                <div id="score-enemy-total" class="text-red-400">0</div>
+                <div id="hits-enemy" class="text-blue-400">1</div>
+                <div class="text-gray-500">0</div>
+                
+                <div id="score-player-total" class="text-yellow-400">0</div>
+                <div id="hits-player" class="text-blue-400">0</div>
+                <div class="text-gray-500">0</div>
+            </div>
+        </div>
+
+        <!-- インジケーター (SBO / アウトカウント / イニング表示) -->
+        <div class="flex flex-wrap justify-between items-center mt-2 pt-2 border-t border-neutral-800 text-xs md:text-sm">
+            <div class="flex items-center gap-4">
+                <!-- イニング表示 -->
+                <div class="bg-blue-900/40 border border-blue-500/30 px-2 py-0.5 rounded text-blue-300">
+                    <span id="inning-display">1回裏</span>
+                </div>
+                <!-- SBOインジケーター -->
+                <div class="flex flex-col gap-1 font-bold">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-yellow-500 w-3 text-center">S</span>
+                        <div class="flex gap-1">
+                            <div id="strike-1" class="w-3 h-3 rounded-full bg-neutral-700 border border-neutral-600 transition-colors duration-200"></div>
+                            <div id="strike-2" class="w-3 h-3 rounded-full bg-neutral-700 border border-neutral-600 transition-colors duration-200"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-green-500 w-3 text-center">B</span>
+                        <div class="flex gap-1">
+                            <div id="ball-1" class="w-3 h-3 rounded-full bg-neutral-700 border border-neutral-600 transition-colors duration-200"></div>
+                            <div id="ball-2" class="w-3 h-3 rounded-full bg-neutral-700 border border-neutral-600 transition-colors duration-200"></div>
+                            <div id="ball-3" class="w-3 h-3 rounded-full bg-neutral-700 border border-neutral-600 transition-colors duration-200"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-red-500 w-3 text-center">O</span>
+                        <div class="flex gap-1">
+                            <div id="out-1" class="w-3 h-3 rounded-full bg-neutral-700 border border-neutral-600 transition-colors duration-200"></div>
+                            <div id="out-2" class="w-3 h-3 rounded-full bg-neutral-700 border border-neutral-600 transition-colors duration-200"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ランナーベース表示 (ダイヤモンド) -->
+            <div class="relative w-16 h-16 mr-2 flex items-center justify-center">
+                <div class="absolute w-8 h-8 border border-neutral-600 rotate-45 transform"></div>
+                <!-- 1塁 -->
+                <div id="base-1" class="absolute right-1 w-3.5 h-3.5 bg-neutral-600 border border-neutral-500 rotate-45 transform transition-colors duration-300"></div>
+                <!-- 2塁 -->
+                <div id="base-2" class="absolute top-1 w-3.5 h-3.5 bg-neutral-600 border border-neutral-500 rotate-45 transform transition-colors duration-300"></div>
+                <!-- 3塁 -->
+                <div id="base-3" class="absolute left-1 w-3.5 h-3.5 bg-neutral-600 border border-neutral-500 rotate-45 transform transition-colors duration-300"></div>
+                <!-- 本塁 -->
+                <div class="absolute bottom-1 w-3.5 h-3.5 bg-neutral-300 border border-neutral-400 rotate-45 transform"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ領域 -->
+    <main class="w-full max-w-4xl flex-grow grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch mb-4">
+        
+        <!-- 左側：スタジアム3D/2Dビジュアル画面 (7カラム) -->
+        <div class="lg:col-span-7 bg-black/40 border border-green-800/50 rounded-2xl relative overflow-hidden flex flex-col justify-between min-h-[300px] md:min-h-[400px] p-4 shadow-inner">
+            
+            <!-- スタジアム背景・マウンド・ホームプレート -->
+            <div class="absolute inset-0 z-0 flex flex-col justify-between pointer-events-none">
+                <!-- 外野芝生 -->
+                <div class="h-1/2 bg-gradient-to-b from-green-900 to-green-800 relative">
+                    <!-- 観客席風のライン -->
+                    <div class="absolute top-0 inset-x-0 h-8 bg-neutral-800/80 border-b border-neutral-700 flex items-center justify-center gap-8 text-[10px] text-gray-500">
+                        <span>★ 歴JQS市民球場 ★</span>
+                        <span>WELCOME HISTORIC FANS!</span>
+                    </div>
+                    <!-- 外野フェンス -->
+                    <div class="absolute bottom-0 inset-x-0 h-4 bg-emerald-950 border-t border-emerald-800"></div>
+                </div>
+                <!-- 内野土グラウンド -->
+                <div class="h-1/2 bg-amber-900/40 relative border-t-4 border-green-700">
+                    <!-- バッターボックスのライン -->
+                    <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 w-48 h-16 border-2 border-white/20 rounded-lg"></div>
+                    <!-- ホームベース -->
+                    <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 w-8 h-8 bg-white border border-gray-400 rotate-45" style="clip-path: polygon(50% 0%, 100% 50%, 100% 100%, 0% 100%, 0% 50%);"></div>
+                </div>
+            </div>
+
+            <!-- ピッチャーマウンドエリア (中段) -->
+            <div class="relative z-10 flex flex-col items-center mt-12">
+                <!-- 投手サークル -->
+                <div class="w-24 h-12 bg-amber-950/70 rounded-full border border-amber-800 flex items-center justify-center relative">
+                    <!-- 投手キャラクター -->
+                    <div class="absolute -top-12 flex flex-col items-center">
+                        <div class="relative bg-red-900 text-white border-2 border-yellow-500 rounded-full w-14 h-14 flex items-center justify-center text-2xl shadow-lg">
+                            <!-- 投手顔 (絵文字) -->
+                            <span id="pitcher-avatar" class="transition-transform duration-300">🧔</span>
+                            <!-- ピッチャープレート -->
+                            <div class="absolute bottom-0 w-8 h-1.5 bg-white border border-gray-400"></div>
+                        </div>
+                        <div class="bg-black/80 px-2 py-0.5 rounded text-[10px] text-yellow-400 mt-1 font-bold border border-yellow-500/30">
+                            P: <span id="pitcher-name">織田信長</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ボールアニメーション領域 -->
+            <div class="absolute inset-0 z-20 pointer-events-none flex items-center justify-center">
+                <div id="ball" class="absolute w-6 h-6 bg-white rounded-full border-2 border-red-500 shadow-md flex items-center justify-center hidden">
+                    <div class="w-full h-full rounded-full border-t border-b border-red-600 opacity-50 rotate-45"></div>
+                </div>
+            </div>
+
+            <!-- バッターボックスエリア (手前) -->
+            <div class="relative z-10 flex justify-between items-end px-8 pb-4">
+                <!-- 左打席：キャッチャー & 審判 -->
+                <div class="flex gap-2 items-end">
+                    <div class="bg-neutral-800 text-neutral-300 border border-neutral-600 rounded-lg p-1.5 text-xs flex flex-col items-center">
+                        <span>捕手</span>
+                        <span class="text-lg">⚾</span>
+                    </div>
+                    <div class="bg-blue-950 text-blue-300 border border-blue-800 rounded-lg p-1.5 text-[10px] flex flex-col items-center">
+                        <span>審判</span>
+                        <span class="text-xs">👔</span>
+                    </div>
+                </div>
+
+                <!-- 演出テキストポップアップ -->
+                <div id="game-status-popup" class="absolute left-1/2 top-1/3 transform -translate-x-1/2 -translate-y-1/2 bg-black/90 border-2 border-yellow-500 text-yellow-400 px-6 py-3 rounded-xl font-black text-xl md:text-3xl text-center shadow-2xl scale-0 transition-transform duration-300 z-30">
+                    PLAY BALL!
+                </div>
+
+                <!-- 右打席：あなた（バッター） -->
+                <div class="flex flex-col items-center relative">
+                    <div id="batter-container" class="relative flex flex-col items-center transition-transform duration-300">
+                        <!-- バット -->
+                        <div id="bat" class="absolute -top-10 -right-8 w-3 h-16 bg-amber-600 border border-amber-800 rounded-full origin-bottom-left rotate-12 transition-transform duration-200"></div>
+                        <!-- バッター顔 -->
+                        <div class="bg-blue-900 border-2 border-blue-400 rounded-full w-16 h-16 flex items-center justify-center text-3xl shadow-lg relative">
+                            🧑‍🎓
+                        </div>
+                    </div>
+                    <div class="bg-black/80 px-2 py-0.5 rounded text-[10px] text-blue-300 mt-1 font-bold border border-blue-500/30">
+                        あなた
+                    </div>
+                </div>
+            </div>
+
+            <!-- 現在のアクション案内、ピッチャーのセリフ -->
+            <div class="relative z-10 bg-black/60 border border-neutral-800 rounded-xl p-2.5 mt-auto flex items-center gap-3">
+                <div class="text-2xl" id="pitcher-talk-emoji">🔥</div>
+                <div class="text-xs md:text-sm flex-grow">
+                    <div class="text-yellow-400 font-bold" id="pitcher-talk-name">織田信長:</div>
+                    <p class="text-gray-200" id="pitcher-talk-text">「是非に及ばず！私のクイズを打ってみよ！」</p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 右側：クイズ＆操作インターフェース (5カラム) -->
+        <div class="lg:col-span-5 flex flex-col justify-between gap-4">
+            
+            <!-- クイズ出題カード -->
+            <div class="bg-gradient-to-b from-neutral-900 to-neutral-950 border-2 border-yellow-600/30 rounded-2xl p-4 flex-grow flex flex-col justify-between shadow-2xl relative">
+                
+                <!-- クイズヘッダー -->
+                <div class="flex justify-between items-center border-b border-neutral-800 pb-2 mb-3">
+                    <span class="text-xs font-bold text-yellow-500 tracking-wider flex items-center gap-1">
+                        <i class="fa-solid fa-graduation-cap"></i> 歴史の魔球クイズ
+                    </span>
+                    <span id="quiz-category" class="bg-yellow-950 text-yellow-400 border border-yellow-700/50 text-[10px] px-2 py-0.5 rounded font-bold">
+                        戦国時代
+                    </span>
+                </div>
+
+                <!-- クイズ本文 -->
+                <div class="flex-grow flex flex-col justify-center py-2">
+                    <h2 id="quiz-question" class="text-base md:text-lg font-bold leading-relaxed text-gray-100">
+                        ピッチャーがボールを投げる準備をしています。ボタンを押して、ピッチャーを「プレイ」させてください！
+                    </h2>
+                </div>
+
+                <!-- 歴史人物プチ知識（正解/不正解後に表示） -->
+                <div id="trivia-box" class="mt-3 p-2.5 bg-blue-950/40 border border-blue-900/50 rounded-lg text-xs text-blue-300 hidden">
+                    <span class="font-bold block mb-0.5"><i class="fa-solid fa-circle-info"></i> 歴史豆知識:</span>
+                    <span id="trivia-text">織田信長は日本で初めて本格的に鉄砲を戦術に組み込んだことで有名だよ。</span>
+                </div>
+
+            </div>
+
+            <!-- ３択回答ボタン / アクションボタン -->
+            <div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
+                
+                <!-- ピッチ開始ボタン（投球前） -->
+                <button id="btn-pitch" class="w-full py-4 bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 text-white font-extrabold text-lg rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                    <span>ピッチャー、投げてこい！</span>
+                    <i class="fa-solid fa-play"></i>
+                </button>
+
+                <!-- クイズの3択選択肢（投球後・クイズ出題中、初期は非表示） -->
+                <div id="quiz-options-container" class="hidden flex flex-col gap-2.5">
+                    <p class="text-xs text-center text-gray-400 mb-1">正しいと思う歴史人物を選択してスイング！</p>
+                    <button data-option="0" class="quiz-option-btn w-full p-3.5 bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 border border-neutral-700 rounded-xl text-left text-sm font-semibold transition-all flex items-center gap-3">
+                        <span class="w-7 h-7 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0">A</span>
+                        <span class="option-text">選択肢 A</span>
+                    </button>
+                    <button data-option="1" class="quiz-option-btn w-full p-3.5 bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 border border-neutral-700 rounded-xl text-left text-sm font-semibold transition-all flex items-center gap-3">
+                        <span class="w-7 h-7 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0">B</span>
+                        <span class="option-text">選択肢 B</span>
+                    </button>
+                    <button data-option="2" class="quiz-option-btn w-full p-3.5 bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 border border-neutral-700 rounded-xl text-left text-sm font-semibold transition-all flex items-center gap-3">
+                        <span class="w-7 h-7 bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0">C</span>
+                        <span class="option-text">選択肢 C</span>
+                    </button>
+                </div>
+
+                <!-- 次へ進むボタン（クイズ回答後） -->
+                <button id="btn-next" class="hidden w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-lg rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                    <span id="btn-next-text">次の勝負へ！</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- フッター -->
+    <footer class="text-center text-[10px] text-gray-500 py-2 border-t border-neutral-800/50 w-full max-w-4xl flex flex-wrap justify-between gap-2">
+        <span>© 2026 歴史野球ゲーム製作委員会</span>
+        <span class="flex items-center gap-2">
+            <span>操作方法：クイズに答えてバットを振ろう！</span>
+            <button onclick="resetGame()" class="text-red-400 hover:underline"><i class="fa-solid fa-rotate-left"></i> リセット</button>
+        </span>
+    </footer>
+
+    <!-- ゲーム終了時のダイアログモーダル -->
+    <div id="game-over-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-gradient-to-b from-neutral-900 to-neutral-950 border-2 border-yellow-500/50 p-6 md:p-8 rounded-3xl max-w-md w-full text-center shadow-2xl">
+            <div class="text-6xl mb-4">🏆</div>
+            <h2 id="modal-title" class="text-2xl md:text-3xl font-black text-yellow-400 mb-2">ゲームセット！</h2>
+            <p id="modal-sub" class="text-sm text-gray-400 mb-6">5回裏終了</p>
+
+            <!-- 最終スコア結果 -->
+            <div class="bg-black/60 border border-neutral-800 rounded-2xl p-4 mb-6 flex justify-around items-center">
+                <div>
+                    <div class="text-xs text-gray-400">レジェンズ</div>
+                    <div id="modal-enemy-score" class="text-3xl font-black text-red-500">2</div>
+                </div>
+                <div class="text-xl font-bold text-neutral-600">VS</div>
+                <div>
+                    <div class="text-xs text-gray-400">あなた (JQS)</div>
+                    <div id="modal-player-score" class="text-3xl font-black text-yellow-400">3</div>
+                </div>
+            </div>
+
+            <!-- 勝敗メッセージ -->
+            <p id="modal-message" class="text-base font-bold text-gray-200 mb-8 leading-relaxed">
+                おめでとうございます！見事、偉人チームに逆転勝利を収めました！
+            </p>
+
+            <button onclick="resetGame()" class="w-full py-4 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black font-black text-lg rounded-xl shadow-lg transition-transform transform hover:-translate-y-1">
+                もう一度プレイする <i class="fa-solid fa-rotate-right ml-1"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Web Audio API を用いた効果音・BGMシステム -->
+    <script>
+        // Web Audio APIの初期化
+        let audioCtx = null;
+        let bgmPlaying = false;
+        let bgmMuted = false;
+        let bgmIntervalId = null;
+
+        // BGM 楽譜データ (レトロ風野球マーチ)
+        // ド: 261.63, レ: 293.66, ミ: 329.63, ファ: 349.23, ソ: 392.00, ラ: 440.00, シ: 493.88, ド(高): 523.25
+        const melodyNormal = [
+            392.00, 329.63, 349.23, 392.00, // ソ ミ ファ ソ
+            523.25, 440.00, 392.00, 0,      // ド ラ ソ (休)
+            349.23, 392.00, 440.00, 349.23, // ファ ソ ラ ファ
+            392.00, 329.63, 293.66, 0,      // ソ ミ レ (休)
+            392.00, 329.63, 349.23, 392.00, // ソ ミ ファ ソ
+            523.25, 440.00, 392.00, 0,      // ド ラ ソ (休)
+            440.00, 493.88, 523.25, 440.00, // ラ シ ド ラ
+            392.00, 493.88, 523.25, 0       // ソ シ ド (休)
+        ];
+
+        const melodyPitching = [
+            523.25, 523.25, 493.88, 493.88, // ド ド シ シ (緊張感のあるテンポ)
+            440.00, 440.00, 392.00, 0,      // ラ ラ ソ (休)
+            349.23, 349.23, 392.00, 392.00, // ファ ファ ソ ソ
+            440.00, 493.88, 523.25, 0       // ラ シ ド (休)
+        ];
+
+        let bgmSequence = melodyNormal;
+        let bgmStep = 0;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // BGMをループ再生するシーケンサー
+        function startBGM() {
+            initAudio();
+            if (bgmPlaying) return;
+            bgmPlaying = true;
+
+            const tempo = 150; // 1拍のミリ秒数 (スピーディに)
+            
+            bgmIntervalId = setInterval(() => {
+                if (bgmMuted || !bgmPlaying) return;
+
+                const freq = bgmSequence[bgmStep % bgmSequence.length];
+                if (freq > 0) {
+                    playBgmNote(freq, tempo / 1000 * 0.8);
+                }
+                bgmStep++;
+            }, tempo);
+        }
+
+        function stopBGM() {
+            bgmPlaying = false;
+            if (bgmIntervalId) {
+                clearInterval(bgmIntervalId);
+                bgmIntervalId = null;
+            }
+        }
+
+        // 1つの音を鳴らす
+        function playBgmNote(freq, duration) {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            // ちょっと丸みのあるファミコン風パルス波（Triangleか細い鋸歯状波）
+            osc.type = 'triangle'; 
+            osc.frequency.setValueAtTime(freq, now);
+            
+            gain.gain.setValueAtTime(0.04, now); // BGMは小さめの音量で
+            gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(now);
+            osc.stop(now + duration);
+        }
+
+        // 効果音（SE）の再生
+        function playSound(type) {
+            initAudio();
+            const now = audioCtx.currentTime;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'pitch') {
+                // ピッチング音（投球時にBGMを緊張感のあるメロディに切り替える）
+                bgmSequence = melodyPitching;
+                bgmStep = 0;
+
+                // シュッという風切り音
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.8);
+                gain.gain.setValueAtTime(0.01, now);
+                gain.gain.linearRampToValueAtTime(0.1, now + 0.4);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+                osc.start(now);
+                osc.stop(now + 0.8);
+            } else if (type === 'hit') {
+                // 快音（カキーン！）
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(1500, now + 0.1);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 1.2);
+                
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+                osc.start(now);
+                osc.stop(now + 1.2);
+
+                // メタルな金属音を足してリアリティを出す
+                const osc2 = audioCtx.createOscillator();
+                const gain2 = audioCtx.createGain();
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(1200, now);
+                osc2.frequency.exponentialRampToValueAtTime(2000, now + 0.05);
+                osc2.connect(gain2);
+                gain2.connect(audioCtx.destination);
+                gain2.gain.setValueAtTime(0.2, now);
+                gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc2.start(now);
+                osc2.stop(now + 0.3);
+            } else if (type === 'strike') {
+                // ストライク音（ズバッ）
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.linearRampToValueAtTime(80, now + 0.25);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (type === 'out') {
+                // アウト、残念な音（プー）
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.setValueAtTime(200, now + 0.2);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } else if (type === 'cheer') {
+                // 歓声（ホワイトノイズ風）
+                const bufferSize = audioCtx.sampleRate * 1.5;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 1000;
+
+                const noiseGain = audioCtx.createGain();
+                noiseGain.gain.setValueAtTime(0.08, now);
+                noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+
+                noise.connect(filter);
+                filter.connect(noiseGain);
+                noiseGain.connect(audioCtx.destination);
+                noise.start(now);
+                noise.stop(now + 1.5);
+            }
+        }
+    </script>
+
+    <!-- クイズデータベース ＆ ゲームロジック -->
+    <script>
+        // ピッチャーリスト（歴史人物）と対戦相手の情報
+        const pitchers = [
+            { name: "織田信長", avatar: "🧔", emojiTalk: "🔥", talk: "「是非に及ばず！私の球（クイズ）を打ち返してみよ！」", category: "戦国時代" },
+            { name: "坂本龍馬", avatar: "🧑", emojiTalk: "🌊", talk: "「日本の夜明けぜよ！まっすぐな直球（クイズ）を受けてみいや！」", category: "幕末・維新" },
+            { name: "卑弥呼", avatar: "👸", emojiTalk: "🔮", talk: "「邪馬台国の神秘の魔球、あなたに見破れるかしら？」", category: "古代日本" },
+            { name: "源義経", avatar: "⚔️", emojiTalk: "🦅", talk: "「八艘飛びのごとき、変化自在なクイズで勝負だ！」", category: "平安・鎌倉" },
+            { name: "徳川家康", avatar: "👴", emojiTalk: "🦅", talk: "「鳴かぬなら鳴くまで待とう…じっくり考えて答えるがよい。」", category: "江戸時代" }
+        ];
+
+        // クイズデータベース
+        const quizDatabase = {
+            "戦国時代": [
+                {
+                    question: "「本能寺の変」で織田信長を襲った、戦国時代の武将はだれでしょう？",
+                    options: ["豊臣秀吉", "明智光秀", "徳川家康"],
+                    correct: 1,
+                    trivia: "明智光秀は、本能寺の変のわずか13日後、山崎の戦いで豊臣秀吉に敗れました（三日天下）。"
+                },
+                {
+                    question: "天下統一を果たし、大坂城を築いた「戦国の三英傑」の一人はだれでしょう？",
+                    options: ["豊臣秀吉", "武田信玄", "上杉謙信"],
+                    correct: 0,
+                    trivia: "豊臣秀吉は足軽（身分の低い兵士）から天下人にまで上り詰めた「戦国一の出世頭」です。"
+                },
+                {
+                    question: "「独眼竜（どくがんりゅう）」の異名を持ち、仙台藩の初代藩主となった武将はだれでしょう？",
+                    options: ["伊達政宗", "真田幸村", "織田信長"],
+                    correct: 0,
+                    trivia: "伊達政宗は幼少期に病気で右目を失いましたが、それを乗り越えて奥州（東北）の覇者となりました。"
+                }
+            ],
+            "幕末・維新": [
+                {
+                    question: "薩摩藩の西郷隆盛らと協力して「薩長同盟」を仲介した、高知県出身の幕末 of 志士はだれでしょう？",
+                    options: ["勝海舟", "坂本龍馬", "吉田松陰"],
+                    correct: 1,
+                    trivia: "坂本龍馬は日本最初の商社（貿易会社）とされる「亀山社中（のちの海援隊）」を設立しました。"
+                },
+                {
+                    question: "「維新の三傑」の一人で、江戸城無血開城を勝海舟と話し合って実現させた薩摩藩の人物はだれでしょう？",
+                    options: ["西郷隆盛", "木戸孝允", "大久保利通"],
+                    correct: 0,
+                    trivia: "西郷隆盛は上野恩賜公園に愛犬「ツン」を連れた銅像が建てられていることでも親しまれています。"
+                },
+                {
+                    question: "松下村塾を開き、伊藤博文や高杉晋作など多くの幕末・明治のリーダーを育てた思想家はだれでしょう？",
+                    options: ["福沢諭吉", "吉田松陰", "新渡戸稲造"],
+                    correct: 1,
+                    trivia: "吉田松陰の主宰した松下村塾は、わずか2年余りの期間でしたが、日本の歴史を動かす若者が多数集まりました。"
+                }
+            ],
+            "古代日本": [
+                {
+                    question: "中国の歴史書『魏志倭人伝』に登場する、邪馬台国の女王はだれでしょう？",
+                    options: ["卑弥呼", "持統天皇", "額田王"],
+                    correct: 0,
+                    trivia: "卑弥呼は鬼道（きどう）と呼ばれる呪術を使って国を治め、魏（中国）から「親魏倭王」の金印を贈られました。"
+                },
+                {
+                    question: "聖徳太子が定めた、才能や功績のある人を役人に登用するための制度は何でしょう？",
+                    options: ["冠位十二階", "十七条 of 憲法", "大宝律令"],
+                    correct: 0,
+                    trivia: "冠位十二階は、冠の色によって役人の地位を見分けられるようにした画期的な実力主義の制度でした。"
+                },
+                {
+                    question: "大化の改新（645年）を中臣鎌足と共に起こし、後に天智天皇となった人物はだれでしょう？",
+                    options: ["中大兄皇子", "聖徳太子", "小野妹子"],
+                    correct: 0,
+                    trivia: "中大兄皇子と中臣鎌足は、権力を握っていた蘇我入鹿を倒して政治改革（大化の改新）を進めました。"
+                }
+            ],
+            "平安・鎌倉": [
+                {
+                    question: "平氏を滅ぼし、鎌倉幕府を開いて征夷大将軍となった人物はだれでしょう？",
+                    options: ["源頼朝", "源義経", "足利尊氏"],
+                    correct: 0,
+                    trivia: "源頼朝は、弟 of 義経らと共に平氏を打倒し、鎌倉（神奈川県）を拠点とした本格的な武家政権を確立しました。"
+                },
+                {
+                    question: "世界最古の長編小説とされる『源氏物語』を書いた、平安時代の女性作家はだれでしょう？",
+                    options: ["清少納言", "紫式部", "和泉式部"],
+                    correct: 1,
+                    trivia: "紫式部は一条天皇の皇后・彰子に仕え、宮廷生活の知識を活かして源氏物語を執筆しました。"
+                },
+                {
+                    question: "平氏の全盛期を築き、兵庫県の神戸港を開いて日宋貿易を積極的に行った武将はだれでしょう？",
+                    options: ["平清盛", "平将門", "源頼朝"],
+                    correct: 0,
+                    trivia: "平清盛は武士として初めて太政大臣（国の最高官職）に就任し、一族で朝廷の権力を独占しました。"
+                }
+            ],
+            "江戸時代": [
+                {
+                    question: "関ヶ原の戦いで勝利し、江戸幕府を開いた初代将軍はだれでしょう？",
+                    options: ["徳川家康", "徳川家光", "徳川吉宗"],
+                    correct: 0,
+                    trivia: "徳川家康が築いた江戸幕府は、その後約260年間続く平和な時代「天下泰平」の基礎となりました。"
+                },
+                {
+                    question: "「享保の改革」を行い、「暴れん坊将軍」としても知られる江戸幕府の第8代将軍はだれでしょう？",
+                    options: ["徳川綱吉", "徳川吉宗", "徳川慶喜"],
+                    correct: 1,
+                    trivia: "徳川吉宗は、目安箱の設置や、米の価格調整を熱心に行ったため「米将軍」とも呼ばれました。"
+                },
+                {
+                    question: "日本全国を実際に歩いて測量し、非常に正確な日本地図「大日本沿海輿地全図」を作った人物はだれでしょう？",
+                    options: ["伊能忠敬", "杉田玄白", "本居宣長"],
+                    correct: 0,
+                    trivia: "伊能忠敬が本格的な測量を始めたのは55歳からで、なんと地球を約1周分歩いた計算になります。"
+                }
+            ]
+        };
+
+        // --- ゲーム状態変数 ---
+        let currentInning = 1; // 1〜5回
+        let playerInningScore = [0, 0, 0, 0, 0];
+        let enemyInningScore = [1, 0, 1, 0, 0]; // 敵のスコア
+        
+        let playerHits = 0;
+        let enemyHits = 1;
+
+        let strikes = 0;
+        let balls = 0;
+        let outs = 0;
+        let runners = [false, false, false]; // [1塁, 2塁, 3塁]
+        
+        let currentPitcherIndex = 0;
+        let currentQuiz = null;
+        let isPitching = false;
+
+        // HTML要素参照
+        const elBall = document.getElementById('ball');
+        const elBat = document.getElementById('bat');
+        const elBatterContainer = document.getElementById('batter-container');
+        const elBtnPitch = document.getElementById('btn-pitch');
+        const elBtnNext = document.getElementById('btn-next');
+        const elBtnNextText = document.getElementById('btn-next-text');
+        const elQuizOptionsContainer = document.getElementById('quiz-options-container');
+        const elQuizQuestion = document.getElementById('quiz-question');
+        const elQuizCategory = document.getElementById('quiz-category');
+        const elTriviaBox = document.getElementById('trivia-box');
+        const elTriviaText = document.getElementById('trivia-text');
+        
+        const elPitcherAvatar = document.getElementById('pitcher-avatar');
+        const elPitcherName = document.getElementById('pitcher-name');
+        const elPitcherTalkName = document.getElementById('pitcher-talk-name');
+        const elPitcherTalkText = document.getElementById('pitcher-talk-text');
+        const elPitcherTalkEmoji = document.getElementById('pitcher-talk-emoji');
+        const elPopup = document.getElementById('game-status-popup');
+
+        const elBtnBgmToggle = document.getElementById('btn-bgm-toggle');
+        const elBgmIcon = document.getElementById('bgm-icon');
+        const elBgmText = document.getElementById('bgm-text');
+
+        // BGM切り替えボタンの動作
+        elBtnBgmToggle.addEventListener('click', () => {
+            initAudio();
+            bgmMuted = !bgmMuted;
+            if (bgmMuted) {
+                elBgmIcon.className = "fa-solid fa-volume-xmark text-gray-500";
+                elBgmText.textContent = "BGM: OFF";
+            } else {
+                elBgmIcon.className = "fa-solid fa-music text-yellow-400";
+                elBgmText.textContent = "BGM: ON";
+                if (!bgmPlaying) {
+                    startBGM();
+                }
+            }
+        });
+
+        // 各種状態反映関数
+        function updateScoreboard() {
+            for (let i = 1; i <= 5; i++) {
+                const elEnemy = document.getElementById(`score-enemy-${i}`);
+                const elPlayer = document.getElementById(`score-player-${i}`);
+                
+                if (i < currentInning) {
+                    elEnemy.textContent = enemyInningScore[i-1];
+                    elPlayer.textContent = playerInningScore[i-1];
+                } else if (i === currentInning) {
+                    elEnemy.textContent = enemyInningScore[i-1];
+                    elPlayer.textContent = playerInningScore[i-1];
+                } else {
+                    elEnemy.textContent = "-";
+                    elPlayer.textContent = "-";
+                }
+            }
+
+            const enemyTotal = enemyInningScore.slice(0, currentInning).reduce((a, b) => a + b, 0);
+            const playerTotal = playerInningScore.slice(0, currentInning).reduce((a, b) => a + b, 0);
+
+            document.getElementById('score-enemy-total').textContent = enemyTotal;
+            document.getElementById('score-player-total').textContent = playerTotal;
+            document.getElementById('hits-player').textContent = playerHits;
+            document.getElementById('hits-enemy').textContent = enemyHits;
+
+            document.getElementById('inning-display').textContent = `${currentInning}回裏`;
+        }
+
+        function updateIndicators() {
+            document.getElementById('strike-1').style.backgroundColor = strikes >= 1 ? '#eab308' : '#404040';
+            document.getElementById('strike-2').style.backgroundColor = strikes >= 2 ? '#eab308' : '#404040';
+
+            document.getElementById('ball-1').style.backgroundColor = balls >= 1 ? '#22c55e' : '#404040';
+            document.getElementById('ball-2').style.backgroundColor = balls >= 2 ? '#22c55e' : '#404040';
+            document.getElementById('ball-3').style.backgroundColor = balls >= 3 ? '#22c55e' : '#404040';
+
+            document.getElementById('out-1').style.backgroundColor = outs >= 1 ? '#ef4444' : '#404040';
+            document.getElementById('out-2').style.backgroundColor = outs >= 2 ? '#ef4444' : '#404040';
+
+            document.getElementById('base-1').className = `absolute right-1 w-3.5 h-3.5 rotate-45 transform transition-colors duration-300 ${runners[0] ? 'bg-yellow-400 border-yellow-300' : 'bg-neutral-600 border-neutral-500'}`;
+            document.getElementById('base-2').className = `absolute top-1 w-3.5 h-3.5 rotate-45 transform transition-colors duration-300 ${runners[1] ? 'bg-yellow-400 border-yellow-300' : 'bg-neutral-600 border-neutral-500'}`;
+            document.getElementById('base-3').className = `absolute left-1 w-3.5 h-3.5 rotate-45 transform transition-colors duration-300 ${runners[2] ? 'bg-yellow-400 border-yellow-300' : 'bg-neutral-600 border-neutral-500'}`;
+        }
+
+        function changePitcher() {
+            currentPitcherIndex = (currentInning - 1) % pitchers.length;
+            const pitcher = pitchers[currentPitcherIndex];
+            
+            elPitcherAvatar.textContent = pitcher.avatar;
+            elPitcherName.textContent = pitcher.name;
+            elPitcherTalkName.textContent = `${pitcher.name}:`;
+            elPitcherTalkText.textContent = pitcher.talk;
+            elPitcherTalkEmoji.textContent = pitcher.emojiTalk;
+            elQuizCategory.textContent = pitcher.category;
+        }
+
+        function showPopup(text, duration = 1500) {
+            elPopup.textContent = text;
+            elPopup.classList.remove('scale-0');
+            elPopup.classList.add('scale-100');
+            setTimeout(() => {
+                elPopup.classList.remove('scale-100');
+                elPopup.classList.add('scale-0');
+            }, duration);
+        }
+
+        function advanceRunners(bases) {
+            let runsScored = 0;
+            let newRunners = [false, false, false];
+
+            if (bases === 4) {
+                runsScored = runners.filter(r => r).length + 1;
+                newRunners = [false, false, false];
+            } else {
+                let tempRunners = [true, ...runners];
+                for (let step = 0; step < bases; step++) {
+                    const scored = tempRunners.pop();
+                    if (scored) runsScored++;
+                    tempRunners.unshift(false);
+                }
+                newRunners = [tempRunners[1], tempRunners[2], tempRunners[3]];
+            }
+
+            runners = newRunners;
+            if (runsScored > 0) {
+                playerInningScore[currentInning - 1] += runsScored;
+                playSound('cheer');
+                showPopup(`${runsScored}点タイムリー！ 👏`, 2000);
+            }
+            updateScoreboard();
+            updateIndicators();
+        }
+
+        function startPitch() {
+            initAudio();
+            if (!bgmMuted) {
+                startBGM(); // 初回ボタン押下時にBGM自動開始
+            }
+
+            if (isPitching) return;
+            isPitching = true;
+
+            elBtnPitch.classList.add('hidden');
+            elTriviaBox.classList.add('hidden');
+
+            const pitcher = pitchers[currentPitcherIndex];
+            const quizList = quizDatabase[pitcher.category];
+            currentQuiz = quizList[Math.floor(Math.random() * quizList.length)];
+
+            elQuizQuestion.textContent = currentQuiz.question;
+            const optionBtns = document.querySelectorAll('.quiz-option-btn');
+            optionBtns.forEach((btn, index) => {
+                btn.querySelector('.option-text').textContent = currentQuiz.options[index];
+                btn.disabled = false;
+                btn.className = "quiz-option-btn w-full p-3.5 bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 border border-neutral-700 rounded-xl text-left text-sm font-semibold transition-all flex items-center gap-3";
+            });
+
+            elBall.className = "absolute w-6 h-6 bg-white rounded-full border-2 border-red-500 shadow-md flex items-center justify-center hidden";
+            elBall.style.setProperty('--pitch-x', `${(Math.random() - 0.5) * 60}px`);
+            
+            elPitcherAvatar.classList.add('scale-125', 'rotate-12');
+            
+            playSound('pitch'); // ここでメロディも緊張感のある方にチェンジ
+            elBall.classList.remove('hidden');
+            elBall.classList.add('pitching');
+
+            setTimeout(() => {
+                elPitcherAvatar.classList.remove('scale-125', 'rotate-12');
+                elQuizOptionsContainer.classList.remove('hidden');
+            }, 1000);
+        }
+
+        function handleAnswer(selectedIndex) {
+            const optionBtns = document.querySelectorAll('.quiz-option-btn');
+            optionBtns.forEach(btn => btn.disabled = true);
+
+            elBat.classList.add('swinging');
+            setTimeout(() => {
+                elBat.classList.remove('swinging');
+            }, 400);
+
+            const isCorrect = (selectedIndex === currentQuiz.correct);
+            
+            optionBtns.forEach((btn, idx) => {
+                if (idx === currentQuiz.correct) {
+                    btn.classList.add('bg-green-900/80', 'border-green-500', 'text-green-200');
+                } else if (idx === selectedIndex) {
+                    btn.classList.add('bg-red-900/80', 'border-red-500', 'text-red-200');
+                }
+            });
+
+            elTriviaText.textContent = currentQuiz.trivia;
+            elTriviaBox.classList.remove('hidden');
+
+            // 回答後は通常のメロディにスムーズにリセット
+            bgmSequence = melodyNormal;
+            bgmStep = 0;
+
+            if (isCorrect) {
+                playerHits++;
+                playSound('hit');
+                elBall.classList.remove('pitching');
+                elBall.style.setProperty('--hit-x', `${(Math.random() - 0.5) * 300}px`);
+                elBall.classList.add('hitting');
+
+                const rand = Math.random();
+                let hitText = "ヒット！";
+                let bases = 1;
+
+                if (rand > 0.92) {
+                    hitText = "特大ホームラン！ ☄️";
+                    bases = 4;
+                } else if (rand > 0.78) {
+                    hitText = "快速ツーベース！ 🏃";
+                    bases = 2;
+                } else if (rand > 0.68) {
+                    hitText = "鋭いスリーベース！ 🔥";
+                    bases = 3;
+                }
+
+                showPopup(hitText, 1800);
+                
+                strikes = 0;
+                balls = 0;
+
+                setTimeout(() => {
+                    advanceRunners(bases);
+                }, 800);
+
+            } else {
+                strikes++;
+                playSound('strike');
+                showPopup("ストライク！ ❌", 1200);
+
+                if (strikes >= 3) {
+                    outs++;
+                    strikes = 0;
+                    balls = 0;
+                    playSound('out');
+                    showPopup("三振アウト！ 😱", 1500);
+                }
+            }
+
+            setTimeout(() => {
+                elBall.classList.add('hidden');
+                elBall.classList.remove('hitting');
+            }, 1000);
+
+            updateIndicators();
+
+            elQuizOptionsContainer.classList.add('hidden');
+            elBtnNext.classList.remove('hidden');
+
+            checkGameStatus();
+        }
+
+        function checkGameStatus() {
+            const enemyTotal = enemyInningScore.reduce((a, b) => a + b, 0);
+            const playerTotal = playerInningScore.reduce((a, b) => a + b, 0);
+
+            if (currentInning === 5 && playerTotal > enemyTotal) {
+                endGame(true, "サヨナラ勝ち！おめでとうございます！偉人チームを破りました！");
+                return;
+            }
+
+            if (outs >= 3) {
+                elBtnNextText.textContent = `${currentInning}回裏チェンジ`;
+                return;
+            }
+
+            elBtnNextText.textContent = "次のバッターへ";
+        }
+
+        function nextAction() {
+            elBtnNext.classList.add('hidden');
+            
+            if (outs >= 3) {
+                outs = 0;
+                strikes = 0;
+                balls = 0;
+                runners = [false, false, false];
+
+                if (currentInning >= 5) {
+                    const enemyTotal = enemyInningScore.reduce((a, b) => a + b, 0);
+                    const playerTotal = playerInningScore.reduce((a, b) => a + b, 0);
+
+                    if (playerTotal > enemyTotal) {
+                        endGame(true, "見事勝利！あなたの知性は歴史上の偉人たちを超えました！");
+                    } else if (playerTotal < enemyTotal) {
+                        endGame(false, "ゲームセット！惜しくも敗北…偉人たちの知略に一歩及びませんでした。");
+                    } else {
+                        endGame(null, "ゲームセット！引き分けです！熱い好ゲームでした。");
+                    }
+                    return;
+                } else {
+                    currentInning++;
+                    showPopup(`${currentInning}回裏の攻撃へ！`, 2000);
+                }
+            }
+
+            isPitching = false;
+            updateScoreboard();
+            updateIndicators();
+            changePitcher();
+
+            elBtnPitch.classList.remove('hidden');
+            elQuizQuestion.textContent = `${pitchers[currentPitcherIndex].name}選手がマウンドに立ちました。クイズに答えてヒットを狙いましょう！`;
+        }
+
+        function endGame(isWin, message) {
+            stopBGM(); // 試合終了時にBGMを停止
+
+            const enemyTotal = enemyInningScore.reduce((a, b) => a + b, 0);
+            const playerTotal = playerInningScore.reduce((a, b) => a + b, 0);
+
+            document.getElementById('modal-enemy-score').textContent = enemyTotal;
+            document.getElementById('modal-player-score').textContent = playerTotal;
+
+            const modalTitle = document.getElementById('modal-title');
+            if (isWin === true) {
+                modalTitle.textContent = "🎉 勝利！VICTORY 🎉";
+                modalTitle.className = "text-2xl md:text-3xl font-black text-green-400 mb-2";
+                playSound('cheer');
+            } else if (isWin === false) {
+                modalTitle.textContent = "⚾ GAME OVER ⚾";
+                modalTitle.className = "text-2xl md:text-3xl font-black text-red-500 mb-2";
+            } else {
+                modalTitle.textContent = "🤝 DRAW 🤝";
+                modalTitle.className = "text-2xl md:text-3xl font-black text-gray-400 mb-2";
+            }
+
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('game-over-modal').classList.remove('hidden');
+        }
+
+        function resetGame() {
+            currentInning = 1;
+            playerInningScore = [0, 0, 0, 0, 0];
+            enemyInningScore = [
+                Math.floor(Math.random() * 2),
+                Math.floor(Math.random() * 2),
+                Math.floor(Math.random() * 1),
+                Math.floor(Math.random() * 2),
+                Math.floor(Math.random() * 1)
+            ];
+            playerHits = 0;
+            enemyHits = enemyInningScore.reduce((a, b) => a + b, 0) + Math.floor(Math.random() * 3);
+
+            strikes = 0;
+            balls = 0;
+            outs = 0;
+            runners = [false, false, false];
+            isPitching = false;
+
+            document.getElementById('game-over-modal').classList.add('hidden');
+            
+            updateScoreboard();
+            updateIndicators();
+            changePitcher();
+
+            elBtnPitch.classList.remove('hidden');
+            elQuizOptionsContainer.classList.add('hidden');
+            elBtnNext.classList.add('hidden');
+            elTriviaBox.classList.add('hidden');
+
+            elQuizQuestion.textContent = "ピッチャーがボールを投げる準備をしています。ボタンを押して、プレイボール！";
+            showPopup("プレイボール！⚾", 2000);
+
+            // BGMの再スタート
+            stopBGM();
+            bgmSequence = melodyNormal;
+            bgmStep = 0;
+            if (!bgmMuted) {
+                setTimeout(() => {
+                    startBGM();
+                }, 1000);
+            }
+        }
+
+        elBtnPitch.addEventListener('click', startPitch);
+        elBtnNext.addEventListener('click', nextAction);
+
+        document.querySelectorAll('.quiz-option-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const optIndex = parseInt(btn.getAttribute('data-option'));
+                handleAnswer(optIndex);
+            });
+        });
+
+        window.onload = () => {
+            resetGame();
+        };
+    </script>
+</body>
+</html>
