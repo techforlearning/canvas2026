@@ -1,0 +1,1932 @@
+```html
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Cyberpunk Mobile Demake JP - v6.0 Smasher Fight Update</title>
+<style>
+    :root {
+        --cp-yellow: #fcee0a;
+        --cp-red: #ff003c;
+        --cp-cyan: #00f0ff;
+        --cp-green: #00ff41;
+        --cp-purple: #aa00ff;
+        --cp-orange: #ff8800;
+        --bg-dark: #0a0b0d;
+        --ui-bg: rgba(10, 11, 13, 0.95);
+    }
+    * { 
+        box-sizing: border-box; 
+        user-select: none; 
+        -webkit-user-select: none; 
+        touch-action: none; 
+        font-family: 'Courier New', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; 
+    }
+    body, html { 
+        margin: 0; 
+        padding: 0; 
+        width: 100%; 
+        height: 100%; 
+        background: #000; 
+        overflow: hidden; 
+    }
+    
+    #game-container { position: relative; width: 100%; height: 100%; overflow: hidden; }
+    #gameCanvas { display: block; width: 100%; height: 100%; }
+    
+    /* UI Layer */
+    #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; padding: 15px; display: flex; flex-direction: column; justify-content: space-between; }
+    .top-bar { display: flex; justify-content: space-between; align-items: flex-start; pointer-events: auto; }
+    
+    .status-panel { background: var(--ui-bg); border: 2px solid var(--cp-cyan); padding: 10px 15px; color: var(--cp-cyan); border-radius: 8px; box-shadow: 0 0 15px rgba(0, 240, 255, 0.2), inset 0 0 10px rgba(0, 240, 255, 0.1); font-size: 13px; min-width: 210px; }
+    .health-bar-bg { width: 100%; height: 12px; background: #222; margin-bottom: 8px; border: 1px solid var(--cp-red); border-radius: 3px; overflow: hidden; }
+    .health-bar-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #b00 0%, var(--cp-red) 100%); transition: width 0.15s ease-out; }
+    .humanity-bar-bg { width: 100%; height: 6px; background: #111; margin-bottom: 8px; border: 1px solid var(--cp-cyan); border-radius: 2px; overflow: hidden; }
+    .humanity-bar-fill { width: 100%; height: 100%; background: var(--cp-cyan); transition: width 0.2s ease-out; }
+    .ice-bar-bg { width: 100%; height: 6px; background: #111; margin-bottom: 8px; border: 1px solid var(--cp-purple); border-radius: 2px; overflow: hidden; }
+    .ice-bar-fill { width: 100%; height: 100%; background: var(--cp-purple); transition: width 0.2s ease-out; }
+    .wanted-stars { color: var(--cp-red); font-weight: bold; letter-spacing: 3px; text-shadow: 0 0 8px var(--cp-red); margin-top: 5px; font-size: 14px; }
+    
+    /* リロード中発光インジケータ */
+    #ui-ammo-container { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+    #ui-ammo { font-weight: bold; }
+    #ui-reloading-indicator {
+        display: none;
+        color: var(--cp-red);
+        font-weight: 900;
+        text-shadow: 0 0 8px var(--cp-red);
+        animation: pulse-red 0.3s infinite alternate;
+        font-size: 11px;
+        background: rgba(255, 0, 60, 0.15);
+        padding: 2px 6px;
+        border: 1px dashed var(--cp-red);
+        border-radius: 3px;
+    }
+    @keyframes pulse-red {
+        from { opacity: 0.4; }
+        to { opacity: 1; }
+    }
+
+    #menu-btn { background: var(--cp-yellow); border: none; color: #000; padding: 12px 20px; font-weight: 900; font-size: 13px; cursor: pointer; border-radius: 4px; pointer-events: auto; box-shadow: 0 4px 10px rgba(252, 238, 10, 0.3); text-transform: uppercase; border-bottom: 3px solid #bfa400; transition: transform 0.1s; }
+    #menu-btn:active { transform: translateY(2px); border-bottom-width: 1px; }
+    
+    #quest-tracker { background: var(--ui-bg); border-left: 4px solid var(--cp-yellow); border-right: 1px solid rgba(252, 238, 10, 0.2); border-top: 1px solid rgba(252, 238, 10, 0.2); border-bottom: 1px solid rgba(252, 238, 10, 0.2); padding: 8px 12px; color: #fff; margin-top: 15px; font-size: 11px; max-width: 280px; pointer-events: auto; border-radius: 0 6px 6px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+    #quest-tracker h4 { margin: 0 0 6px 0; color: var(--cp-yellow); font-size: 12px; text-transform: uppercase; }
+    .quest-item { margin-bottom: 4px; line-height: 1.3; }
+    .hallucination-quest { color: var(--cp-red) !important; text-shadow: 0 0 4px var(--cp-red); font-style: italic; }
+    .dynamic-quest { color: var(--cp-cyan); }
+    
+    #glitch-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; mix-blend-mode: overlay; opacity: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,0,0,0.25) 2px, rgba(255,0,0,0.25) 4px); z-index: 5; transition: opacity 0.3s; }
+
+    #stun-warning { position: absolute; top: 40%; left: 50%; transform: translateX(-50%); color: var(--cp-cyan); font-size: 24px; font-weight: 900; text-shadow: 0 0 10px var(--cp-cyan); display: none; text-align: center; pointer-events: none; z-index: 30; background: rgba(0, 0, 0, 0.8); padding: 15px 30px; border: 2px solid var(--cp-cyan); border-radius: 4px; box-shadow: 0 0 20px rgba(0, 240, 255, 0.5); animation: flash 0.3s infinite alternate; }
+    @keyframes flash { from { opacity: 1; } to { opacity: 0.5; } }
+
+    #controls-layer { position: absolute; bottom: 25px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 25px; pointer-events: none; z-index: 15; }
+    #joystick-area { width: 140px; height: 140px; position: relative; pointer-events: auto; }
+    #joystick-base { width: 110px; height: 110px; border-radius: 50%; background: rgba(0, 240, 255, 0.08); border: 2px solid rgba(0, 240, 255, 0.4); position: absolute; bottom: 0; left: 0; display: flex; justify-content: center; align-items: center; box-shadow: 0 0 15px rgba(0, 240, 255, 0.1); }
+    #joystick-stick { width: 44px; height: 44px; border-radius: 50%; background: radial-gradient(circle, #fff 0%, var(--cp-cyan) 80%); box-shadow: 0 0 15px var(--cp-cyan); position: absolute; }
+
+    #action-buttons { display: flex; flex-wrap: wrap; width: 220px; justify-content: flex-end; gap: 10px; pointer-events: auto; align-items: flex-end; }
+    .act-btn { border-radius: 50%; border: none; font-weight: bold; color: #fff; display: flex; justify-content: center; align-items: center; cursor: pointer; opacity: 0.85; font-size: 11px; box-shadow: 0 4px 10px rgba(0,0,0,0.4); transition: transform 0.05s, opacity 0.1s; }
+    .act-btn:active { opacity: 1; transform: scale(0.9); }
+    
+    #btn-shoot { width: 76px; height: 76px; background: radial-gradient(circle, var(--cp-red) 60%, #900 100%); font-size: 17px; box-shadow: 0 0 20px rgba(255, 0, 60, 0.5); border: 2px solid #fff; }
+    #btn-melee { width: 66px; height: 66px; background: radial-gradient(circle, var(--cp-orange) 40%, #b35900 100%); font-size: 15px; box-shadow: 0 0 15px rgba(255, 136, 0, 0.5); border: 2px solid #fff; }
+    #btn-sandevistan { width: 54px; height: 54px; background: radial-gradient(circle, #3f3 40%, #060 100%); color: #000; font-weight: 900; box-shadow: 0 0 15px rgba(0, 255, 0, 0.4); }
+    
+    /* ダッシュボタン */
+    #btn-dash { width: 54px; height: 54px; background: radial-gradient(circle, #fff 40%, #00f0ff 100%); color: #000; font-weight: 900; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4); display: none; }
+    
+    #btn-hack { width: 54px; height: 54px; background: radial-gradient(circle, var(--cp-cyan) 40%, #006677 100%); color: #000; font-weight: 900; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4); display: none; }
+    #btn-interact { width: 54px; height: 54px; background: radial-gradient(circle, var(--cp-yellow) 40%, #988a00 100%); color: #000; font-weight: 900; box-shadow: 0 0 15px rgba(252, 238, 10, 0.4); }
+    #btn-scope { width: 50px; height: 50px; background: #2b2e33; font-size: 10px; border: 1px solid #777; }
+    #btn-reload { width: 48px; height: 48px; background: #1f2022; color: #ddd; font-size: 10px; border: 1px solid #555; }
+    
+    #btn-use-item {
+        position: absolute;
+        right: 25px;
+        bottom: 220px;
+        width: 60px;
+        height: 60px;
+        background: rgba(30, 30, 30, 0.9);
+        border: 2px solid var(--cp-yellow);
+        border-radius: 8px;
+        color: var(--cp-yellow);
+        font-weight: bold;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 20;
+        pointer-events: auto;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        cursor: pointer;
+        transition: transform 0.05s;
+    }
+    #btn-use-item:active { transform: scale(0.9); }
+    #quick-item-name { font-size: 10px; margin-bottom: 2px; text-align: center; }
+    #quick-item-qty { font-size: 16px; }
+
+    #interact-prompt { position: absolute; top: 55%; left: 50%; transform: translateX(-50%); background: var(--cp-yellow); color: #000; padding: 8px 20px; font-weight: 900; border-radius: 4px; display: none; z-index: 10; font-size:14px; text-align:center; box-shadow: 0 4px 15px rgba(252, 238, 10, 0.4); border: 1px solid #000; }
+
+    #dialog-overlay { position: absolute; bottom: 0; left: 0; width: 100%; height: auto; max-height: 45%; background: var(--ui-bg); border-top: 3px solid var(--cp-green); color: #fff; padding: 20px; display: none; flex-direction: column; z-index: 50; pointer-events: auto; overflow-y: auto; box-shadow: 0 -10px 25px rgba(0,0,0,0.8); }
+    .dialog-speaker { color: var(--cp-green); font-weight: bold; font-size: 17px; margin-bottom: 8px; text-transform: uppercase; }
+    .dialog-text { font-size: 14px; margin-bottom: 20px; line-height: 1.5; color: #eee; }
+    .dialog-options { display: flex; flex-direction: column; gap: 10px; justify-content: flex-end; }
+    .dialog-btn { background: rgba(20, 22, 25, 0.9); border: 1px solid var(--cp-green); color: var(--cp-green); padding: 12px 18px; cursor: pointer; font-weight: bold; text-align: left; border-radius: 4px; font-size: 13px; transition: all 0.2s; }
+    .dialog-btn:hover, .dialog-btn:active { background: var(--cp-green); color: #000; }
+
+    #menu-overlay { 
+        position: absolute; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%; 
+        background: rgba(10, 11, 13, 0.98); 
+        z-index: 100; 
+        color: var(--cp-cyan); 
+        display: none; 
+        flex-direction: column; 
+        padding: 20px; 
+        overflow: hidden; 
+        pointer-events: auto; 
+    }
+    .menu-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--cp-yellow); padding-bottom: 12px; margin-bottom: 15px; flex-shrink: 0; }
+    .menu-header h1 { margin: 0; color: var(--cp-yellow); font-size: 22px; letter-spacing: 1px; }
+    #close-menu-btn { background: none; border: 2px solid var(--cp-red); color: var(--cp-red); font-size: 22px; cursor: pointer; padding: 2px 14px; border-radius: 4px; transition: background 0.2s; }
+    #close-menu-btn:active { background: rgba(255, 0, 60, 0.2); }
+    
+    .menu-nav { display: flex; gap: 6px; margin-bottom: 15px; flex-wrap: wrap; flex-shrink: 0; }
+    .nav-btn { background: #1a1c1f; border: 1px solid var(--cp-cyan); color: var(--cp-cyan); padding: 10px 12px; cursor: pointer; flex: 1; text-align: center; font-size: 12px; border-radius: 4px; transition: all 0.2s; }
+    .nav-btn.active { background: var(--cp-cyan); color: #000; font-weight: bold; box-shadow: 0 0 10px rgba(0, 240, 255, 0.3); }
+    
+    .menu-content { flex: 1; display: none; overflow-y: auto; padding: 5px 15px 50px 5px; font-size: 14px; -webkit-overflow-scrolling: touch; pointer-events: auto; touch-action: pan-y; overscroll-behavior: contain; }
+    .menu-content.active { display: block; }
+    
+    .implant-grid { display: flex; flex-direction: column; gap: 12px; padding-right: 5px; }
+    .implant-slot { background: #111316; border: 1px solid #333; padding: 15px; border-radius: 6px; }
+    .slot-title { color: #888; font-size: 11px; margin-bottom: 8px; border-bottom: 1px solid #222; padding-bottom: 3px; text-transform: uppercase; }
+    .implant-item { background: #1c1e22; padding: 12px; border-left: 3px solid var(--cp-yellow); margin-top: 5px; border-radius: 2px; }
+    
+    .stat-row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px dashed #222; padding-bottom: 8px; }
+    #mini-map { width: 100%; height: 200px; background: #0d0f12; border: 1px solid var(--cp-cyan); position: relative; margin-top: 15px; overflow: hidden; flex-shrink: 0; border-radius: 6px; }
+    
+    /* SHOP OVERLAY */
+    #shop-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 11, 13, 0.98); z-index: 100; color: #fff; display: none; flex-direction: column; padding: 20px; pointer-events: auto; }
+    .shop-header { display: flex; justify-content: space-between; border-bottom: 2px solid #0f0; padding-bottom: 12px; margin-bottom: 15px; flex-shrink: 0; }
+    .shop-header h1 { margin: 0; color: #0f0; font-size: 22px; }
+    .shop-money { color: var(--cp-yellow); font-size: 19px; font-weight: bold; }
+    
+    .shop-content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; padding: 5px 15px 50px 5px; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; pointer-events: auto; }
+    .shop-item { background: #141619; border: 1px solid #333; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-radius: 6px; }
+    .shop-item-info { flex: 1; padding-right: 15px; }
+    .shop-item-info h3 { margin: 0 0 5px 0; font-size: 14px; color: var(--cp-cyan); }
+    .shop-item-info p { margin: 0; font-size: 11px; color: #aaa; line-height: 1.4; }
+    .shop-btn { background: #0f0; color: #000; border: none; padding: 12px 16px; font-weight: bold; cursor: pointer; white-space: nowrap; font-size: 12px; border-radius: 4px; transition: all 0.15s; }
+    .shop-btn:disabled { background: #2b302c; color: #555; cursor: not-allowed; }
+    #close-shop-btn { background: var(--cp-red); color: #fff; border: none; padding: 12px; font-weight: bold; margin-top: 15px; cursor: pointer; border-radius: 4px; font-size: 14px; flex-shrink: 0; }
+    
+    .drug-item { background: rgba(40, 20, 20, 0.4) !important; border-color: rgba(100, 40, 40, 0.6) !important; }
+
+    #transition-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--cp-yellow); font-size: 20px; transition: opacity 0.4s ease-out; pointer-events: none; opacity: 0; text-align: center; }
+    #death-ui { display: none; flex-direction: column; align-items: center; pointer-events: auto; }
+    #death-ui h1 { color: var(--cp-red); font-size: 45px; margin: 0 0 10px 0; text-shadow: 0 0 20px var(--cp-red); font-weight: 900; letter-spacing: 2px; }
+    #respawn-btn { background: var(--cp-yellow); color: #000; border: none; padding: 15px 30px; font-size: 16px; font-weight: 900; cursor: pointer; border-radius: 4px; box-shadow: 0 0 25px rgba(252, 238, 10, 0.5); text-transform: uppercase; transition: transform 0.1s; }
+    #respawn-btn:active { transform: scale(0.95); }
+    .item-btn { background: var(--cp-yellow); color: #000; border: none; padding: 8px 14px; cursor: pointer; font-size: 12px; font-weight: bold; border-radius: 3px; }
+    .item-btn:disabled { background: #444; color: #888; cursor: not-allowed; }
+
+    .menu-content::-webkit-scrollbar, .shop-content::-webkit-scrollbar { width: 6px; }
+    .menu-content::-webkit-scrollbar-track, .shop-content::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.03); border-radius: 3px; }
+    .menu-content::-webkit-scrollbar-thumb { background: var(--cp-cyan); border-radius: 3px; box-shadow: 0 0 5px var(--cp-cyan); }
+    .shop-content::-webkit-scrollbar-thumb { background: var(--cp-green); border-radius: 3px; box-shadow: 0 0 5px var(--cp-green); }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    <div id="glitch-overlay"></div>
+    
+    <div id="stun-warning">SYSTEM REBOOTING...<br><span style="font-size:14px;color:#ddd;">ICE防壁 致命的損傷・ハックダウン中</span></div>
+    
+    <div id="interact-prompt">[INT]で干渉</div>
+    
+    <div id="ui-layer">
+        <div class="top-bar">
+            <div class="status-panel">
+                <div class="health-bar-bg"><div id="hp-fill" class="health-bar-fill"></div></div>
+                <div id="ui-hp">HP: 200 / 200</div>
+                <div class="humanity-bar-bg"><div id="humanity-fill" class="humanity-bar-fill"></div></div>
+                <div id="ui-humanity" style="font-size:10px; margin-bottom: 5px;">HUMANITY: 100 / 100</div>
+                <div class="ice-bar-bg"><div id="ice-fill" class="ice-bar-fill"></div></div>
+                <div id="ui-ice" style="font-size:10px; margin-bottom: 5px; color:var(--cp-purple);">ICE (防壁): 100 / 100</div>
+                <div id="ui-ammo-container">
+                    <div id="ui-ammo">AMMO: 15 / 15</div>
+                    <div id="ui-reloading-indicator">[RELOADING...]</div>
+                </div>
+                <div id="ui-wanted" class="wanted-stars"></div>
+                <div id="ui-money" style="color:var(--cp-yellow); margin-top:5px; font-weight: bold;">$5000</div>
+            </div>
+            <button id="menu-btn">メニュー</button>
+        </div>
+        
+        <div id="quest-tracker">
+            <h4>進行中のクエスト</h4>
+            <div id="quest-list"></div>
+        </div>
+    </div>
+    
+    <button id="btn-use-item">
+        <div id="quick-item-name">回復</div>
+        <div id="quick-item-qty">3</div>
+    </button>
+
+    <div id="controls-layer">
+        <div id="joystick-area"><div id="joystick-base"><div id="joystick-stick"></div></div></div>
+        <div id="action-buttons">
+            <button id="btn-scope" class="act-btn">ｴｲﾑ:ｵｰﾄ</button>
+            <button id="btn-reload" class="act-btn">ﾘﾛｰﾄﾞ</button>
+            <button id="btn-dash" class="act-btn">ﾀﾞｯｼｭ</button> 
+            <button id="btn-sandevistan" class="act-btn">ｻﾝﾃﾞﾋﾞ</button>
+            <button id="btn-hack" class="act-btn">ﾊｯｸ</button>
+            <button id="btn-interact" class="act-btn">干渉</button>
+            <button id="btn-melee" class="act-btn">近接</button>
+            <button id="btn-shoot" class="act-btn">射撃</button>
+        </div>
+    </div>
+
+    <!-- Dialog & Menus -->
+    <div id="dialog-overlay">
+        <div class="dialog-speaker">フィクサー</div>
+        <div class="dialog-text" id="dialog-msg">仕事を探してるのか？</div>
+        <div class="dialog-options" id="dialog-btns"></div>
+    </div>
+    
+    <div id="shop-overlay">
+        <div class="shop-header">
+            <h1 id="shop-title">リパードク</h1>
+            <div class="shop-money" id="shop-money-disp">$0</div>
+        </div>
+        <p style="font-size: 11px; margin-top:0; color:#ccc;">※サイバーウェアの過度な移植は人間性を削る。0以下になると脳が過負荷を起こすぞ。</p>
+        <div class="shop-content" id="shop-items-container"></div>
+        <button id="close-shop-btn" onclick="closeShop()">店を出る</button>
+    </div>
+
+    <div id="menu-overlay">
+        <div class="menu-header">
+            <h1>OS MENU v5.4.1</h1>
+            <button id="close-menu-btn">×</button>
+        </div>
+        <div class="menu-nav">
+            <button class="nav-btn active" data-target="menu-status">ステータス</button>
+            <button class="nav-btn" data-target="menu-implants">サイバーウェア</button>
+            <button class="nav-btn" data-target="menu-inventory">インベントリ</button>
+            <button class="nav-btn" data-target="menu-map">マップ&時刻</button>
+        </div>
+        <div id="menu-status" class="menu-content active">
+            <h2 style="font-size:16px;">バイタルサイン</h2>
+            <div class="stat-row"><span>人間性(残量):</span> <span id="m-humanity" style="color:var(--cp-cyan);">100 / 100</span></div>
+            <div class="stat-row"><span>サイバーサイコシス危険度:</span> <span id="m-psycho-risk">低</span></div>
+            <div class="stat-row"><span>アーマー値:</span> <span id="m-armor">10</span></div>
+            <div class="stat-row"><span>バフ/デバフ状態:</span> <span id="m-drug-state">なし</span></div>
+        </div>
+        <div id="menu-implants" class="menu-content">
+            <h2 style="font-size:16px; margin-bottom: 10px;">装備中のサイバーウェア</h2>
+            <p style="font-size:11px; color:#aaa; margin-bottom: 15px;">※換装は各リパードク（通常・闇）で行ってください。</p>
+            <div class="implant-grid" id="implant-list-container"></div>
+        </div>
+        <div id="menu-inventory" class="menu-content">
+            <h2 style="font-size:16px;">装備中の武器</h2>
+            <div class="stat-row"><span>遠距離:</span> <span id="m-equipped-ranged" style="color:var(--cp-yellow);">未装備</span></div>
+            <div class="stat-row"><span>近接:</span> <span id="m-equipped-melee" style="color:var(--cp-yellow);">未装備</span></div>
+            
+            <div class="stat-row"><span>射撃単発威力:</span> <span id="m-dmg">--</span></div>
+            <div class="stat-row"><span>実戦平均DPS:</span> <span id="m-dps-characteristic" style="color:var(--cp-green)">--</span></div>
+            <div class="stat-row"><span>リロード時間:</span> <span id="m-reload-dur">--</span></div>
+            <div class="stat-row"><span>近接威力:</span> <span id="m-melee-dmg">--</span></div>
+
+            <h3 style="font-size:14px; margin-top:15px; border-bottom:1px solid #333; color:var(--cp-yellow);">武器リスト (タップして装備・切り替え)</h3>
+            <div id="weapon-list" style="display:flex; flex-direction:column; gap:5px;"></div>
+
+            <h3 style="font-size:14px; margin-top:15px; border-bottom:1px solid #333; color:var(--cp-green);">消費アイテム (クイック使用セット)</h3>
+            <div id="item-list" style="display:flex; flex-direction:column; gap:5px;"></div>
+            <h3 style="font-size:14px; margin-top:15px; border-bottom:1px solid #333;">貴重品</h3>
+            <div id="key-item-list" style="font-size:12px; color:#aaa;">なし</div>
+        </div>
+        <div id="menu-map" class="menu-content">
+            <h2 style="font-size:16px;">マップ＆時刻</h2>
+            <div class="stat-row"><span>現在時刻:</span> <span id="m-time">10:00</span></div>
+            <div class="stat-row"><span>現在地:</span> <span id="m-location">アパート</span></div>
+            <div id="mini-map">
+                <div style="position:absolute; top:20%; left:20%; width:20%; height:20%; border:1px solid #555; background:#222; text-align:center; font-size:9px; color:#aaa; display:flex; align-items:center; justify-content:center;">アパート</div>
+                <div style="position:absolute; top:50%; left:0; width:100%; height:20px; background:#444;"></div>
+                <div style="position:absolute; top:0; left:60%; width:20px; height:100%; background:#444;"></div>
+                <div style="position:absolute; top:20%; left:70%; width:20%; height:30%; border:1px solid var(--cp-red); background:#300; text-align:center; font-size:9px; color:var(--cp-red); display:flex; align-items:center; justify-content:center;">アラサカ</div>
+                <div style="position:absolute; top:65%; left:50%; width:15%; height:20%; border:1px solid var(--cp-cyan); background:#022; text-align:center; font-size:9px; color:var(--cp-cyan); display:flex; align-items:center; justify-content:center; line-height:1.1;">市場<br>(リパー)</div>
+                <div style="position:absolute; top:70%; left:10%; width:15%; height:20%; border:1px solid #f00; background:#200; text-align:center; font-size:9px; color:#f00; display:flex; align-items:center; justify-content:center;">闇市</div>
+                <div id="map-player-dot" style="position:absolute; width:8px; height:8px; background:var(--cp-yellow); border-radius:50%; top:25%; left:25%; box-shadow: 0 0 6px var(--cp-yellow); transition: top 0.1s, left 0.1s;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="transition-screen">
+        <span id="trans-text">ロード中...</span>
+        <div id="death-ui">
+            <h1>FLATLINED</h1>
+            <p style="color: var(--cp-cyan); font-size: 14px; margin-bottom: 25px;">システムに深刻な物理ダメージを検出</p>
+            <button id="respawn-btn" onclick="respawn()">システムを再起動する</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let cw = canvas.width = window.innerWidth;
+let ch = canvas.height = window.innerHeight;
+
+window.addEventListener('resize', () => { cw = canvas.width = window.innerWidth; ch = canvas.height = window.innerHeight; });
+
+const Weapons = {
+    Ranged: {
+        'リバティ・ピストル': { type: 'ranged', name: 'リバティ・ピストル', dmg: 20, magSize: 15, reloadTime: 1.5, fireRate: 0.2, price: 0, rpm: 300, dps: 75, dpsTier: '75 (標準バランス)', desc: '標準仕様の高品質セミオート拳銃。サイクル性能が安定。' },
+        'レキシントン': { type: 'ranged', name: 'レキシントン', dmg: 11, magSize: 22, reloadTime: 0.9, fireRate: 0.08, price: 900, rpm: 750, dps: 91, dpsTier: '91 (フルオート高回転)', desc: 'フルオート・ハンドガン。単発は軽いがRPM750による弾幕は強力。' },
+        'ヌエ': { type: 'ranged', name: 'ヌエ', dmg: 36, magSize: 10, reloadTime: 1.3, fireRate: 0.35, price: 1300, rpm: 171, dps: 75, dpsTier: '75 (単発高火力重ピストル)', desc: '高威力の大型ハンドガン。一発一発が敵の野望を粉砕する。' },
+        'アサルトライフル': { type: 'ranged', name: 'アサルトライフル', dmg: 14, magSize: 30, reloadTime: 1.8, fireRate: 0.12, price: 2000, rpm: 500, dps: 77, dpsTier: '77 (継続自動掃討)', desc: 'ナイトシティ定番の突撃銃。安定した分間500発の弾幕。' },
+        'ショットガン': { type: 'ranged', name: 'ショットガン', dmg: 15, magSize: 8, reloadTime: 2.2, fireRate: 0.7, isShotgun: true, pellets: 5, price: 1800, rpm: 85, dps: 82, dpsTier: '82 (5発同時近接制圧)', desc: '5発の破片散弾を同時噴射。近接制圧戦のベストセラー。' },
+        'カーネイジ・ガッツ': { type: 'ranged', name: 'カーネイジ・ガッツ', dmg: 22, magSize: 6, reloadTime: 3.0, fireRate: 0.9, isShotgun: true, pellets: 8, price: 3000, rpm: 66, dps: 124, dpsTier: '124 (8発極悪同時散弾)', desc: '超重火力散弾銃。リロードは重いが密着実戦DPSは圧巻。' },
+        'ネコマタ': { type: 'ranged', name: 'ネコマタ', dmg: 130, magSize: 4, reloadTime: 2.5, fireRate: 1.2, isTech: true, price: 4200, rpm: 50, dps: 86, dpsTier: '86 (超精密一撃必殺テック)', desc: 'テック・スナイパーライフル。極大ダメージで遮蔽物を無効化する。' }
+    },
+    Melee: {
+        '素手': { type: 'melee', name: '素手', dmg: 40, range: 55, color: '#fff', delay: 0.4, price: 0, desc: '標準的な格闘スタイル。サイバーウェアで威力倍増可能。' },
+        '鉄パイプ': { type: 'melee', name: '鉄パイプ', dmg: 60, range: 65, color: '#aaa', delay: 0.4, price: 600, desc: '金属製の鈍器。頑丈でリーチがある。' },
+        'ナノブレード・ナイフ': { type: 'melee', name: 'ナノブレード・ナイフ', dmg: 45, range: 50, color: '#ffb700', delay: 0.2, price: 1500, desc: 'ナノ合金ブレード。極めてディレイが小さく、超高速の連続攻撃が可能。' },
+        'モノワイヤー': { type: 'melee', name: 'モノワイヤー', dmg: 50, range: 120, color: '#00f0ff', delay: 0.4, price: 2400, desc: '分子レベルのワイヤー鞭。非常に広い攻撃範囲を薙ぎ払う。' },
+        'サーマル・カタナ': { type: 'melee', name: 'サーマル・カタナ', dmg: 70, range: 75, color: '#ff003c', delay: 0.4, hasStun: true, stunTime: 0.7, price: 3800, desc: '熱プラズマを帯びた日本刀。斬りつけた相手の神経系統を一時的に「0.7秒」マヒ(スタン)させる。' }
+    }
+};
+
+const GAME_STATE = { ROOM: 0, CITY: 1, TOWER: 2, MARKET: 3, BLACK_MARKET: 4, DEAD: 5 };
+let currentState = GAME_STATE.ROOM;
+let lastTime = performance.now();
+let deltaTime = 0, globalTimeScale = 1.0;
+let gameTimeH = 8, gameTimeM = 0;
+const Input = { joystick: { x: 0, y: 0, active: false }, shoot: false, interact: false, sandy: false, scope: false };
+
+let isGamePaused = false;
+let activeMeleeAttacker = null; 
+let hackBeams = [], meleeEffects = [], bombs = []; 
+let lastCityPos = { x: 350, y: 200 };
+
+const Obstacles = [
+    { x: -300, y: 650, w: 250, h: 120, color: '#121316', label: '雑居ビルA' },
+    { x: -400, y: 870, w: 150, h: 220, color: '#0e1012', label: '地下倉庫' },
+    { x: -150, y: 920, w: 300, h: 100, color: '#0e1012', label: 'スラムバラック' },
+    { x: -150, y: 770, w: 40, h: 150, color: '#1e2126', label: '配管防壁' }
+];
+
+const RegularImplants = {
+    'キロシ・オプティクスMk.1': { slot: 'ocular', cost: 5, price: 500, desc: 'オートエイムUIを有効化。' },
+    '通常皮下アーマー': { slot: 'integumentary', cost: 10, price: 1000, desc: '被ダメージ10%カット。' },
+    '強化人工関節': { slot: 'legs', cost: 10, price: 800, desc: '移動速度が大きく上がる。' },
+    'シナプス・ジャマー Mk.1': { slot: 'frontalCortex', cost: 15, price: 2000, desc: 'クイックハック：範囲内の敵を強制麻痺状態にする。' },
+    'バイオプラスチック血管': { slot: 'circulatory', cost: 15, price: 1500, desc: '最大HPが +100 される。' }
+};
+const BlackMarketImplants = {
+    'サンデビスタン': { slot: 'nervous', cost: 30, price: 5000, desc: '時の流れを「0.2倍」に。使用時、人間性ペナルティ。' },
+    '軍用ゴリラアームズ': { slot: 'arms', cost: 25, price: 3000, desc: '近接攻撃の範囲が飛躍的に上昇。' },
+    'ミリテク・ベルセルク': { slot: 'frontalCortex', cost: 35, price: 4000, desc: '射撃ダメージが常時1.5倍になる。' },
+    '軍用皮下アーマー': { slot: 'integumentary', cost: 25, price: 3500, desc: '被ダメージ30%カット。' },
+    '強化テンドン': { slot: 'legs', cost: 20, price: 4000, desc: '移動速度上昇 ＋ 高速の「ダッシュ(無敵)」が可能になる。' },
+    'マイクロローター': { slot: 'skeleton', cost: 20, price: 4500, desc: '射撃・近接のディレイが半減（連射力・速度2倍）。' }
+};
+const Drugs = {
+    'ニューロブロッカー': { id: 'drug_normal', price: 200, buff: 20, buffTime: 60, debuff: 10, debuffTime: 30, desc: '60秒間、人間性+20。効果切れ後30秒間、人間性-10。' },
+    'ブラック・ブロッカー': { id: 'drug_black', price: 600, buff: 50, buffTime: 45, debuff: 30, debuffTime: 60, desc: '45秒間、人間性+50。効果切れ後60秒間、人間性-30。' }
+};
+
+const Player = {
+    x: 400, y: 300, w: 22, h: 22, speed: 155, hp: 200, maxHp: 200, money: 5000, wantedLevel: 0,
+    equipped: { ranged: null, melee: null },
+    healItems: 3, hasQuestPackage: false, 
+    quickItem: 'マックスドック', 
+    inventory: { 
+        drugs: {}, 
+        rangedWeapons: ['リバティ・ピストル'], 
+        meleeWeapons: ['素手'] 
+    },
+    maxHumanity: 100, hackDefMeter: 100, maxHackDefMeter: 100, stunTimer: 0,
+    implants: { frontalCortex: null, ocular: null, circulatory: null, nervous: null, skeleton: null, integumentary: null, arms: null, legs: null },
+    
+    sandyActive: false, sandyTimer: 0, sandyMaxDuration: 6, sandyCooldown: 0, trail: [], sandyPenalty: 0, activeDrug: null,
+    hackCooldown: 0, hackWaveRadius: 0, hackWaveActive: false, meleeTimer: 0,
+    kbX: 0, kbY: 0,
+    
+    dashTimer: 0, dashCooldown: 0, invincible: false,
+    
+    humanity() { 
+        let cost = 0; for(let k in this.implants) { if(this.implants[k]) cost += this.implants[k].cost; } 
+        let val = this.maxHumanity - cost - Math.floor(this.sandyPenalty);
+        if(this.activeDrug) { if(this.activeDrug.state === 'buff') val += this.activeDrug.buff; else if(this.activeDrug.state === 'debuff') val -= this.activeDrug.debuff; }
+        return val;
+    }
+};
+
+let quests = [{ id: 1, title: '目覚め', desc: 'アパートを出る。', active: true, complete: false }];
+let currentDynQuest = null; 
+let npcs = [], bullets = [], particles = [], shellCasings = [], floatingTexts = [], vehicles = [], corpses = [], interactables = [];
+const Camera = { x: 0, y: 0 };
+const Traffic = { lights: { state: 'GREEN', timer: 0 }, lanes: [ { y: 520, dir: 1 }, { y: 480, dir: -1 } ] };
+let towerFloor = 1, traumaActive = false, traumaTarget = null, traumaProgress = 0, crimeTimer = 0;
+
+function updatePlayerStats() {
+    Player.maxHp = 200 + (Player.implants.circulatory && Player.implants.circulatory.name === 'バイオプラスチック血管' ? 100 : 0);
+    if(Player.hp > Player.maxHp) Player.hp = Player.maxHp;
+    if (Player.equipped.ranged) {
+        let baseFireRate = Weapons.Ranged[Player.equipped.ranged.name].fireRate;
+        if (Player.implants.skeleton && Player.implants.skeleton.name.includes('スマッシャー')) {
+            Player.equipped.ranged.fireRate = baseFireRate * 0.25;
+        } else if (Player.implants.skeleton && Player.implants.skeleton.name === 'マイクロローター') {
+            Player.equipped.ranged.fireRate = baseFireRate * 0.5;
+        } else {
+            Player.equipped.ranged.fireRate = baseFireRate;
+        }
+    }
+}
+
+function initWorld() { 
+    Player.implants.ocular = RegularImplants['キロシ・オプティクスMk.1']; 
+    Player.equipped.ranged = { ...Weapons.Ranged['リバティ・ピストル'], ammo: 15, timer: 0, reloading: false, totalReloadTime: 1.5 };
+    Player.equipped.melee = { ...Weapons.Melee['素手'] };
+    updatePlayerStats(); 
+    loadRoom(); 
+}
+
+function loadRoom() {
+    currentState = GAME_STATE.ROOM; Player.x = 400; Player.y = 300;
+    npcs = []; vehicles = []; corpses = []; interactables = []; hackBeams = []; meleeEffects = []; shellCasings = []; bombs = [];
+    interactables.push({ x: 380, y: 450, w: 40, h: 20, text: 'アパートを出る', action: () => transitionTo(GAME_STATE.CITY) });
+    interactables.push({ x: 260, y: 295, w: 60, h: 100, text: 'ベッドで寝る', action: () => sleepInBed() });
+}
+
+function loadCity() {
+    currentState = GAME_STATE.CITY; npcs = []; vehicles = []; corpses = []; interactables = []; hackBeams = []; meleeEffects = []; shellCasings = []; bombs = [];
+    for(let i=0; i<15; i++) spawnNPC();
+    spawnCar(Traffic.lanes[0]); spawnCar(Traffic.lanes[1]);
+    
+    interactables.push({ x: 350, y: 150, w: 100, h: 50, text: 'アパートに入る', action: () => transitionTo(GAME_STATE.ROOM) });
+    interactables.push({ x: 1200, y: 350, w: 150, h: 50, text: 'アラサカタワーに入る', action: () => { towerFloor = 1; transitionTo(GAME_STATE.TOWER); } });
+    interactables.push({ x: 800, y: 700, w: 100, h: 50, text: '市場に入る', action: () => transitionTo(GAME_STATE.MARKET) });
+    interactables.push({ x: -100, y: 800, w: 80, h: 50, text: '闇市に入る', action: () => transitionTo(GAME_STATE.BLACK_MARKET) });
+    npcs.push({ x: 250, y: 250, w: 20, h: 20, color: '#00ff41', type: 'fixer', hp: 999, maxHp: 999, vx: 0, vy: 0, state: 'idle', targetX: 250, targetY: 250, hostile: false, speed: 0, isFixer: true });
+    interactables.push({ x: 250, y: 250, w: 40, h: 40, text: 'フィクサーと話す', action: () => openFixerDialog() });
+    
+    if(currentDynQuest && currentDynQuest.type === 'fetch' && currentDynQuest.status === 'active' && !Player.hasQuestPackage) spawnQuestPackage();
+    if(!quests.find(q=>q.id===2)) quests.push({ id: 2, title: '街の灯り', desc: 'ナイトシティを探索。フィクサーを見つける。', active: true, complete: false });
+    completeQuest(1);
+}
+
+// 階層を16階に厳密制限しつつ、エレベーター移動処理を完全に構築
+function loadTower() { 
+    currentState = GAME_STATE.TOWER; Player.x = 500; Player.y = 700; 
+    npcs = []; vehicles = []; corpses = []; interactables = []; hackBeams = []; shellCasings = []; bombs = [];
+    
+    if (towerFloor === 15) {
+        // アダム・スマッシャー戦（撃破するまでエレベーターロック）
+        spawnAdamSmasher();
+    } else if (towerFloor === 16) {
+        // 16階：社長室（V5.3のエレベーター移動復元）
+        spawnCEO();
+        interactables.push({ x: 450, y: 800, w: 100, h: 50, text: 'エレベーター(1階へ戻る)', action: () => { towerFloor = 1; transitionTo(GAME_STATE.TOWER); } });
+    } else {
+        // 1〜14階：エレベーターの上下移動コマンドを分離
+        spawnTowerEnemies(); 
+        interactables.push({ x: 450, y: 100, w: 100, h: 50, text: `エレベーター(${towerFloor+1}階へ)`, action: () => elevateTower() });
+        if (towerFloor > 1) {
+            interactables.push({ x: 450, y: 800, w: 100, h: 50, text: `エレベーター(${towerFloor-1}階へ)`, action: () => deelevateTower() });
+        } else {
+            interactables.push({ x: 450, y: 800, w: 100, h: 50, text: 'タワーを出る', action: () => transitionTo(GAME_STATE.CITY) });
+        }
+    }
+}
+
+function loadMarket() { currentState = GAME_STATE.MARKET; Player.x = 400; Player.y = 500; npcs = []; vehicles = []; corpses = []; interactables = []; hackBeams = []; shellCasings = []; bombs = []; interactables.push({ x: 400, y: 550, w: 100, h: 50, text: '外に出る', action: () => transitionTo(GAME_STATE.CITY) }); npcs.push({ x: 400, y: 200, w: 20, h: 20, color: '#0ff', type: 'ripper', hp: 999, maxHp: 999, state: 'idle', targetX: 400, targetY: 200, hostile: false, speed: 0, isRipper: true, shopType: 'regular' }); interactables.push({ x: 400, y: 200, w: 60, h: 60, text: 'リパードクと話す', action: () => openShop('regular') }); }
+function loadBlackMarket() { currentState = GAME_STATE.BLACK_MARKET; Player.x = 400; Player.y = 500; npcs = []; vehicles = []; corpses = []; interactables = []; hackBeams = []; shellCasings = []; bombs = []; interactables.push({ x: 400, y: 550, w: 100, h: 50, text: '外に出る', action: () => transitionTo(GAME_STATE.CITY) }); npcs.push({ x: 400, y: 200, w: 20, h: 20, color: '#f00', type: 'ripper', hp: 999, maxHp: 999, state: 'idle', targetX: 400, targetY: 200, hostile: false, speed: 0, isRipper: true, shopType: 'black' }); interactables.push({ x: 400, y: 200, w: 60, h: 60, text: '闇ドクと話す', action: () => openShop('black') }); }
+
+function elevateTower() { 
+    if (towerFloor < 16) {
+        towerFloor++; 
+        Player.y = 700; 
+        npcs = []; corpses = []; 
+        showFloatingText(Player.x, Player.y - 30, `階層 ${towerFloor}`, '#0f0'); 
+        loadTower(); 
+    }
+}
+
+function deelevateTower() {
+    if (towerFloor > 1) {
+        towerFloor--; 
+        Player.y = 700; 
+        npcs = []; corpses = []; 
+        showFloatingText(Player.x, Player.y - 30, `階層 ${towerFloor}`, '#0f0');
+        loadTower(); 
+    }
+}
+
+function sleepInBed() { const ts = document.getElementById('transition-screen'); document.getElementById('trans-text').innerText = "数時間後..."; ts.style.opacity = 1; setTimeout(() => { updatePlayerStats(); Player.hp = Player.maxHp; Player.sandyPenalty = 0; Player.activeDrug = null; Player.hackDefMeter = 100; gameTimeH = (gameTimeH + 8) % 24; showFloatingText(Player.x, Player.y - 40, "体力・人間性・ICE 回復", varColor('cp-green')); ts.style.opacity = 0; updateStaticUI(); }, 1500); }
+
+function respawn() {
+    const ts = document.getElementById('transition-screen'); const dUI = document.getElementById('death-ui');
+    dUI.style.display = 'none'; document.getElementById('trans-text').style.display = 'block'; document.getElementById('trans-text').innerText = "フラグメント再構築中...";
+    Input.joystick.active = false; Input.joystick.x = 0; Input.joystick.y = 0; Input.shoot = false; Input.scope = false;
+    const jStick = document.getElementById('joystick-stick'); if(jStick) jStick.style.transform = `translate(0px, 0px)`;
+    updatePlayerStats(); Player.hp = Player.maxHp; Player.wantedLevel = 0; Player.money = Math.floor(Player.money * 0.9); 
+    if(Player.equipped.ranged) Player.equipped.ranged.ammo = Player.equipped.ranged.magSize;
+    Player.sandyPenalty = 0; Player.activeDrug = null; Player.hackDefMeter = 100; Player.stunTimer = 0;
+    Player.dashTimer = 0; Player.dashCooldown = 0; Player.invincible = false;
+    traumaActive = false; isGamePaused = false; activeMeleeAttacker = null; document.getElementById('stun-warning').style.display = 'none';
+    setTimeout(() => { loadRoom(); currentState = GAME_STATE.ROOM; ts.style.opacity = 0; ts.style.pointerEvents = 'none'; updateStaticUI(); updateWantedUI(); updateQuestUI(); }, 1000);
+}
+
+const QuestListOptions = [
+    { type: 'fetch', title: '路地裏の重要ブツ回収', desc: '闇市場周辺から機密パッケージを回収しろ。', reward: 800 },
+    { type: 'kill', target: 'gang', title: 'ギャング排除命令', desc: '悪事を働くギャングを3人排除しろ。', reward: 1200, required: 3, current: 0 },
+    { type: 'kill', target: 'civ', title: '目撃者無力化作戦', desc: 'アラサカ重役に不利な情報を握った市民を2人無力化しろ。', reward: 1500, required: 2, current: 0 }
+];
+
+function openFixerDialog() {
+    const dOverlay = document.getElementById('dialog-overlay'), dMsg = document.getElementById('dialog-msg'), dBtns = document.getElementById('dialog-btns');
+    dOverlay.style.display = 'flex'; dBtns.innerHTML = ''; completeQuest(2);
+    if(!currentDynQuest) {
+        dMsg.innerText = `よう、V。現在斡旋可能な依頼が複数ある。どれを受ける？`;
+        QuestListOptions.forEach((opt, idx) => { let btn = document.createElement('button'); btn.className = 'dialog-btn'; btn.innerText = `【${opt.title}】報酬: $${opt.reward} - ${opt.desc}`; btn.onclick = () => { currentDynQuest = JSON.parse(JSON.stringify(opt)); currentDynQuest.status = 'active'; quests.push({ id: 'dyn', title: currentDynQuest.title, desc: currentDynQuest.desc, active: true, complete: false, isDyn: true }); if(currentDynQuest.type === 'fetch') spawnQuestPackage(); updateQuestUI(); closeDialog(); }; dBtns.appendChild(btn); });
+        let cancelBtn = document.createElement('button'); cancelBtn.className = 'dialog-btn'; cancelBtn.innerText = `今はやめておく`; cancelBtn.style.color = 'var(--cp-red)'; cancelBtn.onclick = closeDialog; dBtns.appendChild(cancelBtn);
+    } else if(currentDynQuest.status === 'active') { dMsg.innerText = `現在実行中の依頼「${currentDynQuest.title}」があるな。仕事はしっかり遂行しろ。`; let okBtn = document.createElement('button'); okBtn.className = 'dialog-btn'; okBtn.innerText = '了解した'; okBtn.onclick = closeDialog; dBtns.appendChild(okBtn);
+    } else if(currentDynQuest.status === 'ready') { dMsg.innerText = "ほう、やりきったか。流石は一流の傭兵だ。約束のエディーを受け取れ。"; let colBtn = document.createElement('button'); colBtn.className = 'dialog-btn'; colBtn.innerText = '報酬エディーを受け取る';
+        colBtn.onclick = () => { Player.money += currentDynQuest.reward; showFloatingText(Player.x, Player.y-40, `+$${currentDynQuest.reward}`, varColor('cp-yellow')); let qIdx = quests.findIndex(q => q.id === 'dyn'); if(qIdx > -1) { quests[qIdx].complete = true; setTimeout(()=>{ quests = quests.filter(q=>q.id!=='dyn'); updateQuestUI();}, 3000); } Player.hasQuestPackage = false; currentDynQuest = null; updateQuestUI(); closeDialog(); }; dBtns.appendChild(colBtn);
+    }
+}
+function closeDialog() { document.getElementById('dialog-overlay').style.display = 'none'; }
+function updateDynamicQuest(type, targetType) {
+    if(!currentDynQuest || currentDynQuest.status !== 'active') return;
+    if(currentDynQuest.type === 'kill' && type === 'kill' && currentDynQuest.target === targetType) { currentDynQuest.current++; showFloatingText(Player.x, Player.y-50, `${currentDynQuest.current}/${currentDynQuest.required} 無力化`, varColor('cp-cyan')); let q = quests.find(q=>q.id==='dyn'); if(q) q.desc = `${currentDynQuest.target === 'gang' ? 'ギャング' : '市民'}を無力化する (${currentDynQuest.current}/${currentDynQuest.required})`;
+        if(currentDynQuest.current >= currentDynQuest.required) { currentDynQuest.status = 'ready'; if(q) q.desc = "フィクサーに報告する。"; showFloatingText(Player.x, Player.y-70, "目標達成", varColor('cp-green')); } updateQuestUI();
+    }
+}
+function spawnQuestPackage() { let px = -220, py = 850; interactables.push({ x: px, y: py, w: 30, h: 30, text: '機密データを回収する', isPackage: true, action: function() { Player.hasQuestPackage = true; showFloatingText(Player.x, Player.y-40, "パッケージ確保", varColor('cp-green')); currentDynQuest.status = 'ready'; let q = quests.find(q=>q.id==='dyn'); if(q) q.desc = "フィクサーに報告する。"; updateQuestUI(); interactables = interactables.filter(i => i !== this); } }); }
+
+// ショップシステム
+function openShop(type) {
+    const shop = document.getElementById('shop-overlay'), container = document.getElementById('shop-items-container'); 
+    document.getElementById('shop-title').innerText = type === 'black' ? '闇リパードク' : 'リパードク'; 
+    document.getElementById('shop-money-disp').innerText = `$${Player.money}`; 
+    container.innerHTML = '';
+    
+    // 1. サイバーウェア陳列
+    let catalog = type === 'black' ? BlackMarketImplants : RegularImplants;
+    for(let key in catalog) { 
+        let item = catalog[key], isOwned = Player.implants[item.slot] && Player.implants[item.slot].name === key; 
+        let div = document.createElement('div'); 
+        div.className = 'shop-item'; 
+        div.innerHTML = `<div class="shop-item-info"><h3>${key} [${item.slot.toUpperCase()}]</h3><p>人間性コスト: ${item.cost} | ${item.desc}</p></div>`; 
+        let btn = document.createElement('button'); 
+        btn.className = 'shop-btn';
+        if(isOwned) { 
+            btn.innerText = "装備中"; btn.disabled = true; 
+        } else { 
+            btn.innerText = `$${item.price} 換装`; 
+            if(Player.money < item.price) btn.disabled = true; 
+            btn.onclick = () => { 
+                Player.money -= item.price; 
+                Player.implants[item.slot] = { name: key, ...item }; 
+                showFloatingText(Player.x, Player.y-40, "インストール完了", varColor('cp-green')); 
+                updatePlayerStats(); 
+                openShop(type); 
+                checkCyberpsychosis(); 
+            }; 
+        } 
+        div.appendChild(btn); 
+        container.appendChild(div);
+    }
+
+    // 2. 遠距離武器陳列
+    for(let key in Weapons.Ranged) {
+        if(key === 'リバティ・ピストル') continue; 
+        if(Player.inventory.rangedWeapons.includes(key)) continue; 
+        
+        let item = Weapons.Ranged[key];
+        let div = document.createElement('div');
+        div.className = 'shop-item';
+        div.style.borderLeft = '3px solid var(--cp-cyan)';
+        div.innerHTML = `<div class="shop-item-info"><h3>${key} <span style="font-size:10px; color:var(--cp-cyan); border:1px solid var(--cp-cyan); padding:1px 4px; border-radius:2px;">遠距離武器</span></h3>
+                        <p>価格: $${item.price} | 単発: ${item.dmg}<br>連射RPM: <span style="color:var(--cp-yellow);">${item.rpm}発/分</span> | 平均DPS: <span style="color:var(--cp-green); font-weight:bold;">${item.dps}</span><br>装弾数: ${item.magSize}発 | リロード: ${item.reloadTime}秒<br>${item.desc}</p></div>`;
+        let btn = document.createElement('button');
+        btn.className = 'shop-btn';
+        btn.innerText = `$${item.price} 購入`;
+        if(Player.money < item.price) btn.disabled = true;
+        btn.onclick = () => {
+            Player.money -= item.price;
+            Player.inventory.rangedWeapons.push(key);
+            showFloatingText(Player.x, Player.y - 40, `${key} を購入！`, varColor('cp-green'));
+            openShop(type);
+        };
+        div.appendChild(btn);
+        container.appendChild(div);
+    }
+
+    // 3. 近接武器陳列
+    for(let key in Weapons.Melee) {
+        if(key === '素手') continue; 
+        if(Player.inventory.meleeWeapons.includes(key)) continue; 
+
+        let item = Weapons.Melee[key];
+        let div = document.createElement('div');
+        div.className = 'shop-item';
+        div.style.borderLeft = '3px solid var(--cp-orange)';
+        div.innerHTML = `<div class="shop-item-info"><h3>${key} <span style="font-size:10px; color:var(--cp-orange); border:1px solid var(--cp-orange); padding:1px 4px; border-radius:2px;">近接武器</span></h3>
+                        <p>価格: $${item.price} | 威力: ${item.dmg} | リーチ: ${item.range}${item.hasStun ? ' | ⚡特殊：スタン付与' : ''}<br>${item.desc}</p></div>`;
+        let btn = document.createElement('button');
+        btn.className = 'shop-btn';
+        btn.innerText = `$${item.price} 購入`;
+        if(Player.money < item.price) btn.disabled = true;
+        btn.onclick = () => {
+            Player.money -= item.price;
+            Player.inventory.meleeWeapons.push(key);
+            showFloatingText(Player.x, Player.y - 40, `${key} を購入！`, varColor('cp-green'));
+            openShop(type);
+        };
+        div.appendChild(btn);
+        container.appendChild(div);
+    }
+    
+    // 4. 回復・消費ドラッグ
+    let consDiv = document.createElement('div'); 
+    consDiv.className = 'shop-item drug-item'; 
+    consDiv.style.borderLeft = '3px solid var(--cp-yellow)';
+    consDiv.innerHTML = `<div class="shop-item-info"><h3>マックスドック</h3><p>HPを100回復する医療キット。</p></div>`;
+    let consBtn = document.createElement('button'); 
+    consBtn.className = 'shop-btn'; 
+    consBtn.innerText = `$50 購入`; 
+    if(Player.money < 50) consBtn.disabled = true;
+    consBtn.onclick = () => { 
+        Player.money -= 50; 
+        Player.healItems++; 
+        showFloatingText(Player.x, Player.y - 40, `マックスドック 購入`, varColor('cp-yellow')); 
+        openShop(type); 
+    }; 
+    consDiv.appendChild(consBtn); 
+    container.appendChild(consDiv);
+
+    for(let key in Drugs) { 
+        let d = Drugs[key]; 
+        if(type === 'regular' && d.id === 'drug_black') continue; 
+        let div = document.createElement('div'); 
+        div.className = 'shop-item drug-item'; 
+        div.innerHTML = `<div class="shop-item-info"><h3>${key}</h3><p>${d.desc}</p></div>`; 
+        let btn = document.createElement('button'); 
+        btn.className = 'shop-btn'; 
+        btn.innerText = `$${d.price} 購入`; 
+        if(Player.money < d.price) btn.disabled = true;
+        btn.onclick = () => { 
+            Player.money -= d.price; 
+            Player.inventory.drugs[key] = (Player.inventory.drugs[key] || 0) + 1; 
+            showFloatingText(Player.x, Player.y-40, `${key} 購入`, varColor('cp-yellow')); 
+            openShop(type); 
+        }; 
+        div.appendChild(btn); 
+        container.appendChild(div);
+    } 
+    shop.style.display = 'flex';
+}
+function closeShop() { document.getElementById('shop-overlay').style.display = 'none'; updateStaticUI(); }
+
+// Factionsの定義
+const Factions = { 
+    CIVILIAN: { color: '#ccc', hp: 30, hostile: false, type: 'civ', speed: 40, dmg: 5 }, 
+    CORP: { color: '#0055ff', hp: 50, hostile: false, type: 'corp', speed: 45, dmg: 5 }, 
+    EXEC: { color: '#aa00ff', hp: 80, hostile: false, type: 'exec', speed: 50, dmg: 5 }, 
+    GANG: { color: '#ff003c', hp: 80, hostile: false, type: 'gang', speed: 60, dmg: 10 }, 
+    THUG: { color: '#ff8800', hp: 100, hostile: false, type: 'thug', speed: 65, dmg: 15 }, 
+    PSYCHO: { color: '#555', hp: 350, hostile: true, type: 'psycho', speed: 90, dmg: 25 }, 
+    MAXTAC: { color: '#000', outline: '#00f0ff', hp: 400, hostile: true, type: 'maxtac', speed: 80, dmg: 30 }, 
+    TRAUMA: { color: '#fff', outline: '#0f0', hp: 200, hostile: true, type: 'trauma', speed: 70, dmg: 20 }, 
+    GUARD: { color: '#333', outline: '#f00', hp: 100, hostile: true, type: 'guard', speed: 50, dmg: 15 }
+};
+const MaxTacVariants = { MANTIS: { name: 'マックスタック(近接)', color: '#1a0000', outline: '#ff003c', hp: 300, type: 'maxtac', class: 'mantis', speed: 110, dmg: 25 }, RANGED: { name: 'マックスタック(遠距離)', color: '#001a33', outline: '#00f0ff', hp: 250, type: 'maxtac', class: 'ranged', speed: 75, dmg: 15 }, NETRUNNER: { name: 'マックスタック(ハッカー)', color: '#260033', outline: '#aa00ff', hp: 200, type: 'maxtac', class: 'netrunner', speed: 65, dmg: 5 } };
+const TraumaVariants = { MEDIC: { name: '救護班', color: '#eef', outline: '#ffffff', hp: 150, type: 'trauma', class: 'medic', speed: 80, dmg: 5 }, COMBAT: { name: '攻撃班', color: '#dfd', outline: '#00ff41', hp: 200, type: 'trauma', class: 'combat', speed: 65, dmg: 15 } };
+
+function spawnNPC(fT=null, x=null, y=null) {
+    let t = fT; if(!t) { let r = Math.random(); t = r<0.4?Factions.CIVILIAN:r<0.6?Factions.CORP:r<0.65?Factions.EXEC:r<0.8?Factions.GANG:r<0.95?Factions.THUG:Factions.PSYCHO; }
+    let nx = x !== null ? x : Math.random() * 2000 - 500, ny = y !== null ? y : Math.random() * 1000 - 100;
+    if(!fT) { while(Math.abs(nx - Player.x) < 400 && Math.abs(ny - Player.y) < 300) { nx = Math.random() * 2000 - 500; ny = Math.random() * 1000 - 100; } }
+    let npcObj = { x: nx, y: ny, w: t.w || 20, h: t.h || 20, ...t, maxHp: t.hp, vx: 0, vy: 0, state: 'wander', timer: 0, targetX: nx, targetY: ny, fireTimer: 0, jammedTimer: 0, meleeAttackState: 'none', kbX: 0, kbY: 0 };
+    if (t.type === 'psycho') { npcObj.sandyActive = false; npcObj.sandyTimer = 0; npcObj.sandyCooldown = 0; npcObj.weaponMode = 'gun'; npcObj.modeTimer = 4; npcObj.trail = []; }
+    npcs.push(npcObj);
+}
+
+function spawnTowerEnemies() { 
+    let count = 3 + Math.floor(towerFloor/2);
+    for(let i=0; i<count; i++) { 
+        let fT = {...Factions.GUARD};
+        fT.hp = 100 + (towerFloor * 30);
+        fT.dmg = 10 + (towerFloor * 2);
+        
+        if (towerFloor >= 10) {
+            let r = Math.random();
+            if (r < 0.3) { fT = {...MaxTacVariants.NETRUNNER, hp: 150 + towerFloor*10, type: 'guard'}; fT.class = 'netrunner'; }
+            else if (r < 0.6) { fT = {...MaxTacVariants.MANTIS, hp: 250 + towerFloor*15, type: 'guard'}; fT.class = 'mantis'; }
+            else { fT.weaponMode = 'shotgun'; fT.color = '#500'; }
+        } else if (towerFloor >= 5) {
+            fT.weaponMode = 'assault'; fT.color = '#333';
+        } else {
+            fT.weaponMode = 'pistol';
+        }
+        spawnNPC(fT, 200 + Math.random()*600, 200 + Math.random()*400); 
+    } 
+}
+
+function spawnAdamSmasher() {
+    npcs.push({ 
+        x: 500, y: 300, w: 50, h: 50, color: '#000', outline: '#f00', 
+        hp: 5000, maxHp: 5000, type: 'adam', hostile: true, speed: 70, 
+        vx: 0, vy: 0, targetX: 500, targetY: 300, fireTimer: 0, jammedTimer: 0, 
+        kbX: 0, kbY: 0, state: 'wander', timer: 0, adamPhase: 1, 
+        actionState: 'idle', actionTimer: 3, actionDur: 0, shotgunFired: false,
+        sandyActive: false, sandyTimer: 0, sandyCooldown: 0 
+    });
+    showFloatingText(500, 250, "WARNING: ADAM SMASHER", "var(--cp-red)");
+}
+
+function spawnCEO() { 
+    npcs.push({ x: 500, y: 300, w: 20, h: 20, color: '#fff', outline: '#ff0', hp: 50, maxHp: 50, type: 'ceo', hostile: false, speed: 10, vx: 0, vy: 0, targetX: 500, targetY: 300, fireTimer: 0, jammedTimer: 0, kbX: 0, kbY: 0, state: 'wander', timer: 0 }); 
+}
+
+function spawnCar(lane) { vehicles.push({ x: lane.dir === 1 ? -200 : 2200, y: lane.y, w: 80, h: 40, color: ['#1e90ff', '#ff3f3f', '#444', '#fcee0a'][Math.floor(Math.random()*4)], dir: lane.dir, speed: 150 + Math.random()*50, state: 'drive', timer: 0 }); }
+
+const joyArea = document.getElementById('joystick-area'), joyStick = document.getElementById('joystick-stick'), joyBase = document.getElementById('joystick-base');
+joyArea.addEventListener('touchstart', (e)=>{e.preventDefault(); if(isGamePaused) return; Input.joystick.active=true; updateJoyPos(e.touches[0].clientX, e.touches[0].clientY);}, {passive: false});
+joyArea.addEventListener('touchmove', (e)=>{e.preventDefault(); if(isGamePaused) return; if(Input.joystick.active) updateJoyPos(e.touches[0].clientX, e.touches[0].clientY);}, {passive: false});
+joyArea.addEventListener('touchend', ()=>{Input.joystick.active=false; Input.joystick.x=0; Input.joystick.y=0; joyStick.style.transform = `translate(0px, 0px)`;});
+joyArea.addEventListener('mousedown', (e)=>{if(isGamePaused) return; Input.joystick.active=true; updateJoyPos(e.clientX, e.clientY);}); window.addEventListener('mousemove', (e)=>{if(Input.joystick.active) updateJoyPos(e.clientX, e.clientY);}); window.addEventListener('mouseup', ()=>{if(Input.joystick.active){Input.joystick.active=false; Input.joystick.x=0; Input.joystick.y=0; joyStick.style.transform = `translate(0px, 0px)`;}});
+
+function updateJoyPos(cx, cy) {
+    let r = joyBase.getBoundingClientRect(), bx = r.left + r.width/2, by = r.top + r.height/2, dx = cx - bx, dy = cy - by, dist = Math.hypot(dx, dy), maxR = r.width/2;
+    if(dist > maxR) { dx = (dx/dist) * maxR; dy = (dy/dist) * maxR; }
+    joyStick.style.transform = `translate(${dx}px, ${dy}px)`; Input.joystick.x = dx / maxR; Input.joystick.y = dy / maxR;
+}
+
+['touchstart','mousedown'].forEach(ev => document.getElementById('btn-shoot').addEventListener(ev, (e)=>{if(e.cancelable)e.preventDefault(); if(isGamePaused) return; Input.shoot=true;}));
+['touchend','mouseup'].forEach(ev => document.getElementById('btn-shoot').addEventListener(ev, (e)=>{if(e.cancelable)e.preventDefault(); if(isGamePaused) return; Input.shoot=false;}));
+['touchstart','mousedown'].forEach(ev => document.getElementById('btn-melee').addEventListener(ev, (e)=>{if(e.cancelable)e.preventDefault(); if(isGamePaused) return; doMelee();}));
+
+document.getElementById('btn-sandevistan').addEventListener('click', activateSandevistan); document.getElementById('btn-sandevistan').addEventListener('touchstart', (e) => { e.preventDefault(); activateSandevistan(); });
+document.getElementById('btn-hack').addEventListener('click', activateQuickHack); document.getElementById('btn-hack').addEventListener('touchstart', (e) => { e.preventDefault(); activateQuickHack(); });
+document.getElementById('btn-interact').addEventListener('click', doInteract); document.getElementById('btn-interact').addEventListener('touchstart', (e) => { e.preventDefault(); doInteract(); });
+document.getElementById('btn-scope').addEventListener('click', () => { Input.scope = !Input.scope; document.getElementById('btn-scope').innerText = Input.scope ? "ｴｲﾑ:手動" : "ｴｲﾑ:ｵｰﾄ"; document.getElementById('btn-scope').style.background = Input.scope ? "#ff003c" : "#2b2e33"; });
+
+// --- ダッシュ機能の実行 ---
+function doDash() {
+    if (Player.dashCooldown <= 0 && Player.stunTimer <= 0 && Player.implants.legs && Player.implants.legs.name === '強化テンドン') {
+        Player.dashTimer = 0.25; // 0.25秒間高速移動＆無敵
+        Player.dashCooldown = 1.2; // 1.2秒のクールダウン
+        showFloatingText(Player.x, Player.y - 30, "DASH", "var(--cp-cyan)");
+    }
+}
+document.getElementById('btn-dash').addEventListener('click', doDash);
+document.getElementById('btn-dash').addEventListener('touchstart', (e)=>{ e.preventDefault(); doDash(); });
+
+
+// リロード実行関数
+function startReload() {
+    let w = Player.equipped.ranged;
+    if(w && !w.reloading && w.ammo < w.magSize && Player.stunTimer <= 0) { 
+        w.reloading = true; 
+        w.timer = w.reloadTime; 
+        w.totalReloadTime = w.reloadTime; // 残り割合計算用
+        showFloatingText(Player.x, Player.y - 30, "ガチャッ！", "#ff003c");
+        spawnParticles(Player.x, Player.y - 10, "var(--cp-red)", 5);
+    } 
+}
+document.getElementById('btn-reload').addEventListener('click', startReload);
+
+// --- 武器装備の変更処理 ---
+window.equipWeapon = (type, name) => {
+    if (type === 'ranged') {
+        let w = Weapons.Ranged[name];
+        Player.equipped.ranged = { ...w, ammo: w.magSize, timer: 0, reloading: false, totalReloadTime: w.reloadTime };
+    } else {
+        Player.equipped.melee = { ...Weapons.Melee[name] };
+    }
+    showFloatingText(Player.x, Player.y - 40, `${name} 装備`, "var(--cp-green)");
+    updatePlayerStats(); updateMenuUI(); updateStaticUI();
+};
+
+window.unequipWeapon = (type) => {
+    if (type === 'ranged') {
+        Player.equipped.ranged = null;
+        showFloatingText(Player.x, Player.y - 40, "遠距離武器 取り外し", "var(--cp-red)");
+    } else {
+        Player.equipped.melee = { ...Weapons.Melee['素手'] };
+        showFloatingText(Player.x, Player.y - 40, "近接武器を素手に戻しました", "var(--cp-cyan)");
+    }
+    updatePlayerStats(); updateMenuUI(); updateStaticUI();
+};
+
+// --- クイック使用機能 ---
+window.setQuickItem = (name) => { 
+    Player.quickItem = name; 
+    updateMenuUI(); 
+    updateStaticUI(); 
+    showFloatingText(Player.x, Player.y - 40, `${name}をセット`, "var(--cp-yellow)"); 
+};
+function useQuickItem() {
+    if(isGamePaused || Player.stunTimer > 0 || currentState === GAME_STATE.DEAD) return;
+    if(Player.quickItem === 'マックスドック') { 
+        useHeal(); 
+    } else if(Player.quickItem) { 
+        useDrug(Player.quickItem); 
+    }
+}
+['touchstart','mousedown'].forEach(ev => {
+    let btn = document.getElementById('btn-use-item');
+    if (btn) {
+        btn.addEventListener(ev, (e) => {
+            if(e.cancelable) e.preventDefault(); 
+            useQuickItem();
+        });
+    }
+});
+
+// --- メニューUI更新 ---
+document.getElementById('menu-btn').addEventListener('click', () => { isGamePaused = true; document.getElementById('menu-overlay').style.display = 'flex'; updateMenuUI(); });
+document.getElementById('close-menu-btn').addEventListener('click', () => { isGamePaused = false; document.getElementById('menu-overlay').style.display = 'none'; });
+document.querySelectorAll('.nav-btn').forEach(btn => { btn.addEventListener('click', () => { document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('.menu-content').forEach(c => c.classList.remove('active')); btn.classList.add('active'); document.getElementById(btn.dataset.target).classList.add('active'); }); });
+
+function updateMenuUI() {
+    let hum = Player.humanity(); document.getElementById('m-humanity').innerText = `${hum} / ${Player.maxHumanity}`; document.getElementById('m-humanity').style.color = hum < 0 ? 'var(--cp-red)' : 'var(--cp-cyan)';
+    document.getElementById('m-psycho-risk').innerText = hum > 30 ? "安全" : (hum > 0 ? "危険" : "システム警告：異常発生中"); document.getElementById('m-psycho-risk').style.color = hum < 0 ? 'var(--cp-red)' : '#fff';
+    
+    let armorVal = 0;
+    if (Player.implants.integumentary) {
+        if (Player.implants.integumentary.name.includes("ドラグーン")) armorVal = 50;
+        else if (Player.implants.integumentary.name.includes("軍用")) armorVal = 30;
+        else armorVal = 10;
+    }
+    document.getElementById('m-armor').innerText = armorVal;
+    
+    let dState = "なし"; if(Player.activeDrug) dState = Player.activeDrug.state === 'buff' ? `<span style="color:#0f0">抑制剤効果中 (+${Player.activeDrug.buff})</span>` : `<span style="color:#f00">副作用中 (-${Player.activeDrug.debuff})</span>`; document.getElementById('m-drug-state').innerHTML = dState;
+    
+    document.getElementById('m-equipped-ranged').innerText = Player.equipped.ranged ? Player.equipped.ranged.name : "「未装備」"; 
+    document.getElementById('m-equipped-melee').innerText = Player.equipped.melee ? Player.equipped.melee.name : "「未装備」";
+    document.getElementById('m-dmg').innerText = Player.equipped.ranged ? Player.equipped.ranged.dmg : "--"; 
+    document.getElementById('m-dps-characteristic').innerText = Player.equipped.ranged ? `${Player.equipped.ranged.dps} (RPM: ${Player.equipped.ranged.rpm}発/分)` : "--"; 
+    document.getElementById('m-reload-dur').innerText = Player.equipped.ranged ? `${Player.equipped.ranged.reloadTime}秒` : "--"; 
+    
+    let baseMelee = Player.equipped.melee || Weapons.Melee['素手'];
+    document.getElementById('m-melee-dmg').innerText = baseMelee.dmg + (Player.implants.arms && Player.implants.arms.name === '軍用ゴリラアームズ' ? 80 : 0);
+    
+    const weaponList = document.getElementById('weapon-list');
+    weaponList.innerHTML = '';
+    
+    Player.inventory.rangedWeapons.forEach(wName => {
+        let w = Weapons.Ranged[wName]; let isEq = Player.equipped.ranged && Player.equipped.ranged.name === wName;
+        weaponList.innerHTML += `<div style="background:#111; padding:10px; display:flex; justify-content:space-between; align-items:center; border: 1px solid ${isEq ? 'var(--cp-cyan)' : '#333'}; border-radius:4px; margin-bottom:5px;">
+            <div>
+                <span style="color:var(--cp-cyan); font-weight:bold;">[遠]</span> ${wName}<br>
+                <span style="font-size:10px; color:#aaa;">単発:${w.dmg} | 連射:${w.rpm}発/分 | 平均DPS: <span style="color:var(--cp-green); font-weight:bold;">${w.dps}</span> | リロード:${w.reloadTime}秒</span>
+            </div>
+            <div style="display:flex; gap:5px;">
+                <button class="item-btn" style="${isEq ? 'background:#555; color:#aaa;' : 'background:var(--cp-cyan);'}" ${isEq?'disabled':''} onclick="equipWeapon('ranged', '${wName}')">${isEq?'装備中':'装備'}</button>
+                ${isEq ? `<button class="item-btn" style="background:var(--cp-red); color:#fff;" onclick="unequipWeapon('ranged')">外す</button>` : ''}
+            </div>
+        </div>`;
+    });
+    
+    Player.inventory.meleeWeapons.forEach(wName => {
+        let w = Weapons.Melee[wName]; let isEq = Player.equipped.melee && Player.equipped.melee.name === wName; let isBareHands = wName === '素手';
+        weaponList.innerHTML += `<div style="background:#111; padding:10px; display:flex; justify-content:space-between; align-items:center; border: 1px solid ${isEq ? 'var(--cp-orange)' : '#333'}; border-radius:4px; margin-bottom:5px;">
+            <div><span style="color:var(--cp-orange); font-weight:bold;">[近]</span> ${wName}<br><span style="font-size:10px; color:#aaa;">威力:${w.dmg} 範囲:${w.range}${w.hasStun ? ' (⚡スタン付与)' : ''}</span></div>
+            <div style="display:flex; gap:5px;">
+                <button class="item-btn" style="${isEq ? 'background:#555; color:#aaa;' : 'background:var(--cp-orange); color:#000;'}" ${isEq?'disabled':''} onclick="equipWeapon('melee', '${wName}')">${isEq?'装備中':'装備'}</button>
+                ${(isEq && !isBareHands) ? `<button class="item-btn" style="background:var(--cp-red); color:#fff;" onclick="unequipWeapon('melee')">外す</button>` : ''}
+            </div>
+        </div>`;
+    });
+
+    document.getElementById('key-item-list').innerText = Player.hasQuestPackage ? "機密データパッケージ" : "なし"; document.getElementById('m-time').innerText = `${String(Math.floor(gameTimeH)).padStart(2, '0')}:${String(Math.floor(gameTimeM)).padStart(2, '0')}`; document.getElementById('m-location').innerText = ["Vのアパート", "ナイトシティ", `アラサカタワー${towerFloor}F`, "通常市場", "闇市地区"][currentState];
+    const impC = document.getElementById('implant-list-container'); impC.innerHTML = ''; const slots = { frontalCortex: '前頭葉', ocular: '視覚系', circulatory: '循環器系', nervous: '神経系', arms: '腕部', skeleton: '骨格系', integumentary: '外皮系', legs: '脚部' };
+    for(let key in slots) { let cur = Player.implants[key]; impC.innerHTML += `<div class="implant-slot"><div class="slot-title">${slots[key]}</div>${cur ? `<div class="implant-item"><strong>${cur.name}</strong><br><span style="font-size:11px; color:#aaa;">コスト:${cur.cost} | ${cur.desc}</span></div>` : `<div style="font-size:12px; color:#555; padding-top:4px;">空きスロット</div>`}</div>`; }
+    
+    const itemList = document.getElementById('item-list'); itemList.innerHTML = '';
+    
+    // マックスドックとドラッグの選択セット機能
+    let isMaxDocEq = Player.quickItem === 'マックスドック';
+    itemList.innerHTML += `<div style="background:#111; padding:10px; display:flex; justify-content:space-between; align-items:center; border: 1px solid ${isMaxDocEq ? 'var(--cp-yellow)' : '#333'}; border-radius:4px;">
+        <span style="font-size:12px;">マックスドック(HP+100) x ${Player.healItems}</span> 
+        <div style="display:flex; gap:5px;">
+            <button class="item-btn" style="${isMaxDocEq ? 'background:#555; color:#aaa;' : 'background:var(--cp-yellow); color:#000;'}" ${isMaxDocEq?'disabled':''} onclick="setQuickItem('マックスドック')">${isMaxDocEq?'セット中':'加える'}</button>
+        </div>
+    </div>`;
+
+    for(let key in Player.inventory.drugs) { 
+        if(Player.inventory.drugs[key] > 0) { 
+            let isEq = Player.quickItem === key;
+            itemList.innerHTML += `<div style="background:#201010; padding:10px; display:flex; justify-content:space-between; align-items:center; border: 1px solid ${isEq ? 'var(--cp-yellow)' : '#522'}; border-radius:4px; margin-top:5px;">
+                <span style="font-size:12px;">${key} x ${Player.inventory.drugs[key]}</span> 
+                <div style="display:flex; gap:5px;">
+                    <button class="item-btn" style="${isEq ? 'background:#555; color:#aaa;' : 'background:var(--cp-yellow); color:#000;'}" ${isEq?'disabled':''} onclick="setQuickItem('${key}')">${isEq?'セット中':'加える'}</button>
+                </div>
+            </div>`; 
+        } 
+    }
+}
+
+window.useHeal = () => { if(Player.healItems > 0 && Player.hp < Player.maxHp && Player.stunTimer <= 0) { Player.hp = Math.min(Player.maxHp, Player.hp + 100); Player.healItems--; showFloatingText(Player.x, Player.y - 20, "+100 HP", "#0f0"); updateMenuUI(); updateStaticUI(); } };
+window.useDrug = (name) => { if(Player.inventory.drugs[name] > 0 && Player.stunTimer <= 0) { Player.inventory.drugs[name]--; let dData = Drugs[name]; Player.activeDrug = { name: name, buff: dData.buff, debuff: dData.debuff, timer: dData.buffTime, debuffTime: dData.debuffTime, state: 'buff' }; showFloatingText(Player.x, Player.y - 20, `${name} 投与`, "#0f0"); updateMenuUI(); updateStaticUI(); checkCyberpsychosis(); } }
+
+function activateSandevistan() {
+    if(Player.stunTimer > 0) return;
+    if(Player.implants.nervous && Player.implants.nervous.name.includes('サンデビスタン')) { 
+        if(!Player.sandyActive) { 
+            Player.sandyActive = true; 
+            if (Player.implants.nervous.name.includes('アポカリプス')) {
+                Player.sandyTimer = 10;
+                globalTimeScale = 0.1;
+                // アポカリプスは人間性ペナルティなし
+            } else {
+                Player.sandyTimer = Player.sandyMaxDuration; 
+                globalTimeScale = 0.2; 
+                Player.sandyPenalty += 10; 
+            }
+            showFloatingText(Player.x, Player.y - 40, "ｻﾝﾃﾞﾋﾞｽﾀﾝ 起動！", "#0f0"); 
+            checkCyberpsychosis(); 
+        } 
+    } else showFloatingText(Player.x, Player.y - 40, "サイバーウェア未装着", "#f00");
+}
+function activateQuickHack() {
+    if(Player.stunTimer > 0) return;
+    if(Player.implants.frontalCortex && Player.implants.frontalCortex.name.includes('シナプス・ジャマー')) { if(Player.hackCooldown <= 0) { Player.hackWaveActive = true; Player.hackWaveRadius = 10; Player.hackCooldown = 15; Player.sandyPenalty += 5; showFloatingText(Player.x, Player.y - 40, "神経バーストパルス放出！", "var(--cp-cyan)"); checkCyberpsychosis(); } else showFloatingText(Player.x, Player.y - 40, "冷却完了まで待機", "#f00"); }
+}
+function doInteract() { if(Player.stunTimer > 0) return; for(let int of interactables) { if(Math.abs(Player.x - int.x) < int.w && Math.abs(Player.y - int.y) < int.h + 20) { int.action(); return; } } }
+
+function shootWeapon() {
+    let w = Player.equipped.ranged;
+    if (!w) {
+        if(Input.shoot) { showFloatingText(Player.x, Player.y - 30, "遠距離武器が未装備です", "var(--cp-red)"); Input.shoot = false; }
+        return;
+    }
+    if(w.reloading || Player.stunTimer > 0) return;
+    if(w.ammo <= 0) { startReload(); return; }
+    if(w.timer <= 0) {
+        w.ammo--; w.timer = w.fireRate; let tA = 0;
+        if(!Input.scope && Player.implants.ocular) { let tgt = getClosestEnemy(); if(tgt) tA = Math.atan2(tgt.y - Player.y, tgt.x - Player.x); else if(Input.joystick.x || Input.joystick.y) tA = Math.atan2(Input.joystick.y, Input.joystick.x); } else { if(Input.joystick.x || Input.joystick.y) tA = Math.atan2(Input.joystick.y, Input.joystick.x); }
+        
+        let mult = Player.implants.frontalCortex ? 1.5 : 1; if(Player.implants.arms && Player.implants.arms.name!=='軍用ゴリラアームズ') mult += 0.5; 
+        let bulletDmg = (w.dmg * mult) || 5;
+
+        // 薬莢の生成
+        let casingAngle = tA + Math.PI + (Math.random() - 0.5) * 0.8;
+        shellCasings.push({
+            x: Player.x,
+            y: Player.y,
+            vx: Math.cos(casingAngle) * (150 + Math.random() * 100),
+            vy: Math.sin(casingAngle) * (150 + Math.random() * 100),
+            rot: Math.random() * Math.PI * 2,
+            rotSpeed: (Math.random() - 0.5) * 15,
+            life: 0.8 + Math.random() * 0.4
+        });
+
+        // 射撃パーティクル
+        spawnParticles(Player.x + Math.cos(tA) * 18, Player.y + Math.sin(tA) * 18, "var(--cp-yellow)", 6);
+
+        if (w.isShotgun) {
+            let pelletCount = w.pellets || 5;
+            for(let i=0; i<pelletCount; i++) {
+                let spreadA = tA + (Math.random() - 0.5) * 0.45;
+                bullets.push({ x: Player.x, y: Player.y, vx: Math.cos(spreadA)*800, vy: Math.sin(spreadA)*800, dmg: bulletDmg, owner: 'player', color: '#fcee0a', life: 0.6 });
+            }
+        } else {
+            tA += (Math.random() - 0.5) * 0.08; 
+            bullets.push({ x: Player.x, y: Player.y, vx: Math.cos(tA)*800, vy: Math.sin(tA)*800, dmg: bulletDmg, owner: 'player', color: '#fcee0a', life: 2.0 }); 
+        }
+        Camera.x += (Math.random()-0.5)*8; Camera.y += (Math.random()-0.5)*8;
+    }
+}
+
+function doMelee() {
+    if(Player.stunTimer > 0 || Player.meleeTimer > 0) return;
+    
+    let isGorilla = Player.implants.arms && Player.implants.arms.name === '軍用ゴリラアームズ';
+    let m = Player.equipped.melee || Weapons.Melee['素手']; 
+    
+    let baseDelay = m.delay || 0.4;
+    if (Player.implants.skeleton && Player.implants.skeleton.name.includes('スマッシャー')) {
+        baseDelay *= 0.25; // 4倍加速
+    } else if (Player.implants.skeleton && Player.implants.skeleton.name === 'マイクロローター') {
+        baseDelay *= 0.5;
+    }
+    Player.meleeTimer = baseDelay; 
+    
+    let meleeRadius = (isGorilla ? 80 : m.range);
+    let meleeDmg = m.dmg + (isGorilla ? 80 : 0);
+    let mColor = m.color; if (isGorilla && m.name === '素手') mColor = '#ff003c';
+    
+    meleeEffects.push({x: Player.x, y: Player.y, r: meleeRadius, life: 0.2, color: mColor});
+    
+    npcs.forEach(npc => {
+        if(npc.state !== 'dead' && !npc.isFixer && !npc.isRipper) {
+            let dist = Math.hypot(npc.x - Player.x, npc.y - Player.y);
+            if(dist <= meleeRadius + npc.w/2) {
+                npc.hp -= meleeDmg;
+                let ang = Math.atan2(npc.y - Player.y, npc.x - Player.x);
+                npc.kbX = Math.cos(ang) * (isGorilla ? 1200 : 700);
+                npc.kbY = Math.sin(ang) * (isGorilla ? 1200 : 700);
+                
+                spawnParticles(npc.x, npc.y, mColor, 8);
+                showFloatingText(npc.x, npc.y, Math.floor(meleeDmg), '#fff');
+                
+                if (m.hasStun && npc.state !== 'dead' && !npc.isHallucination) {
+                    npc.jammedTimer = m.stunTime || 0.7;
+                    showFloatingText(npc.x, npc.y - 20, "⚡STUN", "var(--cp-cyan)");
+                    spawnParticles(npc.x, npc.y, "var(--cp-cyan)", 4);
+                }
+                
+                if(!npc.hostile && !npc.isHallucination) { 
+                    npc.hostile = true; 
+                    if(npc.type === 'gang') {
+                        npcs.forEach(other => {
+                            if(other.type === 'gang') { other.hostile = true; other.state = 'wander'; }
+                        });
+                        showFloatingText(Player.x, Player.y - 70, "全ギャングが敵対！", "var(--cp-red)");
+                    } else if(npc.type==='civ') commitCrime(0.5); 
+                    else if(npc.type==='corp') commitCrime(1); 
+                }
+                
+                if(npc.hp <= 0 && npc.type !== 'adam') { 
+                    npc.state = 'dead'; 
+                    if(!npc.isHallucination) {
+                        if(npc.type==='civ'||npc.type==='corp') commitCrime(1); 
+                        if(npc.type==='exec'&&!traumaActive) callTraumaTeam(npc.x, npc.y); 
+                        if(Math.random() < 0.5) { let moneyAmt = Math.floor(Math.random()*100); Player.money += moneyAmt; showFloatingText(npc.x, npc.y, `+$${moneyAmt}`, varColor('cp-yellow')); } 
+                        updateDynamicQuest('kill', npc.type); 
+                    }
+                }
+            }
+        }
+    });
+}
+
+function transitionTo(state) {
+    const ts = document.getElementById('transition-screen'); document.getElementById('trans-text').style.display='block'; document.getElementById('death-ui').style.display='none'; document.getElementById('trans-text').innerText="接続を切り替えています..."; ts.style.opacity = 1;
+    let prevState = currentState; if (currentState === GAME_STATE.CITY) { lastCityPos.x = Player.x; lastCityPos.y = Player.y; }
+    setTimeout(() => { 
+        if(state===GAME_STATE.ROOM) loadRoom(); 
+        else if(state===GAME_STATE.CITY) { loadCity(); if (prevState === GAME_STATE.ROOM) { Player.x = 350; Player.y = 190; } else if (prevState === GAME_STATE.TOWER) { Player.x = 1200; Player.y = 390; } else if (prevState === GAME_STATE.MARKET) { Player.x = 800; Player.y = 740; } else if (prevState === GAME_STATE.BLACK_MARKET) { Player.x = -100; Player.y = 840; } else { Player.x = lastCityPos.x; Player.y = lastCityPos.y; } } 
+        else if(state===GAME_STATE.TOWER) loadTower(); else if(state===GAME_STATE.MARKET) loadMarket(); else if(state===GAME_STATE.BLACK_MARKET) loadBlackMarket(); 
+        currentState = state; ts.style.opacity = 0; 
+    }, 500);
+}
+
+function checkCyberpsychosis() {
+    const g = document.getElementById('glitch-overlay');
+    if(Player.humanity() < 0) { 
+        g.style.opacity = Math.min(1.0, Math.abs(Player.humanity()) * 0.05 + 0.25); 
+        if(!quests.find(q => q.id === 999)) { quests.push({ id: 999, title: 'システム乗っ取り', desc: '神経系統崩壊。あらゆる危険対象を無力化しろ。', active: true, complete: false, fake: true }); updateQuestUI(); } 
+    } else { 
+        g.style.opacity = 0; 
+        quests = quests.filter(q => q.id !== 999); updateQuestUI(); 
+    }
+}
+
+function getClosestEnemy() { let closest = null, minDist = Infinity; for(let npc of npcs) { if(npc.state !== 'dead' && !npc.isFixer && !npc.isRipper) { if(npc.hostile || Player.humanity() < 0) { let d = Math.hypot(npc.x - Player.x, npc.y - Player.y); if(d < 300 && d < minDist) { minDist = d; closest = npc; } } } } return closest; }
+function showFloatingText(x, y, text, color) { floatingTexts.push({ x, y, text, color, life: 1.0, vy: -30 }); }
+function spawnParticles(x, y, color, count) { for(let i=0; i<count; i++) particles.push({ x, y, vx: (Math.random() - 0.5)*200, vy: (Math.random() - 0.5)*200, life: 0.2 + Math.random()*0.3, color, size: 2 + Math.random()*3 }); }
+function commitCrime(sev) { if(currentState === GAME_STATE.CITY) { Player.wantedLevel += sev; if(Player.wantedLevel > 5) Player.wantedLevel = 5; updateWantedUI(); } }
+function callTraumaTeam(ex, ey) { traumaActive = true; traumaTarget = {x: ex, y: ey}; traumaProgress = 0; showFloatingText(ex, ey-40, "トラウマチーム出動", "#0f0"); spawnNPC(TraumaVariants.MEDIC, ex+400, ey-400); spawnNPC(TraumaVariants.COMBAT, ex+420, ey-380); }
+
+function checkWallCollision(oldX, oldY, newX, newY, size) {
+    if (currentState !== GAME_STATE.CITY) return { x: newX, y: newY };
+    let adjustedX = newX, adjustedY = newY;
+    for (let obs of Obstacles) { if (adjustedX + size > obs.x && adjustedX - size < obs.x + obs.w && adjustedY + size > obs.y && adjustedY - size < obs.y + obs.h) { adjustedX = oldX; adjustedY = oldY; break; } } return { x: adjustedX, y: adjustedY };
+}
+
+function update(dt) {
+    if (isGamePaused || currentState === GAME_STATE.DEAD) return;
+    let envDt = dt * globalTimeScale;
+    gameTimeM += envDt * 10; if(gameTimeM >= 60) { gameTimeM = 0; gameTimeH++; } if(gameTimeH >= 24) gameTimeH = 0;
+    
+    if(Player.hackCooldown > 0) Player.hackCooldown -= dt;
+    if(Player.meleeTimer > 0) Player.meleeTimer -= dt;
+    if(Player.dashCooldown > 0) Player.dashCooldown -= dt; 
+
+    if (Math.abs(Player.kbX) > 0.1 || Math.abs(Player.kbY) > 0.1) {
+        let checkedPos = checkWallCollision(Player.x, Player.y, Player.x + Player.kbX * dt, Player.y + Player.kbY * dt, Player.w / 2); Player.x = checkedPos.x; Player.y = checkedPos.y; Player.kbX *= 0.85; Player.kbY *= 0.85;
+    }
+
+    if(Player.hackWaveActive) {
+        Player.hackWaveRadius += envDt * 500; if(Player.hackWaveRadius > 250) Player.hackWaveActive = false;
+        npcs.forEach(npc => { if (npc.state !== 'dead' && !npc.isFixer && !npc.isRipper) { let d = Math.hypot(npc.x - Player.x, npc.y - Player.y); if (d < Player.hackWaveRadius && d < 220) { if (npc.jammedTimer <= 0) { npc.jammedTimer = 6.0; showFloatingText(npc.x, npc.y - 25, "強制神経麻痺 (6s)", "var(--cp-cyan)"); spawnParticles(npc.x, npc.y, "var(--cp-cyan)", 10); } } } });
+    }
+
+    if(Player.sandyPenalty > 0) { Player.sandyPenalty -= dt * 0.02; checkCyberpsychosis(); } 
+    if(Player.activeDrug) { Player.activeDrug.timer -= dt; if(Player.activeDrug.timer <= 0) { if(Player.activeDrug.state === 'buff') { Player.activeDrug.state = 'debuff'; Player.activeDrug.timer = Player.activeDrug.debuffTime; showFloatingText(Player.x, Player.y - 40, "副作用発生", "#f00"); checkCyberpsychosis(); } else { Player.activeDrug = null; checkCyberpsychosis(); } } }
+    
+    if(Player.sandyActive) { Player.sandyTimer -= dt; if(Player.sandyTimer <= 0) { Player.sandyActive = false; globalTimeScale = 1.0; Player.sandyCooldown = 0; } if(Math.random() < 0.45) Player.trail.push({x: Player.x, y: Player.y, life: 0.4, color: ['#00f0ff', '#ff003c', '#fcee0a'][Math.floor(Math.random()*3)]}); } else if (Player.sandyCooldown > 0) Player.sandyCooldown = 0; 
+    
+    // ダッシュ＆無敵処理
+    Player.invincible = false;
+    let speedMult = 1; 
+    if(Player.implants.legs) { 
+        if(Player.implants.legs.name === '強化テンドン') speedMult = 1.6; 
+        else speedMult = 1.5; 
+    }
+    
+    if (Player.dashTimer > 0) {
+        Player.dashTimer -= dt;
+        speedMult = 4.0; 
+        Player.invincible = true; 
+        if(Math.random() < 0.5) Player.trail.push({x: Player.x, y: Player.y, life: 0.2, color: 'var(--cp-cyan)'});
+    }
+    
+    for(let i=Player.trail.length-1; i>=0; i--) { Player.trail[i].life -= dt; if(Player.trail[i].life <= 0) Player.trail.splice(i, 1); }
+    
+    hackBeams.forEach(b => { b.life -= envDt; }); hackBeams = hackBeams.filter(b => b.life > 0);
+    meleeEffects.forEach(e => { e.life -= envDt; e.r += envDt * 200; }); meleeEffects = meleeEffects.filter(e => e.life > 0);
+
+    shellCasings.forEach(c => {
+        c.x += c.vx * envDt;
+        c.y += c.vy * envDt;
+        c.rot += c.rotSpeed * envDt;
+        c.vy += 200 * envDt; 
+        c.life -= envDt;
+    });
+    shellCasings = shellCasings.filter(c => c.life > 0);
+
+    // アダムのグレネード爆弾シミュレーション
+    bombs.forEach(b => { 
+        b.timer -= envDt; 
+        if (b.timer <= 0) { 
+            spawnParticles(b.x, b.y, "var(--cp-orange)", 30); 
+            if (!Player.invincible && Math.hypot(Player.x - b.x, Player.y - b.y) < b.radius) { 
+                let reduction = 1.0;
+                if (Player.implants.integumentary) {
+                    if (Player.implants.integumentary.name.includes("ドラグーン")) reduction = 0.5;
+                    else if (Player.implants.integumentary.name.includes("軍用")) reduction = 0.7;
+                    else reduction = 0.9;
+                }
+                Player.hp -= b.dmg * reduction; 
+                Player.stunTimer = 0.6; // 電撃・爆発スタン
+                showFloatingText(Player.x, Player.y-20, "爆破スタン!", "#ff8800");
+            } 
+            b.life = 0; 
+        } 
+    }); 
+    bombs = bombs.filter(b => b.life !== 0);
+
+    if (Player.stunTimer > 0) {
+        Player.stunTimer -= dt;
+        if (Player.stunTimer <= 0) { document.getElementById('stun-warning').style.display = 'none'; Player.hackDefMeter = 100; showFloatingText(Player.x, Player.y - 40, "システム復旧", "#00ff41"); }
+    } else if (Player.hackDefMeter < 100) {
+        Player.hackDefMeter = Math.min(100, Player.hackDefMeter + dt * 2.5);
+    }
+
+    let isStunned = Player.stunTimer > 0;
+    let speed = isStunned ? 0 : Player.speed * speedMult;
+    
+    if(Input.joystick.active && !isStunned) { 
+        let nextX = Player.x + Input.joystick.x * speed * dt, nextY = Player.y + Input.joystick.y * speed * dt;
+        let checkedPos = checkWallCollision(Player.x, Player.y, nextX, nextY, Player.w / 2); Player.x = checkedPos.x; Player.y = checkedPos.y;
+    }
+    
+    Player.x = Math.max(-1000, Math.min(3000, Player.x)); Player.y = Math.max(-1000, Math.min(2000, Player.y)); Camera.x += (Player.x - cw/2 - Camera.x) * 10 * dt; Camera.y += (Player.y - ch/2 - Camera.y) * 10 * dt;
+    
+    let wRanged = Player.equipped.ranged;
+    if(wRanged) {
+        if(wRanged.timer > 0) wRanged.timer -= dt; 
+        if(wRanged.reloading) { 
+            if(wRanged.timer <= 0) { 
+                wRanged.reloading = false; 
+                wRanged.ammo = wRanged.magSize; 
+                showFloatingText(Player.x, Player.y - 30, "装填完了！", "var(--cp-green)");
+            } 
+        } else if(Input.shoot && !isStunned) {
+            shootWeapon();
+        }
+    } else {
+        if (Input.shoot && !isStunned) {
+            shootWeapon();
+        }
+    }
+    
+    let canInt = false; for(let int of interactables) { if(Math.abs(Player.x - int.x) < int.w && Math.abs(Player.y - int.y) < int.h + 20) { canInt = true; document.getElementById('interact-prompt').innerText = `[INT]: ${int.text}`; break; } }
+    document.getElementById('interact-prompt').style.display = (canInt && !isStunned) ? 'block' : 'none';
+
+    // 幻聴処理（赤い影廃止の代わり）
+    if(Player.humanity() < 0 && Math.random() < 0.04) { 
+        const psychoWhispers = [
+            "『殺せ殺せ殺せ殺せ殺せ』", 
+            "「お前はもう人間じゃない」", 
+            "『ノイズを止めろ！』", 
+            "「全員アラサカの回し者だ！」", 
+            "『頭が燃えている！』", 
+            "「クロームが俺を呼んでいる」", 
+            "『システムの警告音を消せ！』",
+            "「肉体は脆弱、鋼鉄こそ真理」"
+        ];
+        let whisper = psychoWhispers[Math.floor(Math.random() * psychoWhispers.length)];
+        showFloatingText(
+            Player.x + (Math.random() - 0.5) * 400, 
+            Player.y + (Math.random() - 0.5) * 400 - 30, 
+            whisper, 
+            '#ff003c'
+        );
+    }
+    
+    if (activeMeleeAttacker && (activeMeleeAttacker.state === 'dead' || activeMeleeAttacker.jammedTimer > 0 || !npcs.includes(activeMeleeAttacker))) {
+        activeMeleeAttacker = null;
+    }
+
+    for(let i=npcs.length-1; i>=0; i--) {
+        let npc = npcs[i]; if(npc.state === 'dead') { corpses.push({x: npc.x, y: npc.y, type: npc.type}); npcs.splice(i, 1); continue; }
+        if(npc.isFixer || npc.isRipper) continue; 
+        
+        // --- アダム・スマッシャー ボスバトル AI ロジック ---
+        if (npc.type === 'adam') {
+            let hpRatio = npc.hp / npc.maxHp;
+            
+            // 確実なフェーズ移行＆セリフ表示
+            if (hpRatio <= 0.6 && npc.adamPhase === 1) { 
+                npc.adamPhase = 2; 
+                showFloatingText(npc.x, npc.y - 50, "「肉袋が調子に乗るな！」", "var(--cp-red)"); 
+                npc.sandyActive = true; 
+                npc.sandyTimer = 5; 
+            }
+            if (hpRatio <= 0.3 && npc.adamPhase === 2) { 
+                npc.adamPhase = 3; 
+                showFloatingText(npc.x, npc.y - 50, "「これで終わりだ、V！」", "var(--cp-red)"); 
+                npc.sandyActive = true; 
+                npc.sandyTimer = 6; 
+            }
+
+            // サンデビスタン（超高速移動・残像）
+            if (npc.sandyActive) {
+                npc.sandyTimer -= envDt; 
+                npc.speed = 300; // 圧倒的な高速追跡
+                if (Math.random() < 0.5) {
+                    Player.trail.push({x: npc.x, y: npc.y, life: 0.3, color: 'var(--cp-red)'});
+                }
+                if (npc.sandyTimer <= 0) { 
+                    npc.sandyActive = false; 
+                    npc.speed = 70; 
+                    npc.sandyCooldown = (npc.adamPhase === 3 ? 5 : 12); // フェーズ3では頻繁に起動
+                }
+            } else {
+                npc.speed = 70; 
+                if (npc.adamPhase >= 2) {
+                    if (npc.sandyCooldown > 0) npc.sandyCooldown -= envDt;
+                    if (npc.sandyCooldown <= 0) { 
+                        npc.sandyActive = true; 
+                        npc.sandyTimer = 4; 
+                    }
+                }
+            }
+
+            // 行動タイマー管理
+            npc.actionTimer -= envDt;
+            if (npc.actionTimer <= 0 && npc.actionState === 'idle') {
+                let actions = npc.adamPhase === 1 ? ['shoot', 'shotgun', 'charge'] : ['shoot', 'shotgun', 'charge', 'grenade'];
+                let chosenAction = actions[Math.floor(Math.random() * actions.length)];
+                npc.actionState = chosenAction;
+                
+                if (chosenAction === 'shoot') npc.actionDur = 2.0; 
+                if (chosenAction === 'shotgun') npc.actionDur = 0.5; 
+                if (chosenAction === 'charge') { 
+                    npc.actionDur = 1.5; 
+                    npc.targetX = Player.x; 
+                    npc.targetY = Player.y; 
+                    showFloatingText(npc.x, npc.y - 30, "突進準備...", "var(--cp-red)"); 
+                }
+                if (chosenAction === 'grenade') { 
+                    npc.actionDur = 1.0; 
+                    bombs.push({ x: Player.x, y: Player.y, timer: 1.4, radius: 110, dmg: 70, life: 1 }); 
+                    showFloatingText(npc.x, npc.y - 30, "ミサイルランチャー！", "#ff8800"); 
+                }
+                npc.actionTimer = npc.actionDur + (npc.adamPhase === 3 ? 0.3 : 1.2);
+            }
+
+            // 各アクションの実行
+            if (npc.actionState === 'shoot') {
+                npc.fireTimer -= envDt;
+                if (npc.fireTimer <= 0) { 
+                    let ang = Math.atan2(Player.y - npc.y, Player.x - npc.x) + (Math.random() - 0.5) * 0.15; 
+                    bullets.push({ x: npc.x, y: npc.y, vx: Math.cos(ang) * 850, vy: Math.sin(ang) * 850, dmg: 14, owner: 'enemy', color: '#ff003c', life: 1.8 }); 
+                    npc.fireTimer = 0.08; // 怒涛のガトリング弾幕
+                }
+                let moveAng = Math.atan2(Player.y - npc.y, Player.x - npc.x); 
+                npc.x += Math.cos(moveAng) * npc.speed * envDt; 
+                npc.y += Math.sin(moveAng) * npc.speed * envDt;
+            } 
+            else if (npc.actionState === 'shotgun') {
+                if (!npc.shotgunFired) { 
+                    for(let j = 0; j < 12; j++) { 
+                        let ang = Math.atan2(Player.y - npc.y, Player.x - npc.x) + (Math.random() - 0.5) * 0.65; 
+                        bullets.push({ x: npc.x, y: npc.y, vx: Math.cos(ang) * 750, vy: Math.sin(ang) * 750, dmg: 16, owner: 'enemy', color: '#ff8800', life: 1.0 }); 
+                    } 
+                    npc.shotgunFired = true; 
+                    showFloatingText(npc.x, npc.y - 30, "ヘビー散弾！", "var(--cp-orange)");
+                }
+            } 
+            else if (npc.actionState === 'charge') {
+                let ang = Math.atan2(npc.targetY - npc.y, npc.targetX - npc.x); 
+                npc.x += Math.cos(ang) * npc.speed * 2.8 * envDt; 
+                npc.y += Math.sin(ang) * npc.speed * 2.8 * envDt;
+                
+                if (!Player.invincible && Math.hypot(Player.x - npc.x, Player.y - npc.y) < npc.w/2 + Player.w/2) { 
+                    let reduction = 1.0;
+                    if (Player.implants.integumentary) {
+                        if (Player.implants.integumentary.name.includes("ドラグーン")) reduction = 0.5;
+                        else if (Player.implants.integumentary.name.includes("軍用")) reduction = 0.7;
+                    }
+                    Player.hp -= 45 * reduction * envDt; 
+                    Player.stunTimer = 0.4; // 触れると即座にスタン神経ブロック
+                    if (Math.random() < 0.15) {
+                        showFloatingText(Player.x, Player.y - 20, "高圧電流ノイズ！", "var(--cp-cyan)");
+                    }
+                }
+            }
+            
+            if (npc.actionDur > 0) {
+                npc.actionDur -= envDt;
+                if (npc.actionDur <= 0) { 
+                    npc.actionState = 'idle'; 
+                    npc.shotgunFired = false; 
+                }
+            }
+            
+            // 撃破処理と豪華な3大サイバーウェアドロップ
+            if (npc.hp <= 0) { 
+                npc.state = 'dead'; 
+                showFloatingText(npc.x, npc.y, "Flatlined. Smasher destroyed.", "var(--cp-red)"); 
+                bullets = []; 
+                bombs = []; 
+                
+                // エレベーター(16階社長室)を完全解禁
+                interactables.push({ x: 450, y: 100, w: 100, h: 50, text: 'エレベーター(16階へ)', action: () => { towerFloor = 16; transitionTo(GAME_STATE.TOWER); } }); 
+                interactables.push({ x: 450, y: 800, w: 100, h: 50, text: 'エレベーター(14階へ)', action: () => deelevateTower() }); 
+
+                // 伝説のアダムドロップ Loot ボックス
+                interactables.push({
+                    x: npc.x, y: npc.y, w: 50, h: 50, isReward: true, text: 'スマッシャーの残骸をスキャン',
+                    action: function() {
+                        Player.implants.nervous = { name: 'アポカリプス・サンデビスタン', slot: 'nervous', cost: 0, desc: '時の流れを「0.1倍」にする規格外のインプラント。人間性コスト0。' };
+                        Player.implants.integumentary = { name: 'ドラグーン・アーマー', slot: 'integumentary', cost: 0, desc: 'あらゆる物理ダメージを「常時50%カット」する究極の皮下。' };
+                        Player.implants.skeleton = { name: 'スマッシャー・フレーム', slot: 'skeleton', cost: 0, desc: '全身の神経ディレイを極限排除し、射撃・近接の速度を4倍に超加速。' };
+                        showFloatingText(Player.x, Player.y - 40, "アダム・スマッシャーの残骸からクローム x3 を回収！", "var(--cp-yellow)");
+                        updatePlayerStats(); updateMenuUI(); updateStaticUI();
+                        interactables = interactables.filter(i => i !== this);
+                    }
+                });
+            }
+            continue; 
+        }
+        // --- アダムAI 終了 ---
+
+        let dist = Math.hypot(npc.x - Player.x, npc.y - Player.y);
+
+        if (Math.abs(npc.kbX) > 0.1 || Math.abs(npc.kbY) > 0.1) {
+            let nextNx = npc.x + npc.kbX * envDt, nextNy = npc.y + npc.kbY * envDt;
+            let chk = checkWallCollision(npc.x, npc.y, nextNx, nextNy, npc.w/2);
+            npc.x = chk.x; npc.y = chk.y; npc.kbX *= 0.85; npc.kbY *= 0.85;
+        }
+
+        for(let j=0; j<npcs.length; j++) {
+            let other = npcs[j];
+            if (other !== npc && other.state !== 'dead' && !other.isFixer && !other.isRipper) {
+                let npcDist = Math.hypot(npc.x - other.x, npc.y - other.y); let minDist = (npc.w / 2 + other.w / 2) + 5;
+                if (npcDist < minDist && npcDist > 0) { let pushForce = (minDist - npcDist) * 0.5, pushAng = Math.atan2(npc.y - other.y, npc.x - other.x); npc.x += Math.cos(pushAng) * pushForce; npc.y += Math.sin(pushAng) * pushForce; }
+            }
+        }
+        
+        let pMinDist = (npc.w / 2 + Player.w / 2) + 2;
+        if (dist < pMinDist && dist > 0 && npc.state !== 'dead') {
+            let pushForce = (pMinDist - dist), pushAng = Math.atan2(npc.y - Player.y, npc.x - Player.x);
+            npc.x += Math.cos(pushAng) * pushForce * 0.8; npc.y += Math.sin(pushAng) * pushForce * 0.8;
+            
+            if (npc.isHallucination) {
+                if(!Player.invincible) {
+                    Player.hp -= npc.dmg * envDt * 3; 
+                    Camera.x += (Math.random()-0.5)*12;
+                    Camera.y += (Math.random()-0.5)*12;
+                    if(Math.random() < 0.1) {
+                        showFloatingText(Player.x, Player.y - 20, "ハルシネーション浸食中", "var(--cp-red)");
+                        spawnParticles(Player.x, Player.y, "var(--cp-red)", 3);
+                    }
+                }
+            } else if (npc.type === 'thug' && !npc.hostile) {
+                npc.hostile = true;
+                showFloatingText(npc.x, npc.y - 30, ["なんだテメェ！？", "すっこんでろ！", "痛ぇな、殺すぞ！"][Math.floor(Math.random() * 3)], "var(--cp-orange)");
+                spawnParticles(npc.x, npc.y, "var(--cp-orange)", 8);
+            }
+
+            let pNextX = Player.x - Math.cos(pushAng) * pushForce * 0.2, pNextY = Player.y - Math.sin(pushAng) * pushForce * 0.2;
+            let pChecked = checkWallCollision(Player.x, Player.y, pNextX, pNextY, Player.w/2); Player.x = pChecked.x; Player.y = pChecked.y;
+            dist = Math.hypot(npc.x - Player.x, npc.y - Player.y);
+        }
+
+        if(npc.jammedTimer > 0) { 
+            npc.jammedTimer -= envDt; 
+            npc.targetX = npc.x; 
+            npc.targetY = npc.y; 
+            if(npc.jammedTimer <= 0) showFloatingText(npc.x, npc.y - 25, "システム復旧", "#00ff41"); 
+            continue; 
+        }
+        
+        if(npc.isHallucination) { 
+            npc.targetX = Player.x; 
+            npc.targetY = Player.y; 
+            let ang = Math.atan2(npc.targetY - npc.y, npc.targetX - npc.x); 
+            npc.x += Math.cos(ang) * npc.speed * envDt; 
+            npc.y += Math.sin(ang) * npc.speed * envDt; 
+            continue; 
+        }
+
+        if(npc.type === 'trauma') {
+            if (npc.class === 'medic') {
+                if(traumaTarget) { npc.targetX = traumaTarget.x; npc.targetY = traumaTarget.y; let d = Math.hypot(npc.x - traumaTarget.x, npc.y - traumaTarget.y); if(d < 50) { npc.state = 'healing'; traumaProgress += envDt; if(traumaProgress > 5) { traumaActive = false; traumaTarget = null; spawnNPC(Factions.EXEC, npc.x, npc.y); showFloatingText(npc.x, npc.y, "対象の保護完了", "#0f0"); npc.targetX = npc.x + 1000; npc.state = 'wander'; } }
+                } else { npc.targetX = npc.x + 100; npc.state = 'wander'; }
+            } else if (npc.class === 'combat') {
+                npc.targetX = Player.x; npc.targetY = Player.y; if (dist < 350 && npc.fireTimer <= 0) { let ang = Math.atan2(Player.y - npc.y, Player.x - npc.x); bullets.push({ x: npc.x, y: npc.y, vx: Math.cos(ang)*550, vy: Math.sin(ang)*550, dmg: npc.dmg || 15, owner: 'enemy', color: '#00ff41', life: 2.0 }); npc.fireTimer = 0.4; }
+            }
+            let ang = Math.atan2(npc.targetY - npc.y, npc.targetX - npc.x); npc.x += Math.cos(ang)*npc.speed*envDt; npc.y += Math.sin(ang)*npc.speed*envDt; if(npc.fireTimer > 0) npc.fireTimer -= envDt; continue;
+        }
+
+        if(npc.class === 'netrunner') {
+            let optDist = 350;
+            if (dist < optDist - 50) { let fA = Math.atan2(npc.y - Player.y, npc.x - Player.x); npc.targetX = npc.x + Math.cos(fA) * 150; npc.targetY = npc.y + Math.sin(fA) * 150; } 
+            else if (dist > optDist + 50) { npc.targetX = Player.x; npc.targetY = Player.y; } 
+            else { let oA = Math.atan2(npc.y - Player.y, npc.x - Player.x) - 0.3; npc.targetX = Player.x + Math.cos(oA) * optDist; npc.targetY = Player.y + Math.sin(oA) * optDist; }
+            
+            if (dist < 450 && npc.fireTimer <= 0 && Player.stunTimer <= 0) {
+                Player.hackDefMeter -= 15; showFloatingText(Player.x, Player.y - 45, "ICE損傷!", "var(--cp-purple)"); hackBeams.push({x1: npc.x, y1: npc.y, x2: Player.x, y2: Player.y, life: 0.3});
+                if (Player.hackDefMeter <= 0) { Player.hackDefMeter = 0; Player.stunTimer = 4.0; showFloatingText(Player.x, Player.y - 45, "システムダウン!", "var(--cp-red)"); document.getElementById('stun-warning').style.display = 'block'; }
+                npc.fireTimer = 3.0;
+            }
+            let ang = Math.atan2(npc.targetY - npc.y, npc.targetX - npc.x); npc.x += Math.cos(ang)*npc.speed*envDt; npc.y += Math.sin(ang)*npc.speed*envDt; if(npc.fireTimer > 0) npc.fireTimer -= envDt; continue;
+        }
+
+        if(npc.class === 'mantis') {
+            let totalMantis = npcs.filter(n => n.class === 'mantis' && n.state !== 'dead').length;
+            if (activeMeleeAttacker === null || activeMeleeAttacker === npc || totalMantis <= 1) { 
+                if (npc.meleeAttackState === 'none' || npc.meleeAttackState === 'orbit') {
+                    activeMeleeAttacker = npc; 
+                    npc.meleeAttackState = 'charge'; 
+                }
+            }
+
+            if (activeMeleeAttacker === npc) {
+                if (npc.meleeAttackState === 'charge') {
+                    npc.targetX = Player.x; npc.targetY = Player.y;
+                    if (dist < 40) {
+                        if(!Player.invincible) {
+                            let reduction = 1.0;
+                            if (Player.implants.integumentary) {
+                                if (Player.implants.integumentary.name.includes("ドラグーン")) reduction = 0.5;
+                                else if (Player.implants.integumentary.name.includes("軍用")) reduction = 0.7;
+                            }
+                            Player.hp -= (npc.dmg || 25) * reduction; 
+                            if (isNaN(Player.hp)) Player.hp = Player.maxHp;
+                            
+                            let angleToPlayer = Math.atan2(Player.y - npc.y, Player.x - npc.x); 
+                            Player.kbX = Math.cos(angleToPlayer) * 800; 
+                            Player.kbY = Math.sin(angleToPlayer) * 800;
+                            
+                            showFloatingText(Player.x, Player.y - 20, "ブレード襲撃！", "var(--cp-red)"); 
+                            spawnParticles(Player.x, Player.y, "var(--cp-red)", 8);
+                        }
+                        
+                        npc.meleeAttackState = 'away'; 
+                        npc.timer = 1.0 + Math.random() * 0.5; 
+                        activeMeleeAttacker = null; 
+                    }
+                } else if (npc.meleeAttackState === 'away') {
+                    let fleeAng = Math.atan2(npc.y - Player.y, npc.x - Player.x); 
+                    npc.targetX = npc.x + Math.cos(fleeAng) * 250; 
+                    npc.targetY = npc.y + Math.sin(fleeAng) * 250;
+                    
+                    npc.timer -= envDt; 
+                    if (npc.timer <= 0) { 
+                        npc.meleeAttackState = 'none'; 
+                    }
+                }
+            } else { 
+                let orbitRadius = 150;
+                let angle = Math.atan2(npc.y - Player.y, npc.x - Player.x) + 0.04 * (npc.speed / 100); 
+                npc.targetX = Player.x + Math.cos(angle) * orbitRadius; 
+                npc.targetY = Player.y + Math.sin(angle) * orbitRadius;
+                npc.meleeAttackState = 'orbit';
+            }
+
+            let ang = Math.atan2(npc.targetY - npc.y, npc.targetX - npc.x); 
+            npc.x += Math.cos(ang) * npc.speed * envDt; 
+            npc.y += Math.sin(ang) * npc.speed * envDt; 
+            continue;
+        }
+
+        let isRanged = (npc.type === 'psycho' || npc.class === 'ranged' || npc.type === 'boss' || npc.type === 'guard' || (npc.hostile && !npc.isFixer && !npc.isRipper));
+        if(isRanged) {
+            let optDist = npc.type === 'boss' ? 250 : (npc.class === 'ranged' ? 300 : 220);
+            if (dist < optDist - 40) { let fA = Math.atan2(npc.y - Player.y, npc.x - Player.x); npc.targetX = npc.x + Math.cos(fA) * 150; npc.targetY = npc.y + Math.sin(fA) * 150; } 
+            else if (dist > optDist + 50) { npc.targetX = Player.x; npc.targetY = Player.y; } 
+            else { let oA = Math.atan2(npc.y - Player.y, npc.x - Player.x) + (npc.w % 3 === 0 ? 0.4 : -0.4); npc.targetX = Player.x + Math.cos(oA) * optDist; npc.targetY = Player.y + Math.sin(oA) * optDist; }
+
+            if (dist < optDist + 150 && npc.fireTimer <= 0 && Player.stunTimer <= 0) {
+                let ang = Math.atan2(Player.y - npc.y, Player.x - npc.x); let bColor = npc.type==='boss'?'#f00':(npc.class==='ranged'?'#00f0ff':(npc.type==='psycho'?'#ff8800':'#ff003c'));
+                bullets.push({ x: npc.x, y: npc.y, vx: Math.cos(ang)*600, vy: Math.sin(ang)*600, dmg: npc.dmg || 10, owner: 'enemy', color: bColor, life: 2.0 });
+                npc.fireTimer = npc.type === 'boss' ? 0.15 : (npc.class === 'ranged' ? 0.6 : 1.0);
+            }
+            let moveAng = Math.atan2(npc.targetY - npc.y, npc.targetX - npc.x); npc.x += Math.cos(moveAng)*npc.speed*envDt; npc.y += Math.sin(moveAng)*npc.speed*envDt;
+        } else {
+            if(npc.state === 'flee') { let ang = Math.atan2(npc.y - Player.y, npc.x - Player.x); npc.targetX = npc.x + Math.cos(ang)*200; npc.targetY = npc.y + Math.sin(ang)*200; }
+            else { npc.timer -= envDt; if(npc.timer <= 0) { npc.targetX = npc.x + (Math.random()-0.5)*200; npc.targetY = npc.y + (Math.random()-0.5)*200; npc.timer = 2+Math.random()*3; } if(Input.shoot && dist < 300) { npc.state = 'flee'; npc.timer = 5; } }
+            let ang = Math.atan2(npc.targetY - npc.y, npc.targetX - npc.x), spd = npc.state === 'flee' ? npc.speed*1.5 : npc.speed;
+            let nextNpcX = npc.x + Math.cos(ang)*spd*envDt, nextNpcY = npc.y + Math.sin(ang)*spd*envDt;
+            let checked = checkWallCollision(npc.x, npc.y, nextNpcX, nextNpcY, npc.w / 2); npc.x = checked.x; npc.y = checked.y;
+        }
+        
+        if(npc.fireTimer > 0) npc.fireTimer -= envDt;
+        if(dist > 1500) { npc.state = 'dead'; if(currentState === GAME_STATE.CITY) spawnNPC(); }
+    }
+    
+    // 車両交通
+    if(currentState === GAME_STATE.CITY) {
+        Traffic.lights.timer -= envDt; if(Traffic.lights.timer <= 0) { Traffic.lights.state = Traffic.lights.state === 'GREEN' ? 'RED' : 'GREEN'; Traffic.lights.timer = Traffic.lights.state === 'GREEN' ? 10 : 5; }
+        vehicles.forEach(car => {
+            if(car.state === 'drive') { let dTL = Math.abs(car.x - 1000); if(Traffic.lights.state === 'RED' && dTL < 200 && ((car.dir===1 && car.x<1000) || (car.dir===-1 && car.x>1000))) car.state = 'brake'; else car.x += car.speed * car.dir * envDt; }
+            else if (car.state === 'brake') { if(Traffic.lights.state === 'GREEN') car.state = 'drive'; } else if (car.state === 'stop') { car.timer -= envDt; if(car.timer <= 0) car.state = 'drive'; }
+            
+            if(!Player.invincible && Math.abs(car.x - Player.x) < car.w/2 + Player.w/2 && Math.abs(car.y - Player.y) < car.h/2 + Player.h/2) { 
+                if(car.state !== 'stop') { 
+                    Player.hp -= 30; car.state = 'stop'; car.timer = 2; 
+                    showFloatingText(car.x, car.y - 20, ["接触事故！", "危ねえ！"][Math.floor(Math.random()*2)], "#fff"); 
+                    spawnParticles(Player.x, Player.y, '#f00', 10); 
+                } 
+            }
+            if(car.x > 3000 || car.x < -1000) { car.x = car.dir===1 ? -200 : 2200; car.state = 'drive'; }
+        });
+    }
+
+    // 弾丸コリジョン更新
+    for(let i=bullets.length-1; i>=0; i--) {
+        let b = bullets[i], hit = false; b.x += b.vx * envDt; b.y += b.vy * envDt; b.life -= envDt;
+        
+        if(b.owner === 'player') {
+            for(let npc of npcs) {
+                if(Math.abs(b.x - npc.x) < npc.w && Math.abs(b.y - npc.y) < npc.h && npc.state !== 'dead') {
+                    npc.hp -= b.dmg; hit = true; spawnParticles(b.x, b.y, '#f00', 5); showFloatingText(b.x, b.y, Math.floor(b.dmg), '#fff');
+                    
+                    if(!npc.hostile && !npc.isFixer && !npc.isRipper) { 
+                        npc.hostile = true; 
+                        if (npc.type === 'gang') {
+                            npcs.forEach(other => {
+                                if (other.type === 'gang') {
+                                    other.hostile = true;
+                                    other.state = 'wander'; 
+                                }
+                            });
+                            showFloatingText(Player.x, Player.y - 70, "全ギャングが敵対！", "var(--cp-red)");
+                        } else if(npc.type==='civ') commitCrime(0.5); 
+                        else if(npc.type==='corp') commitCrime(1); 
+                    }
+                    if(npc.hp <= 0 && !npc.isFixer && !npc.isRipper) { 
+                        npc.state = 'dead'; 
+                        if(npc.type==='civ'||npc.type==='corp') commitCrime(1); 
+                        if(npc.type==='exec'&&!traumaActive) callTraumaTeam(npc.x, npc.y); 
+                        if(npc.type !== 'adam' && Math.random() < 0.5) { let m = Math.floor(Math.random()*100); Player.money += m; showFloatingText(npc.x, npc.y, `+$${m}`, varColor('cp-yellow')); } 
+                        updateDynamicQuest('kill', npc.type); 
+                    } 
+                    break;
+                }
+            }
+        } else if (b.owner === 'enemy_psycho') {
+            if(!Player.invincible && Math.abs(b.x - Player.x) < Player.w && Math.abs(b.y - Player.y) < Player.h) { 
+                let reduction = 1.0;
+                if (Player.implants.integumentary) {
+                    if (Player.implants.integumentary.name.includes("ドラグーン")) reduction = 0.5;
+                    else if (Player.implants.integumentary.name.includes("軍用")) reduction = 0.7;
+                }
+                Player.hp -= (b.dmg || 5) * reduction; if (isNaN(Player.hp)) { Player.hp = Player.maxHp; }
+                hit = true; spawnParticles(b.x, b.y, '#f00', 5); 
+            }
+            
+            for(let npc of npcs) {
+                if(Math.abs(b.x - npc.x) < npc.w && Math.abs(b.y - npc.y) < npc.h && npc.state !== 'dead' && !npc.isFixer && !npc.isRipper) {
+                    npc.hp -= b.dmg;
+                    hit = true;
+                    spawnParticles(b.x, b.y, '#f00', 5);
+                    showFloatingText(npc.x, npc.y, Math.floor(b.dmg), '#f00');
+                    if (npc.hp <= 0) {
+                        npc.state = 'dead';
+                        if(npc.type==='exec'&&!traumaActive) callTraumaTeam(npc.x, npc.y);
+                    }
+                    break;
+                }
+            }
+        } else { 
+            if(!Player.invincible && Math.abs(b.x - Player.x) < Player.w && Math.abs(b.y - Player.y) < Player.h) { 
+                let reduction = 1.0;
+                if (Player.implants.integumentary) {
+                    if (Player.implants.integumentary.name.includes("ドラグーン")) reduction = 0.5;
+                    else if (Player.implants.integumentary.name.includes("軍用")) reduction = 0.7;
+                }
+                Player.hp -= (b.dmg || 5) * reduction; if (isNaN(Player.hp)) { Player.hp = Player.maxHp; }
+                hit = true; spawnParticles(b.x, b.y, '#f00', 5); 
+            } 
+        }
+        if(hit || b.life <= 0) bullets.splice(i, 1);
+    }
+    
+    // マックスタック召喚
+    if(Player.wantedLevel >= 3 && currentState === GAME_STATE.CITY) { 
+        crimeTimer -= envDt; 
+        if(crimeTimer <= 0) { 
+            let aliveMaxTac = npcs.filter(n => n.type === 'maxtac' && n.state !== 'dead').length;
+            if (aliveMaxTac < 6) {
+                showFloatingText(Player.x, Player.y-100, "マックスタック強襲降下！", "#00f0ff");
+                let targetSpawnCount = Player.wantedLevel >= 4.5 ? 6 : (Player.wantedLevel >= 4 ? 4 : 2); 
+                let spawnSlots = Math.min(targetSpawnCount - aliveMaxTac, 6 - aliveMaxTac);
+                for(let i=0; i<spawnSlots; i++) {
+                    let rx = Player.x + (Math.random()-0.5)*700, ry = Player.y + (Math.random()-0.5)*700, dice = Math.random();
+                    if (Player.wantedLevel >= 4.5) { if (dice < 0.35) spawnNPC(MaxTacVariants.MANTIS, rx, ry); else if (dice < 0.7) spawnNPC(MaxTacVariants.RANGED, rx, ry); else spawnNPC(MaxTacVariants.NETRUNNER, rx, ry); } 
+                    else if (Player.wantedLevel >= 4) { if (dice < 0.4) spawnNPC(MaxTacVariants.MANTIS, rx, ry); else if (dice < 0.8) spawnNPC(MaxTacVariants.RANGED, rx, ry); else spawnNPC(MaxTacVariants.NETRUNNER, rx, ry); } 
+                    else { if (dice < 0.5) spawnNPC(MaxTacVariants.MANTIS, rx, ry); else if (dice < 0.8) spawnNPC(MaxTacVariants.RANGED, rx, ry); }
+                }
+            } crimeTimer = 18 - Player.wantedLevel; 
+        } 
+    }
+    
+    particles.forEach(p => { p.x += p.vx * envDt; p.y += p.vy * envDt; p.life -= envDt; }); particles = particles.filter(p => p.life > 0);
+    floatingTexts.forEach(t => { t.y += t.vy * envDt; t.life -= envDt; }); floatingTexts = floatingTexts.filter(t => t.life > 0);
+    if(Player.hp <= 0 && currentState !== GAME_STATE.DEAD) { Player.hp = 0; currentState = GAME_STATE.DEAD; const ts = document.getElementById('transition-screen'), dUI = document.getElementById('death-ui'); document.getElementById('trans-text').style.display = 'none'; dUI.style.display = 'flex'; ts.style.opacity = 1; ts.style.pointerEvents = 'auto'; }
+}
+
+function varColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim(); }
+
+function draw() {
+    let hRatio = Player.humanity();
+    let isPsychoActive = hRatio < 0;
+    let shakeX = 0, shakeY = 0;
+    if (isPsychoActive) {
+        let intensity = Math.min(20, Math.abs(hRatio) * 0.8);
+        if (Math.random() < 0.4) {
+            shakeX = (Math.random() - 0.5) * intensity;
+            shakeY = (Math.random() - 0.5) * intensity;
+        }
+    }
+
+    ctx.fillStyle = '#0a0b0d'; ctx.fillRect(0, 0, cw, ch); 
+    ctx.save(); 
+    ctx.translate(-Camera.x + shakeX, -Camera.y + shakeY);
+    
+    if(currentState === GAME_STATE.ROOM) {
+        ctx.fillStyle = '#111317'; ctx.fillRect(200, 200, 400, 300); ctx.strokeStyle = varColor('cp-cyan'); ctx.lineWidth = 3; ctx.strokeRect(200, 200, 400, 300);
+        ctx.fillStyle = '#221115'; ctx.fillRect(220, 220, 80, 150); ctx.fillStyle = '#2d3139'; ctx.fillRect(500, 220, 80, 50);
+    } else if(currentState === GAME_STATE.CITY) {
+        ctx.strokeStyle = '#14171d'; ctx.lineWidth = 1; 
+        for(let i=-1000; i<3000; i+=100) { ctx.beginPath(); ctx.moveTo(i, -1000); ctx.lineTo(i, 2000); ctx.stroke(); } for(let i=-1000; i<2000; i+=100) { ctx.beginPath(); ctx.moveTo(-1000, i); ctx.lineTo(3000, i); ctx.stroke(); }
+        ctx.fillStyle = '#0f1115'; ctx.fillRect(-1000, 450, 4000, 100); ctx.fillRect(900, -1000, 200, 3000);
+        ctx.fillStyle = '#444'; for(let i=450; i<550; i+=20) { ctx.fillRect(850, i, 40, 10); ctx.fillRect(1110, i, 40, 10); }
+        ctx.fillStyle = '#08090b'; ctx.fillRect(880, 430, 20, 20); ctx.fillRect(1100, 430, 20, 20); ctx.fillStyle = Traffic.lights.state === 'RED' ? '#ff003c' : '#331111'; ctx.beginPath(); ctx.arc(890, 440, 6, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = Traffic.lights.state === 'GREEN' ? '#00ff41' : '#113311'; ctx.beginPath(); ctx.arc(1110, 440, 6, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#111317'; ctx.fillRect(200, 100, 300, 200); ctx.strokeStyle = varColor('cp-yellow'); ctx.strokeRect(200, 100, 300, 200); 
+        ctx.fillRect(1200, 100, 400, 300); ctx.strokeStyle = varColor('cp-red'); ctx.strokeRect(1200, 100, 400, 300); ctx.fillStyle = 'rgba(255, 0, 60, 0.08)'; ctx.fillRect(1200, 100, 400, 300); ctx.fillStyle = 'rgba(255,0,0,0.15)'; ctx.font = "bold 44px sans-serif"; ctx.fillText("ARASAKA", 1245, 260);
+        ctx.fillStyle = '#0b1c20'; ctx.fillRect(700, 600, 150, 150); ctx.strokeStyle = varColor('cp-cyan'); ctx.strokeRect(700, 600, 150, 150); ctx.fillStyle = varColor('cp-cyan'); ctx.font = "20px sans-serif"; ctx.fillText("MARKET", 735, 685);
+        ctx.fillStyle = '#220810'; ctx.fillRect(-200, 700, 150, 150); ctx.strokeStyle = '#ff003c'; ctx.strokeRect(-200, 700, 150, 150); ctx.fillStyle = '#ff003c'; ctx.font = "19px sans-serif"; ctx.fillText("BLACK MARKET", -195, 785);
+        Obstacles.forEach(obs => { ctx.fillStyle = obs.color; ctx.fillRect(obs.x, obs.y, obs.w, obs.h); ctx.strokeStyle = '#2b2e38'; ctx.lineWidth = 2; ctx.strokeRect(obs.x, obs.y, obs.w, obs.h); ctx.fillStyle = 'rgba(0, 240, 255, 0.12)'; ctx.fillRect(obs.x, obs.y, obs.w, obs.h); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.font = '12px Courier'; ctx.fillText(obs.label, obs.x + 12, obs.y + 24); });
+    } else if(currentState === GAME_STATE.TOWER) {
+        ctx.fillStyle = '#08090c'; ctx.fillRect(200, 0, 600, 1000); ctx.strokeStyle = '#ff003c'; ctx.lineWidth = 5; ctx.strokeRect(200, 0, 600, 1000); ctx.fillStyle = '#250810'; ctx.font = "bold 110px sans-serif"; ctx.globalAlpha = 0.15; ctx.fillText(`FLOOR ${towerFloor}`, 240, 520); ctx.globalAlpha = 1.0;
+    } else if(currentState === GAME_STATE.MARKET) {
+        ctx.fillStyle = '#091c1f'; ctx.fillRect(200, 100, 400, 500); ctx.strokeStyle = varColor('cp-cyan'); ctx.lineWidth = 2; ctx.strokeRect(200, 100, 400, 500); ctx.fillStyle = '#07090b'; ctx.fillRect(350, 150, 100, 80); 
+    } else if(currentState === GAME_STATE.BLACK_MARKET) {
+        ctx.fillStyle = '#220810'; ctx.fillRect(200, 100, 400, 500); ctx.strokeStyle = '#ff003c'; ctx.lineWidth = 2; ctx.strokeRect(200, 100, 400, 500); ctx.fillStyle = '#07090b'; ctx.fillRect(350, 150, 100, 80); 
+    }
+    
+    interactables.forEach(int => { 
+        if(int.isPackage) { 
+            ctx.fillStyle = varColor('cp-green'); ctx.fillRect(int.x-10, int.y-10, 20, 20); ctx.fillStyle='#000'; ctx.font="bold 10px sans-serif"; ctx.fillText("PKG", int.x-8, int.y+4); 
+        } else if(int.isReward) {
+            ctx.fillStyle = varColor('cp-yellow'); ctx.fillRect(int.x-int.w/2, int.y-int.h/2, int.w, int.h); ctx.fillStyle='#000'; ctx.font="bold 10px sans-serif"; ctx.fillText("LOOT", int.x-12, int.y+4); 
+        } else { 
+            ctx.fillStyle = 'rgba(252, 238, 10, 0.15)'; ctx.fillRect(int.x - int.w/2, int.y - int.h/2, int.w, int.h); ctx.strokeStyle = varColor('cp-yellow'); ctx.strokeRect(int.x - int.w/2, int.y - int.h/2, int.w, int.h); 
+        } 
+    });
+    corpses.forEach(c => { ctx.fillStyle = '#3a3e45'; ctx.fillRect(c.x - 10, c.y - 10, 20, 20); ctx.fillStyle = 'rgba(255, 0, 60, 0.35)'; ctx.beginPath(); ctx.arc(c.x, c.y+4, 16, 0, Math.PI*2); ctx.fill(); });
+    vehicles.forEach(car => { ctx.fillStyle = car.color; ctx.fillRect(car.x - car.w/2, car.y - car.h/2, car.w, car.h); ctx.fillStyle = 'rgba(255, 255, 220, 0.25)'; if(car.dir === 1) { ctx.beginPath(); ctx.moveTo(car.x+car.w/2, car.y-car.h/2); ctx.lineTo(car.x+car.w/2+120, car.y-car.h); ctx.lineTo(car.x+car.w/2+120, car.y+car.h); ctx.lineTo(car.x+car.w/2, car.y+car.h/2); ctx.fill(); } else { ctx.beginPath(); ctx.moveTo(car.x-car.w/2, car.y-car.h/2); ctx.lineTo(car.x-car.w/2-120, car.y-car.h); ctx.lineTo(car.x-car.w/2-120, car.y+car.h); ctx.lineTo(car.x-car.w/2, car.y+car.h/2); ctx.fill(); } });
+    Player.trail.forEach(t => { ctx.fillStyle = t.color; ctx.globalAlpha = t.life; ctx.fillRect(t.x - Player.w/2, t.y - Player.h/2, Player.w, Player.h); }); ctx.globalAlpha = 1.0;
+
+    hackBeams.forEach(b => {
+        ctx.strokeStyle = `rgba(170, 0, 255, ${b.life * 3})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
+        ctx.fillStyle = `rgba(170, 0, 255, ${b.life * 3})`; ctx.beginPath(); ctx.arc(b.x1, b.y1, 5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(b.x2, b.y2, 5, 0, Math.PI*2); ctx.fill();
+    });
+    
+    meleeEffects.forEach(e => {
+        ctx.strokeStyle = e.color; ctx.lineWidth = 4; ctx.globalAlpha = e.life * 5; ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI*2); ctx.stroke(); ctx.globalAlpha = 1.0;
+    });
+
+    shellCasings.forEach(c => {
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        ctx.rotate(c.rot);
+        ctx.fillStyle = '#ffcc00'; 
+        ctx.globalAlpha = c.life;
+        ctx.fillRect(-3, -1, 6, 2); 
+        ctx.restore();
+    });
+    ctx.globalAlpha = 1.0;
+
+    // ミサイルの範囲サークル描画
+    bombs.forEach(b => { 
+        ctx.strokeStyle = "rgba(255, 0, 60, 0.6)"; 
+        ctx.lineWidth = 2; 
+        ctx.beginPath(); 
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2); 
+        ctx.stroke(); 
+        ctx.fillStyle = "rgba(255, 0, 60, 0.15)"; 
+        ctx.beginPath(); 
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2); 
+        ctx.fill(); 
+        ctx.fillStyle = "#fff"; 
+        ctx.font = "bold 11px sans-serif"; 
+        ctx.fillText(b.timer.toFixed(1), b.x - 10, b.y - 10); 
+    });
+
+    npcs.forEach(npc => {
+        let enemyX = npc.x;
+        let enemyY = npc.y;
+        
+        // 人間性がマイナスの時、敵の表示位置が激しくブレる視覚モジュールバグ
+        let showGlitchGhost = isPsychoActive && !npc.isFixer && !npc.isRipper && Math.random() < 0.7;
+
+        if (showGlitchGhost) {
+            let bOffset = (Math.random() - 0.5) * Math.min(45, Math.abs(hRatio) * 1.5);
+            enemyX += bOffset;
+            ctx.fillStyle = 'rgba(0, 240, 255, 0.45)'; 
+            ctx.fillRect(enemyX - npc.w/2 - 10, enemyY - npc.h/2, npc.w, npc.h);
+            ctx.fillStyle = 'rgba(255, 0, 60, 0.45)';  
+            ctx.fillRect(enemyX - npc.w/2 + 10, enemyY - npc.h/2, npc.w, npc.h);
+        }
+
+        if(npc.type === 'adam') {
+            ctx.fillStyle = npc.color; 
+            ctx.fillRect(enemyX - npc.w/2, enemyY - npc.h/2, npc.w, npc.h);
+            ctx.strokeStyle = npc.outline; 
+            ctx.lineWidth = 3; 
+            ctx.strokeRect(enemyX - npc.w/2, enemyY - npc.h/2, npc.w, npc.h);
+            
+            ctx.fillStyle = '#f00'; 
+            ctx.fillRect(enemyX - npc.w/2 + 5, enemyY - npc.h/2 + 5, 12, 12);
+            
+            // アダムHPバー
+            ctx.fillStyle = '#07090b'; 
+            ctx.fillRect(enemyX - 25, enemyY - npc.h/2 - 15, 50, 6); 
+            ctx.fillStyle = '#ff003c'; 
+            ctx.fillRect(enemyX - 25, enemyY - npc.h/2 - 15, 50 * (npc.hp/npc.maxHp), 6);
+        } else {
+            ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.beginPath(); ctx.arc(enemyX, enemyY+npc.h/2, npc.w/2, 0, Math.PI*2); ctx.fill(); 
+            ctx.fillStyle = npc.color; ctx.fillRect(enemyX - npc.w/2, enemyY - npc.h/2, npc.w, npc.h);
+            
+            if(npc.isFixer || npc.isRipper) { ctx.fillStyle = '#000'; ctx.font="bold 13px sans-serif"; ctx.fillText(npc.isRipper?"+":"$", enemyX-4, enemyY+5); ctx.fillStyle = npc.color; ctx.beginPath(); ctx.arc(enemyX, enemyY-18, 4, 0, Math.PI*2); ctx.fill(); }
+            if(npc.jammedTimer > 0) { ctx.strokeStyle = "var(--cp-cyan)"; ctx.lineWidth = 2; ctx.strokeRect(enemyX - npc.w/2 - 4, enemyY - npc.h/2 - 4, npc.w + 8, npc.h + 8); if(Math.random() < 0.5) { ctx.fillStyle = "#fff"; ctx.fillRect(enemyX - 12 + Math.random()*24, enemyY - 12, 3, 3); } } else if(npc.outline) { ctx.strokeStyle = npc.outline; ctx.lineWidth = 2; ctx.strokeRect(enemyX - npc.w/2, enemyY - npc.h/2, npc.w, npc.h); }
+            if(npc.type === 'psycho') { ctx.fillStyle = 'rgba(255,255,255,0.6)'; for(let i=0; i<4; i++) ctx.fillRect(enemyX - npc.w/2 + Math.random()*npc.w, enemyY - npc.h/2 + Math.random()*npc.h, 6, 2); }
+            if(npc.hp < npc.maxHp || npc.hostile) { ctx.fillStyle = '#07090b'; ctx.fillRect(enemyX - 15, enemyY - npc.h/2 - 12, 30, 4); ctx.fillStyle = npc.hostile ? '#ff003c' : '#00ff41'; ctx.fillRect(enemyX - 15, enemyY - npc.h/2 - 12, 30 * (npc.hp/npc.maxHp), 4); }
+            if(npc.state === 'healing') { ctx.fillStyle = '#00ff41'; ctx.fillRect(enemyX - 20, enemyY - 30, 40 * (traumaProgress/5), 5); }
+        }
+    });
+
+    if(currentState !== GAME_STATE.DEAD) {
+        if (Player.invincible) {
+            ctx.fillStyle = Math.random() < 0.5 ? 'rgba(0, 240, 255, 0.8)' : 'rgba(255, 255, 255, 0.8)';
+        } else {
+            ctx.fillStyle = varColor('cp-yellow');
+        }
+        
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.arc(Player.x, Player.y+Player.h/2, Player.w/2, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = Player.invincible ? (Math.random() < 0.5 ? '#fff' : varColor('cp-cyan')) : varColor('cp-yellow'); 
+        ctx.fillRect(Player.x - Player.w/2, Player.y - Player.h/2, Player.w, Player.h);
+        
+        // リロード進捗円形（スピンサークルゲージ）のレンダリング
+        let wRanged = Player.equipped.ranged;
+        if(wRanged && wRanged.reloading) {
+            let progress = Math.max(0, wRanged.timer / wRanged.totalReloadTime);
+            ctx.strokeStyle = "rgba(255, 0, 60, 0.85)";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(Player.x, Player.y, 25, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * (1 - progress)));
+            ctx.stroke();
+
+            // 装填中央テキスト
+            ctx.fillStyle = "rgba(255, 0, 60, 0.9)";
+            ctx.font = "bold 9px sans-serif";
+            ctx.fillText("RELOAD", Player.x - 17, Player.y - 12);
+        }
+
+        if(!Input.scope && Player.implants.ocular) { let tgt = getClosestEnemy(); if(tgt) { ctx.strokeStyle = 'rgba(255, 0, 60, 0.65)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(tgt.x, tgt.y, tgt.w + 12, 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(Player.x, Player.y); ctx.lineTo(tgt.x, tgt.y); ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]); } } 
+        else if (Input.scope) { let ang = Math.atan2(Input.joystick.y, Input.joystick.x); if(!Input.joystick.x && !Input.joystick.y) ang = 0; ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(Player.x, Player.y); ctx.lineTo(Player.x + Math.cos(ang)*320, Player.y + Math.sin(ang)*320); ctx.stroke(); }
+        
+        if (Player.stunTimer > 0) { ctx.strokeStyle = '#00f0ff'; ctx.lineWidth = 2; ctx.beginPath(); for(let i=0; i<6; i++) { let sx = Player.x + (Math.random()-0.5)*35, sy = Player.y + (Math.random()-0.5)*35; if (i===0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy); } ctx.stroke(); }
+    }
+
+    if (Player.hackWaveActive) { ctx.strokeStyle = "rgba(0, 240, 255, " + (1 - Player.hackWaveRadius / 250) + ")"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(Player.x, Player.y, Player.hackWaveRadius, 0, Math.PI*2); ctx.stroke(); }
+    bullets.forEach(b => { ctx.fillStyle = b.color; ctx.fillRect(b.x - 2.5, b.y - 2.5, 5, 5); });
+    particles.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = p.life * 2; ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size); }); ctx.globalAlpha = 1.0;
+    floatingTexts.forEach(t => { ctx.fillStyle = t.color; ctx.globalAlpha = t.life; ctx.font = "bold 14px sans-serif"; ctx.fillText(t.text, t.x - 12, t.y); }); ctx.globalAlpha = 1.0;
+    
+    // --- HP低下ノイズ ---
+    let hpRatio = Player.hp / Player.maxHp;
+    if (hpRatio < 0.6 && Player.hp > 0 && currentState !== GAME_STATE.DEAD) {
+        let intensity = (0.6 - hpRatio) / 0.6; 
+        
+        if (Math.random() < intensity * 0.4) {
+            ctx.fillStyle = `rgba(255, 0, 60, ${intensity * 0.15})`;
+            ctx.fillRect(Camera.x, Camera.y, cw, ch);
+        }
+        
+        if (Math.random() < intensity * 0.6) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${intensity * 0.3})`;
+            let noiseY = Math.random() * ch;
+            let noiseH = 2 + Math.random() * 10;
+            ctx.fillRect(Camera.x, Camera.y + noiseY, cw, noiseH);
+        }
+        
+        if (hpRatio < 0.3) {
+            let pulse = (Math.sin(performance.now() / 100) + 1) / 2;
+            ctx.strokeStyle = `rgba(255, 0, 60, ${pulse * 0.6 * intensity})`;
+            ctx.lineWidth = 15;
+            ctx.strokeRect(Camera.x, Camera.y, cw, ch);
+        }
+    }
+
+    // サイコシス専用のRGB分割スプリット（二重残像ブレ）
+    if (isPsychoActive && currentState !== GAME_STATE.DEAD) {
+        let intensity = Math.min(25, Math.abs(hRatio) * 1.5);
+        if (Math.random() < 0.75) {
+            ctx.fillStyle = `rgba(0, 240, 255, ${Math.min(0.2, Math.abs(hRatio) * 0.015)})`; ctx.fillRect(Camera.x - intensity / 2, Camera.y, cw, ch);
+            ctx.fillStyle = `rgba(255, 0, 60, ${Math.min(0.2, Math.abs(hRatio) * 0.015)})`; ctx.fillRect(Camera.x + intensity / 2, Camera.y, cw, ch);
+        }
+        if (Math.random() < 0.3) {
+            ctx.fillStyle = Math.random() < 0.5 ? 'rgba(0, 240, 255, 0.2)' : 'rgba(255, 0, 60, 0.2)';
+            let blockY = Math.random() * ch, blockH = 10 + Math.random() * 50, blockW = cw * (0.1 + Math.random() * 0.4), blockX = Math.random() * (cw - blockW);
+            ctx.fillRect(Camera.x + blockX, Camera.y + blockY, blockW, blockH);
+        }
+        if (Math.random() < 0.4) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'; ctx.fillRect(Camera.x, Camera.y + Math.random() * ch, cw, 4 + Math.random() * 8);
+        }
+    }
+
+    if(Player.stunTimer > 0) { ctx.fillStyle = 'rgba(0, 240, 255, 0.05)'; if(Math.random() < 0.3) ctx.fillRect(Camera.x, Camera.y, cw, ch); }
+    if(Player.sandyActive) { ctx.fillStyle = 'rgba(0, 255, 65, 0.12)'; ctx.fillRect(Camera.x, Camera.y, cw, ch); let grd = ctx.createRadialGradient(Camera.x+cw/2, Camera.y+ch/2, ch/4, Camera.x+cw/2, Camera.y+ch/2, ch); grd.addColorStop(0, "transparent"); grd.addColorStop(1, "rgba(0, 255, 65, 0.25)"); ctx.fillStyle = grd; ctx.fillRect(Camera.x, Camera.y, cw, ch); }
+    
+    ctx.restore(); 
+    if (Player.implants.ocular) { ctx.fillStyle = 'rgba(0, 240, 255, 0.05)'; ctx.fillRect(0, 0, cw, ch); ctx.strokeStyle = 'rgba(0, 240, 255, 0.03)'; ctx.lineWidth = 1; for (let y = 0; y < ch; y += 4) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cw, y); ctx.stroke(); } if (Math.random() < 0.04) { ctx.fillStyle = 'rgba(0, 240, 255, 0.12)'; ctx.fillRect(0, Math.random() * ch, cw, 2 + Math.random() * 4); } }
+    updateStaticUI();
+}
+
+function updateStaticUI() {
+    let hum = Player.humanity();
+    document.getElementById('hp-fill').style.width = `${(Math.max(0,Player.hp) / Player.maxHp) * 100}%`; document.getElementById('ui-hp').innerText = `HP: ${Math.floor(Math.max(0,Player.hp))} / ${Player.maxHp}`;
+    document.getElementById('humanity-fill').style.width = `${(Math.max(0, hum) / Player.maxHumanity) * 100}%`; document.getElementById('ui-humanity').innerText = `HUMANITY: ${hum} / ${Player.maxHumanity}`;
+    document.getElementById('ice-fill').style.width = `${(Math.max(0, Player.hackDefMeter) / Player.maxHackDefMeter) * 100}%`; document.getElementById('ui-ice').innerText = `ICE: ${Math.floor(Player.hackDefMeter)} / ${Player.maxHackDefMeter}`;
+    
+    let wRanged = Player.equipped.ranged;
+    const ammoUI = document.getElementById('ui-ammo'); const reloadingIndicator = document.getElementById('ui-reloading-indicator');
+    if (wRanged) { if (wRanged.reloading) { ammoUI.innerText = `AMMO: [RELOAD]`; ammoUI.style.color = "var(--cp-red)"; reloadingIndicator.style.display = "block"; } else { ammoUI.innerText = `AMMO: ${wRanged.ammo} / ${wRanged.magSize}`; ammoUI.style.color = "var(--cp-cyan)"; reloadingIndicator.style.display = "none"; } } else { ammoUI.innerText = `AMMO: -- / --`; ammoUI.style.color = "#888"; reloadingIndicator.style.display = "none"; }
+    document.getElementById('ui-money').innerText = `$${Player.money}`;
+    
+    const sB = document.getElementById('btn-sandevistan'); if(Player.sandyActive) { sB.style.background = '#0f0'; sB.innerText = Math.ceil(Player.sandyTimer); } else { sB.style.background = '#0f0'; sB.innerText = 'ｻﾝﾃﾞﾋﾞ'; } 
+    const hB = document.getElementById('btn-hack'); if(Player.implants.frontalCortex && Player.implants.frontalCortex.name.includes('シナプス・ジャマー')) { hB.style.display = 'flex'; if(Player.hackCooldown > 0) { hB.style.background = '#222'; hB.style.color = '#555'; hB.innerText = Math.ceil(Player.hackCooldown); } else { hB.style.background = 'var(--cp-cyan)'; hB.style.color = '#000'; hB.innerText = 'ﾊｯｸ'; } } else { hB.style.display = 'none'; }
+
+    const dB = document.getElementById('btn-dash');
+    if(Player.implants.legs && Player.implants.legs.name === '強化テンドン') {
+        dB.style.display = 'flex';
+        if(Player.dashCooldown > 0) { dB.style.background = '#222'; dB.style.color = '#555'; dB.innerText = Math.ceil(Player.dashCooldown); } else { dB.style.background = 'radial-gradient(circle, #fff 40%, #00f0ff 100%)'; dB.style.color = '#000'; dB.innerText = 'ﾀﾞｯｼｭ'; }
+    } else { dB.style.display = 'none'; }
+
+    let quickQty = 0; let shortName = "なし";
+    if (Player.quickItem) { if (Player.quickItem === 'マックスドック') { quickQty = Player.healItems; shortName = "回復"; } else { quickQty = Player.inventory.drugs[Player.quickItem] || 0; shortName = Player.quickItem.substring(0, 4); } }
+    document.getElementById('quick-item-name').innerText = shortName; document.getElementById('quick-item-qty').innerText = quickQty;
+}
+
+function updateWantedUI() { let wUI = document.getElementById('ui-wanted'); if(Player.wantedLevel > 0) { let s = ""; for(let i=0; i<Math.floor(Player.wantedLevel); i++) s += "★"; wUI.innerText = `手配度: ${s}`; } else wUI.innerText = ""; }
+function updateQuestUI() {
+    const qL = document.getElementById('quest-list'); qL.innerHTML = ''; quests.forEach(q => { if(q.active && !q.complete) { let div = document.createElement('div'); div.className = `quest-item ${q.fake ? 'hallucination-quest' : ''} ${q.isDyn ? 'dynamic-quest' : ''}`; div.innerText = `- ${q.title}: ${q.desc}`; qL.appendChild(div); } });
+    const mapDot = document.getElementById('map-player-dot'); if (mapDot) { let mapPctX = ((Player.x + 1000) / 4000) * 100; let mapPctY = ((Player.y + 1000) / 3000) * 100; mapDot.style.left = `${Math.max(2, Math.min(95, mapPctX))}%`; mapDot.style.top = `${Math.max(2, Math.min(95, mapPctY))}%`; }
+}
+function completeQuest(id) { let q = quests.find(q => q.id === id); if(q && !q.complete) { q.complete = true; showFloatingText(Player.x, Player.y - 50, "クエスト更新", varColor('cp-yellow')); updateQuestUI(); } }
+
+function loop(timestamp) { deltaTime = (timestamp - lastTime) / 1000; if(deltaTime > 0.1) deltaTime = 0.1; lastTime = timestamp; update(deltaTime); draw(); requestAnimationFrame(loop); }
+initWorld(); updateWantedUI(); updateQuestUI(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>
+
+```

@@ -1,0 +1,1674 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ウルトラベースボール3D</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Modern Sports Style) -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=M+PLUS+1p:wght@400;800;900&display=swap" rel="stylesheet">
+    <!-- Three.js (3Dグラフィックスライブラリ) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            font-family: 'Outfit', 'M PLUS 1p', sans-serif;
+            background: linear-gradient(135deg, #070b19 0%, #0f172a 100%);
+            touch-action: none; /* スマホでのスクロールを防止して操作性向上 */
+        }
+        .sports-text-shadow {
+            text-shadow: 0 4px 6px rgba(0, 0, 0, 0.4), 0 0 20px rgba(234, 179, 8, 0.6);
+        }
+        .neon-border {
+            box-shadow: 0 0 15px rgba(234, 179, 8, 0.3);
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col items-center justify-between p-2 md:p-4 overflow-hidden select-none">
+
+    <!-- メインスタジアムフレーム -->
+    <div class="w-full max-w-5xl bg-slate-900/85 backdrop-blur-md rounded-2xl shadow-2xl border-2 border-slate-700 p-2 md:p-4 flex flex-col gap-3 relative">
+        
+        <!-- ヘッダー：モダン3Dスコアボード -->
+        <div class="flex flex-col md:flex-row justify-between items-center bg-slate-950/90 p-3 rounded-xl border border-slate-700/80 gap-3 shadow-lg">
+            <!-- チーム得点表示 -->
+            <div class="flex items-center gap-4 md:gap-6">
+                <div class="flex items-center gap-2 bg-blue-950/60 py-1.5 px-4 rounded-lg border border-blue-500/30">
+                    <div class="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>
+                    <span class="text-xs text-blue-300 font-bold uppercase tracking-wider">YOU</span>
+                    <span id="score-player" class="text-2xl md:text-3xl font-black text-blue-400">0</span>
+                </div>
+                <div class="text-lg font-black text-slate-500 italic">VS</div>
+                <div class="flex items-center gap-2 bg-red-950/60 py-1.5 px-4 rounded-lg border border-red-500/30">
+                    <span id="score-cpu" class="text-2xl md:text-3xl font-black text-red-400">0</span>
+                    <span class="text-xs text-red-300 font-bold uppercase tracking-wider">COM</span>
+                    <div class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+                </div>
+            </div>
+
+            <!-- カウント（BSO）＆インフォメーション -->
+            <div class="flex flex-wrap items-center gap-4 bg-slate-900/90 py-1.5 px-4 rounded-xl border border-slate-800">
+                <!-- イニング -->
+                <div class="text-center border-r border-slate-700 pr-4">
+                    <span id="inning-text" class="text-yellow-400 text-lg md:text-xl font-extrabold tracking-tight">1回表</span>
+                </div>
+
+                <!-- BSOランプ -->
+                <div class="flex items-center gap-3 text-sm">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-emerald-400 font-black">B</span>
+                        <div id="balls-container" class="flex gap-1">
+                            <div class="w-3 h-3 rounded-full bg-slate-800 border border-slate-600 shadow"></div>
+                            <div class="w-3 h-3 rounded-full bg-slate-800 border border-slate-600 shadow"></div>
+                            <div class="w-3 h-3 rounded-full bg-slate-800 border border-slate-600 shadow"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-amber-400 font-black">S</span>
+                        <div id="strikes-container" class="flex gap-1">
+                            <div class="w-3 h-3 rounded-full bg-slate-800 border border-slate-600 shadow"></div>
+                            <div class="w-3 h-3 rounded-full bg-slate-800 border border-slate-600 shadow"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-rose-500 font-black">O</span>
+                        <div id="outs-container" class="flex gap-1">
+                            <div class="w-3 h-3 rounded-full bg-slate-800 border border-slate-600 shadow"></div>
+                            <div class="w-3 h-3 rounded-full bg-slate-800 border border-slate-600 shadow"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ランナー状況表示（ダイアモンド） -->
+                <div class="relative w-10 h-10 flex items-center justify-center border-l border-slate-700 pl-4 ml-1">
+                    <div class="relative w-7 h-7">
+                        <!-- 2塁 -->
+                        <div id="ui-base-2" class="absolute -top-1 left-2 w-2.5 h-2.5 bg-slate-800 border border-slate-600 rotate-45 transition-all duration-300"></div>
+                        <!-- 3塁 -->
+                        <div id="ui-base-3" class="absolute top-2 -left-1 w-2.5 h-2.5 bg-slate-800 border border-slate-600 rotate-45 transition-all duration-300"></div>
+                        <!-- 1塁 -->
+                        <div id="ui-base-1" class="absolute top-2 -right-1 w-2.5 h-2.5 bg-slate-800 border border-slate-600 rotate-45 transition-all duration-300"></div>
+                        <!-- 本塁 -->
+                        <div class="absolute bottom-0 left-2 w-2.5 h-2.5 bg-slate-300 rotate-45"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 実況ニュース・ライブフィード -->
+        <div id="live-announcement" class="bg-indigo-950/80 border border-indigo-500/30 text-indigo-200 py-2.5 px-5 rounded-xl text-center text-sm md:text-base font-bold shadow-inner">
+            ⚾️ ウルトラベースボール3Dへようこそ！ミートカーソルを合わせてホームランを放て！
+        </div>
+
+        <!-- 3Dゲーム領域 & 操作コンソール -->
+        <div class="flex flex-col lg:flex-row gap-4 items-stretch justify-center relative">
+            
+            <!-- 3Dレンダラーキャンバス (ゲーム画面) -->
+            <div class="relative bg-slate-950 rounded-2xl overflow-hidden border-4 border-slate-800 shadow-2xl w-full max-w-[550px] aspect-square flex-shrink-0">
+                <div id="canvas-container" class="w-full h-full relative cursor-none">
+                    <!-- ここにThree.jsのCanvasが挿入されます -->
+                </div>
+
+                <!-- リアルタイム球速表示 / 判定メッセージポップアップ -->
+                <div id="speedometer" class="absolute top-4 left-4 bg-black/75 backdrop-blur border border-yellow-500/40 py-1.5 px-3 rounded-lg text-yellow-400 font-extrabold text-xs tracking-wider uppercase hidden">
+                    SPEED: <span id="speed-val" class="text-sm font-black">152</span> km/h
+                </div>
+
+                <!-- 投球判定・結果特大オーバーレイ (STRIKE, HOME RUN etc.) -->
+                <div id="play-result-call" class="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-10 transition-transform duration-200 scale-0">
+                    <span id="result-call-text" class="text-4xl md:text-6xl font-black italic sports-text-shadow tracking-widest text-yellow-400 uppercase font-display">
+                        HOMERUN!
+                    </span>
+                </div>
+
+                <!-- 3Dスタジアムゲームオーバーレイ (スタート / リザルト用) -->
+                <div id="start-overlay" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center z-20">
+                    <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                    <h1 class="text-3xl md:text-5xl text-yellow-400 font-black tracking-tighter italic sports-text-shadow mb-1 animate-bounce font-display">
+                        ULTRA BASEBALL 3D
+                    </h1>
+                    <p class="text-slate-400 text-xs md:text-sm font-bold tracking-widest uppercase mb-6">ウルトラベースボール3D：超カンタン打撃仕様</p>
+                    
+                    <!-- ゲームセットアップパネル -->
+                    <div class="mb-6 bg-slate-900/90 p-4 rounded-xl border border-slate-700/80 w-full max-w-sm z-10 relative">
+                        <label class="block text-xs text-left mb-1.5 text-slate-400 font-bold uppercase tracking-wider">イニング設定:</label>
+                        <select id="select-innings" class="w-full bg-slate-800 text-white rounded-lg p-2.5 mb-4 border border-slate-600 outline-none font-bold text-sm">
+                            <option value="1">1イニング（スピード対戦）</option>
+                            <option value="3" selected>3イニング（スタンダード）</option>
+                            <option value="9">9イニング（プロフェッショナル）</option>
+                        </select>
+                        
+                        <label class="block text-xs text-left mb-1.5 text-slate-400 font-bold uppercase tracking-wider">難易度設定 (ルーキーが超おすすめ！):</label>
+                        <div class="flex gap-2 justify-between">
+                            <button id="btn-diff-easy" onclick="setDifficulty('easy')" class="flex-1 py-1.5 rounded-lg text-xs border border-emerald-500 bg-emerald-950/40 text-emerald-300 font-extrabold tracking-wider transition-all">ルーキー</button>
+                            <button id="btn-diff-normal" onclick="setDifficulty('normal')" class="flex-1 py-1.5 rounded-lg text-xs border border-yellow-500 bg-yellow-600 text-white font-extrabold tracking-wider transition-all">プロ</button>
+                            <button id="btn-diff-hard" onclick="setDifficulty('hard')" class="flex-1 py-1.5 rounded-lg text-xs border border-rose-500 bg-rose-950/40 text-rose-300 font-extrabold tracking-wider transition-all">レジェンド</button>
+                        </div>
+                    </div>
+
+                    <button id="btn-start-game" class="relative z-10 px-10 py-4 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-black text-xl md:text-2xl rounded-full border-4 border-white shadow-[0_0_30px_rgba(234,179,8,0.5)] transition-all transform hover:scale-105 uppercase tracking-wide">
+                        プレイボール！
+                    </button>
+                </div>
+
+                <!-- 3Dバッティング・コントロール用ガイド (画面ドラッグ・タップ説明) -->
+                <div id="batting-tip" class="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-sm py-1 px-3 rounded-lg text-center text-slate-300 text-[11px] pointer-events-none transition-opacity duration-300">
+                    💡 マウス移動/タッチドラッグで<span class="text-yellow-400 font-bold">打撃ミートカーソル</span>を動かし、クリック/タップでスイング！
+                </div>
+            </div>
+
+            <!-- 操作・ピッチングパネル & 統計カード -->
+            <div class="w-full lg:w-80 flex flex-col gap-3 justify-between">
+                
+                <!-- プレイヤー守備時：ハイテクピッチングコントローラー -->
+                <div id="pitch-control-panel" class="bg-slate-900/90 p-4 rounded-2xl border border-slate-700/80 flex flex-col gap-3 shadow-lg transition-all duration-300 opacity-40 pointer-events-none">
+                    <h3 class="text-sm font-black text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                        ⚾️ ピッチング戦術システム
+                    </h3>
+                    
+                    <div class="flex flex-col gap-2">
+                        <!-- 球種選択 -->
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">1. 球種を選択</span>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <button onclick="selectPitchType('straight')" id="pt-straight" class="py-2 text-[11px] font-extrabold rounded-lg bg-blue-600 text-white transition-all border border-blue-400/40">
+                                ストレート<br><span class="text-[9px] font-normal opacity-80">145km/h</span>
+                            </button>
+                            <button onclick="selectPitchType('slider')" id="pt-slider" class="py-2 text-[11px] font-extrabold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all border border-slate-700">
+                                スライダー<br><span class="text-[9px] font-normal opacity-80">横に曲がる</span>
+                            </button>
+                            <button onclick="selectPitchType('fork')" id="pt-fork" class="py-2 text-[11px] font-extrabold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all border border-slate-700">
+                                フォーク<br><span class="text-[9px] font-normal opacity-80">縦に落ちる</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <!-- コース選択 (ストライクゾーンを模した9分割グリッド) -->
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">2. 投球コースを指定</span>
+                        <div class="flex justify-center">
+                            <div class="grid grid-cols-3 gap-1.5 bg-slate-950 p-2 rounded-xl border border-slate-800 w-44">
+                                <button onclick="selectPitchCourse(0)" id="pc-0" class="w-11 h-9 bg-slate-800 hover:bg-rose-950/60 text-xs font-bold rounded-md transition-all">↖</button>
+                                <button onclick="selectPitchCourse(1)" id="pc-1" class="w-11 h-9 bg-slate-800 hover:bg-rose-950/60 text-xs font-bold rounded-md transition-all">↑</button>
+                                <button onclick="selectPitchCourse(2)" id="pc-2" class="w-11 h-9 bg-slate-800 hover:bg-rose-950/60 text-xs font-bold rounded-md transition-all">↗</button>
+                                <button onclick="selectPitchCourse(3)" id="pc-3" class="w-11 h-9 bg-slate-800 hover:bg-rose-950/60 text-xs font-bold rounded-md transition-all">←</button>
+                                <button onclick="selectPitchCourse(4)" id="pc-4" class="w-11 h-9 bg-yellow-500 text-slate-950 text-xs font-black rounded-md transition-all">中</button>
+                                <button onclick="selectPitchCourse(5)" id="pc-5" class="w-11 h-9 bg-slate-800 hover:bg-rose-950/60 text-xs font-bold rounded-md transition-all">→</button>
+                                <button onclick="selectPitchCourse(6)" id="pc-6" class="w-11 h-9 bg-slate-800 hover:bg-rose-950/60 text-xs font-bold rounded-md transition-all">↙</button>
+                                <button onclick="selectPitchCourse(7)" id="pc-7" class="w-11 h-9 bg-slate-800 hover:bg-rose-950/60 text-xs font-bold rounded-md transition-all">↓</button>
+                                <button onclick="selectPitchCourse(8)" id="pc-8" class="w-11 h-9 bg-slate-800 hover:bg-rose-950/60 text-xs font-bold rounded-md transition-all">↘</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 投球開始ボタン -->
+                    <button id="btn-pitch-ball" class="w-full py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-sm font-black tracking-widest uppercase shadow-[0_0_15px_rgba(225,29,72,0.3)] transition-all">
+                        プレイ（投球する）
+                    </button>
+                </div>
+
+                <!-- リアルタイム選手スタッツ/マッチ成績 -->
+                <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-700/80 flex flex-col gap-3 shadow-lg">
+                    <h3 class="text-sm font-black text-amber-400 uppercase tracking-wider">
+                        📊 本日の対戦成績
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2 text-slate-300">
+                        <div class="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                            <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">打数 - 安打</div>
+                            <div id="stats-batting" class="text-base font-black text-white mt-0.5">0 - 0</div>
+                        </div>
+                        <div class="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                            <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">ホームラン</div>
+                            <div id="stats-hrs" class="text-base font-black text-yellow-400 mt-0.5">0</div>
+                        </div>
+                        <div class="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                            <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">奪三振 (あなた)</div>
+                            <div id="stats-strikeouts" class="text-base font-black text-emerald-400 mt-0.5">0</div>
+                        </div>
+                        <div class="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                            <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">被安打 (COM打撃)</div>
+                            <div id="stats-cpu-hits" class="text-base font-black text-rose-400 mt-0.5">0</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- シンプルクレジット -->
+    <div class="text-[11px] text-slate-500 tracking-wider font-semibold py-2">
+        ULTRA BASEBALL 3D &copy; 2026. CREATED WITH THREE.JS.
+    </div>
+
+    <!-- JavaScript Game Logic -->
+    <script>
+        // --- サウンド合成 (Web Audio API) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            try {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'hit') {
+                    // 「カキーン！」快音バッティング
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(950, now);
+                    osc.frequency.exponentialRampToValueAtTime(1600, now + 0.04);
+                    osc.frequency.exponentialRampToValueAtTime(100, now + 0.35);
+                    gain.gain.setValueAtTime(0.5, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.45);
+                } else if (type === 'swing-miss') {
+                    // 「ブン！」空振り
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(180, now);
+                    osc.frequency.exponentialRampToValueAtTime(40, now + 0.12);
+                    gain.gain.setValueAtTime(0.35, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.18);
+                } else if (type === 'catch') {
+                    // 「パシッ！」捕球音
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(280, now);
+                    osc.frequency.setValueAtTime(80, now + 0.04);
+                    gain.gain.setValueAtTime(0.6, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } else if (type === 'strike') {
+                    // 「ストライク！」ピピッ
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(520, now);
+                    osc.frequency.setValueAtTime(660, now + 0.07);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'ball') {
+                    // 「ボール」低音
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(190, now);
+                    osc.frequency.exponentialRampToValueAtTime(120, now + 0.15);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } else if (type === 'cheer') {
+                    // スタジアムの歓声
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(140, now);
+                    osc.frequency.setValueAtTime(180, now + 0.15);
+                    osc.frequency.setValueAtTime(120, now + 0.4);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+                    osc.start(now);
+                    osc.stop(now + 1.3);
+                } else if (type === 'out') {
+                    // 「アウト！」悲鳴
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.setValueAtTime(150, now + 0.18);
+                    gain.gain.setValueAtTime(0.28, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                } else if (type === 'safe') {
+                    // 「セーフ！」高音スライド
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.setValueAtTime(600, now + 0.1);
+                    osc.frequency.setValueAtTime(750, now + 0.2);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.38);
+                }
+            } catch (e) {
+                console.warn('Audio synthesis initialized with system limits.');
+            }
+        }
+
+        // --- ゲーム状態変数 ---
+        let difficulty = 'normal'; // easy, normal, hard
+        let totalInnings = 3;
+        let currentInning = 1;
+        let isTopInning = true; // true = あなたの攻撃(COM投球), false = あなたの守備(あなたが投球)
+        
+        let score = { player: 0, cpu: 0 };
+        let count = { balls: 0, strikes: 0, outs: 0 };
+        let bases = [false, false, false]; // [1塁, 2塁, 3塁]
+        
+        let stats = {
+            atBats: 0,
+            hits: 0,
+            hrs: 0,
+            cpuHits: 0,
+            strikeouts: 0
+        };
+
+        // 【大幅緩和】ルーキーレベル（easy）は、ふわっと来る超スローボール（これまでの約半分以下の速度）に調整。
+        const difficultySettings = {
+            easy: { cpuReaction: 0.30, ballSpeedMin: 0.45, ballSpeedMax: 0.75, strikeChance: 0.85 },
+            normal: { cpuReaction: 0.52, ballSpeedMin: 0.95, ballSpeedMax: 1.45, strikeChance: 0.70 },
+            hard: { cpuReaction: 0.72, ballSpeedMin: 1.70, ballSpeedMax: 2.30, strikeChance: 0.60 }
+        };
+
+        // ピッチング設定（あなたが投げる用）
+        let selectedPitchCourse = 4; // ど真ん中
+        let selectedPitchType = 'straight';
+
+        // ストライクゾーン（3x3グリッド）の中央位置マッピング (ミートカーソル移動範囲)
+        const zoneWidth = 14;  // 3D空間のストライクゾーン幅
+        const zoneHeight = 14; // 3D空間 of ストライクゾーン高
+        const strikeZoneGrid = [
+            { x: -4.5, y: 15.5, name: "アウトロー高め" }, { x: 0, y: 15.5, name: "中央高め" }, { x: 4.5, y: 15.5, name: "インハイ高め" },
+            { x: -4.5, y: 12.0, name: "アウトコース" },    { x: 0, y: 12.0, name: "ど真ん中" },   { x: 4.5, y: 12.0, name: "インコース" },
+            { x: -4.5, y: 8.5,  name: "アウトロー低め" }, { x: 0, y: 8.5,  name: "中央低め" }, { x: 4.5, y: 8.5,  name: "インハイ低め" }
+        ];
+
+        // --- DOM Elements ---
+        const container = document.getElementById('canvas-container');
+        const overlay = document.getElementById('start-overlay');
+        const selectInnings = document.getElementById('select-innings');
+        const btnStartGame = document.getElementById('btn-start-game');
+        const pitchControlPanel = document.getElementById('pitch-control-panel');
+        const btnPitchBall = document.getElementById('btn-pitch-ball');
+        const liveAnnouncement = document.getElementById('live-announcement');
+        const speedometer = document.getElementById('speedometer');
+        const speedVal = document.getElementById('speed-val');
+        const resultCall = document.getElementById('play-result-call');
+        const resultCallText = document.getElementById('result-call-text');
+        const battingTip = document.getElementById('batting-tip');
+
+        // BSO/Score UI Elements
+        const scorePlayerEl = document.getElementById('score-player');
+        const scoreCpuEl = document.getElementById('score-cpu');
+        const inningTextEl = document.getElementById('inning-text');
+        const ballsContainer = document.getElementById('balls-container');
+        const strikesContainer = document.getElementById('strikes-container');
+        const outsContainer = document.getElementById('outs-container');
+        const uiBase1 = document.getElementById('ui-base-1');
+        const uiBase2 = document.getElementById('ui-base-2');
+        const uiBase3 = document.getElementById('ui-base-3');
+
+        // Stats Elements
+        const statsBattingEl = document.getElementById('stats-batting');
+        const statsHrsEl = document.getElementById('stats-hrs');
+        const statsStrikeoutsEl = document.getElementById('stats-strikeouts');
+        const statsCpuHitsEl = document.getElementById('stats-cpu-hits');
+
+        // --- Three.js 3Dゲームオブジェクト宣言 ---
+        let scene, camera, renderer;
+        let stadiumGroup, ballObject, pitcherGroup, batterGroup, catcherGroup, batObject;
+        let strikeZoneGroup, batZoneMesh, meetCursorMesh; // 3Dストライクゾーン、3Dミートカーソルの可視化用
+
+        // ゲーム内ボール物理情報
+        let ballPhysics = {
+            active: false,
+            x: 0, y: 0, z: 0,
+            vx: 0, vy: 0, vz: 0,
+            curveFactor: 0,
+            forkFactor: 0,
+            type: 'straight',
+            targetX: 0, targetY: 0,
+            speedKmh: 0
+        };
+
+        // 打球物理情報
+        let hitPhysics = {
+            active: false,
+            x: 0, y: 0, z: 0,
+            vx: 0, vy: 0, vz: 0,
+            maxDistance: 0,
+            currentDistance: 0,
+            resultType: '', // hr, double, hit, fly_out, ground_out, foul
+            timer: 0
+        };
+
+        // 3Dバッティングにおける現在のミート位置
+        let meetCursorPos = { x: 0, y: 12 }; // ストライクゾーン中心
+
+        // アニメーション状態管理
+        let pitcherAnimState = 'idle'; // idle, windup, release
+        let pitcherAnimTimer = 0;
+        let batterSwingActive = false;
+        let batterSwingFrame = 0;
+        const maxSwingFrames = 8;
+        let cameraMode = 'batting'; // batting, pitching, fieldView
+
+        // --- 3Dグラフィックシーン構築 ---
+        function init3D() {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // 1. シーン構築
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#0b0f19');
+            scene.fog = new THREE.FogExp2('#0b0f19', 0.002);
+
+            // 2. カメラ構築 (バッター視点を標準)
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            setCameraView('batting');
+
+            // 3. レンダラー構築
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            
+            // 古いCanvasがあれば削除してから追加
+            container.innerHTML = '';
+            container.appendChild(renderer.domElement);
+
+            // 4. ライティング (スタジアムの強力なナイター照明をシミュレート)
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.55);
+            scene.add(ambientLight);
+
+            // バッター・マウンドを照らす強力なスポットライト
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(50, 100, 50);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            scene.add(dirLight);
+
+            const stadiumLight = new THREE.DirectionalLight(0xa5f3fc, 0.4); // 少し青みがかったナイター照明
+            stadiumLight.position.set(-60, 80, -80);
+            scene.add(stadiumLight);
+
+            // 5. スタジアムのオブジェクト生成
+            stadiumGroup = new THREE.Group();
+            createStadium();
+            scene.add(stadiumGroup);
+
+            // 6. 3D パワプロ風キャラクターの生成
+            createPlayers();
+
+            // 7. ボールの生成
+            const ballGeo = new THREE.SphereGeometry(0.35, 16, 16);
+            const ballMat = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                roughness: 0.1,
+                metalness: 0.1
+            });
+            ballObject = new THREE.Mesh(ballGeo, ballMat);
+            ballObject.castShadow = true;
+            ballObject.position.set(0, 15, -60); // 初期位置はピッチャーマウンド付近
+            scene.add(ballObject);
+
+            // 8. 3Dストライクゾーン＆ミートカーソルエリア構築 (視覚エフェクト)
+            createBattingGuideZone();
+
+            // リresize監視
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        // カメラ視野角の動的チェンジ
+        function setCameraView(view) {
+            cameraMode = view;
+            if (view === 'batting') {
+                // バッティング：ホームベースの後ろ、少し高めからピッチャーを見る
+                camera.position.set(0, 13.5, 21.5);
+                camera.lookAt(0, 11.5, -60);
+                if (catcherGroup) catcherGroup.visible = false; // キャッチャーの頭を非表示にして視界をクリアにする
+                
+                // バッティングしているときは、バッターモデルを半透明にしてボール軌道を完全クリアに見せる
+                setGroupTransparency(batterGroup, 0.15); 
+
+                // ストライクゾーンとカーソルを表示
+                if (strikeZoneGroup) strikeZoneGroup.visible = true;
+                if (meetCursorMesh) meetCursorMesh.visible = true;
+            } else if (view === 'pitching') {
+                // ピッチング：ピッチャーの後方上空からバッターを見る
+                camera.position.set(0, 18, -75);
+                camera.lookAt(0, 11, 10);
+                if (catcherGroup) catcherGroup.visible = true;
+                setGroupTransparency(batterGroup, 1.0); // 通常の不透明度に戻す
+
+                // ピッチング時もどこに投げるかの指標としてストライクゾーンは表示
+                if (strikeZoneGroup) strikeZoneGroup.visible = true;
+                if (meetCursorMesh) meetCursorMesh.visible = false;
+            } else if (view === 'fieldView') {
+                // 打球追いかけ：スタジアム全体をダイナミックに見下ろす
+                camera.position.set(30, 45, 60);
+                camera.lookAt(0, 5, -80);
+                if (catcherGroup) catcherGroup.visible = true;
+                setGroupTransparency(batterGroup, 1.0); // 通常の不透明度に戻す
+
+                // 飛んでいくボールをすっきり見届けるため、ストライクゾーンを非表示
+                if (strikeZoneGroup) strikeZoneGroup.visible = false;
+                if (meetCursorMesh) meetCursorMesh.visible = false;
+            }
+        }
+
+        // 3Dグループ内のすべてのマテリアルに半透明・不透明度を設定する関数
+        function setGroupTransparency(group, opacity) {
+            if (!group) return;
+            group.traverse((child) => {
+                if (child.isMesh) {
+                    child.material.transparent = opacity < 1.0;
+                    child.material.opacity = opacity;
+                }
+            });
+        }
+
+        function onWindowResize() {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        // --- スタジアムの3Dモデリング ---
+        function createStadium() {
+            // グラウンド芝生 (大きな円盤)
+            const fieldGeo = new THREE.CylinderGeometry(150, 150, 1, 64);
+            const fieldMat = new THREE.MeshStandardMaterial({
+                color: 0x14532d, // 美しい深緑
+                roughness: 0.8
+            });
+            const field = new THREE.Mesh(fieldGeo, fieldMat);
+            field.position.y = -0.5;
+            field.receiveShadow = true;
+            stadiumGroup.add(field);
+
+            // 内野の粘土/ダイヤモンド土部分 (扇形に配置するポリゴン)
+            const dirtGeo = new THREE.CylinderGeometry(60, 60, 1.05, 32, 1, false, 0, Math.PI);
+            const dirtMat = new THREE.MeshStandardMaterial({
+                color: 0x9a3412, // 赤土
+                roughness: 0.9
+            });
+            const dirt = new THREE.Mesh(dirtGeo, dirtMat);
+            dirt.rotation.y = Math.PI / 2;
+            dirt.position.set(0, -0.48, 15); // ホームベース側に寄せる
+            dirt.receiveShadow = true;
+            stadiumGroup.add(dirt);
+
+            // マウンド土
+            const moundGeo = new THREE.CylinderGeometry(6, 6, 1.2, 16);
+            const mound = new THREE.Mesh(moundGeo, dirtMat);
+            mound.position.set(0, -0.4, -20);
+            stadiumGroup.add(mound);
+
+            // ホームプレート (簡易白いボックス)
+            const plateGeo = new THREE.BoxGeometry(2, 0.1, 2);
+            const plateMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            const plate = new THREE.Mesh(plateGeo, plateMat);
+            plate.position.set(0, 0.05, 12);
+            stadiumGroup.add(plate);
+
+            // 外野フェンス (曲線ウォール)
+            const fenceGeo = new THREE.CylinderGeometry(148, 148, 12, 62, 1, true, -Math.PI/2, Math.PI);
+            const fenceMat = new THREE.MeshStandardMaterial({
+                color: 0x1e293b, // モダングレーフェンス
+                side: THREE.DoubleSide,
+                roughness: 0.5
+            });
+            const fence = new THREE.Mesh(fenceGeo, fenceMat);
+            fence.position.set(0, 5.5, -40);
+            stadiumGroup.add(fence);
+
+            // スタジアム照明スタンド (4本配置)
+            const lightPostPositions = [
+                {x: -90, z: -40}, {x: 90, z: -40},
+                {x: -70, z: 40}, {x: 70, z: 40}
+            ];
+
+            lightPostPositions.forEach(pos => {
+                const postGroup = new THREE.Group();
+                // 柱
+                const poleGeo = new THREE.CylinderGeometry(0.8, 1.5, 45, 8);
+                const poleMat = new THREE.MeshStandardMaterial({ color: 0x475569 });
+                const pole = new THREE.Mesh(poleGeo, poleMat);
+                pole.position.y = 22.5;
+                postGroup.add(pole);
+
+                // ライトヘッド
+                const headGeo = new THREE.BoxGeometry(8, 4, 2);
+                const headMat = new THREE.MeshBasicMaterial({ color: 0xe2e8f0 });
+                const head = new THREE.Mesh(headGeo, headMat);
+                head.position.set(0, 45, 0);
+                postGroup.add(head);
+
+                // ライト発光ダミー
+                const lightGlowGeo = new THREE.PlaneGeometry(8, 4);
+                const lightGlowMat = new THREE.MeshBasicMaterial({
+                    color: 0xe0f2fe,
+                    side: THREE.DoubleSide
+                });
+                const glow = new THREE.Mesh(lightGlowGeo, lightGlowMat);
+                glow.position.set(0, 45, 1.1);
+                postGroup.add(glow);
+
+                postGroup.position.set(pos.x, 0, pos.z);
+                stadiumGroup.add(postGroup);
+            });
+        }
+
+        // --- パワプロ風キャラクターの造形 ---
+        function createPlayers() {
+            // チームカラー：プレイヤー＝ブルー、COM＝レッド
+            const playerColor = 0x2563eb;
+            const cpuColor = 0xdc2626;
+
+            // 1. ピッチャー (マウンド X:0, Y:0, Z:-20)
+            pitcherGroup = new THREE.Group();
+            buildPowerProCharacter(pitcherGroup, cpuColor, false); // 先攻時CPUがピッチャー
+            pitcherGroup.position.set(0, 0, -20);
+            scene.add(pitcherGroup);
+
+            // 2. バッター (ホーム打席 X: -5(右打席), Y: 0, Z: 11)
+            batterGroup = new THREE.Group();
+            buildPowerProCharacter(batterGroup, playerColor, true); // 先攻時プレイヤーがバッター
+            batterGroup.position.set(-5, 0, 11);
+            scene.add(batterGroup);
+
+            // 3. キャッチャー (ホーム後ろ X: 0, Y:0, Z: 15)
+            catcherGroup = new THREE.Group();
+            buildPowerProCharacter(catcherGroup, cpuColor, false);
+            catcherGroup.position.set(0, 0, 15);
+            catcherGroup.rotation.y = Math.PI; // ピッチャーを向く
+            scene.add(catcherGroup);
+
+            // キャッチャーの可視・不可視状態をカメラモードと同期
+            if (cameraMode === 'batting') {
+                catcherGroup.visible = false;
+            } else {
+                catcherGroup.visible = true;
+            }
+        }
+
+        // パワプロ特有の可愛いキャラクター構造 (頭が丸く、手足が浮いている)
+        function buildPowerProCharacter(group, uniformColor, isBatter = false) {
+            // 頭 (巨大な球体)
+            const headGeo = new THREE.SphereGeometry(2.2, 24, 24);
+            // マテリアルをクローンして独自に透明度制御ができるように設定
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.6 }); // 肌色
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 12.5;
+            head.castShadow = true;
+            group.add(head);
+
+            // ヘルメット / 帽子
+            const helmetGeo = new THREE.SphereGeometry(2.35, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+            const helmetMat = new THREE.MeshStandardMaterial({ color: uniformColor, roughness: 0.3 });
+            const helmet = new THREE.Mesh(helmetGeo, helmetMat);
+            helmet.position.y = 12.6;
+            group.add(helmet);
+
+            // ヘルメットのつば
+            const visorGeo = new THREE.BoxGeometry(3.2, 0.2, 1.8);
+            const visor = new THREE.Mesh(visorGeo, helmetMat.clone());
+            visor.position.set(0, 12.4, 1.8);
+            visor.rotation.x = 0.15;
+            group.add(visor);
+
+            // 目 (可愛い楕円形、パワプロ風の黒目)
+            const eyeGeo = new THREE.BoxGeometry(0.4, 0.8, 0.1);
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+            
+            const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+            leftEye.position.set(-0.6, 12.4, 2.0);
+            group.add(leftEye);
+
+            const rightEye = leftEye.clone();
+            rightEye.position.set(0.6, 12.4, 2.0);
+            group.add(rightEye);
+
+            // 体 (可愛い円錐)
+            const bodyGeo = new THREE.CylinderGeometry(0.8, 1.8, 3.2, 16);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: uniformColor, roughness: 0.5 });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 9.0;
+            body.castShadow = true;
+            group.add(body);
+
+            // 浮いている球体の手 (グローブ、バット持ち手)
+            const handGeo = new THREE.SphereGeometry(0.5, 16, 16);
+            const handMat = new THREE.MeshStandardMaterial({ color: 0xffffff }); // 白いバッティング手袋
+
+            const leftHand = new THREE.Mesh(handGeo, handMat.clone());
+            leftHand.position.set(-1.8, 9.2, 1.0);
+            leftHand.name = "leftHand";
+            group.add(leftHand);
+
+            const rightHand = new THREE.Mesh(handGeo, handMat.clone());
+            rightHand.position.set(1.8, 9.2, 1.0);
+            rightHand.name = "rightHand";
+            group.add(rightHand);
+
+            // バッターの場合はバットを持たせる
+            if (isBatter) {
+                // 木製3Dバット
+                const batGroup = new THREE.Group();
+                batGroup.name = "batGroup";
+
+                const batMainGeo = new THREE.CylinderGeometry(0.45, 0.2, 6.5, 12);
+                const batMat = new THREE.MeshStandardMaterial({
+                    color: 0xca8a04, // ウッディゴールド
+                    roughness: 0.3
+                });
+                const batMain = new THREE.Mesh(batMainGeo, batMat);
+                batMain.position.y = 3.25;
+                batMain.castShadow = true;
+                batGroup.add(batMain);
+
+                // グリップエンド
+                const gripEndGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.4, 12);
+                const gripMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+                const gripEnd = new THREE.Mesh(gripEndGeo, gripMat);
+                gripEnd.position.y = 0;
+                batGroup.add(gripEnd);
+
+                // バットを適切な角度で構える
+                batGroup.position.set(1.6, 9.5, 1.0);
+                batGroup.rotation.set(0.2, 0, -Math.PI / 4); // 立てて構える
+                group.add(batGroup);
+                batObject = batGroup;
+            }
+        }
+
+        // 攻守交替時のキャラクター色＆装備チェンジ
+        function updatePlayerColorsAndUniforms() {
+            scene.remove(pitcherGroup);
+            scene.remove(batterGroup);
+            scene.remove(catcherGroup);
+
+            const playerColor = 0x2563eb;
+            const cpuColor = 0xdc2626;
+
+            pitcherGroup = new THREE.Group();
+            batterGroup = new THREE.Group();
+            catcherGroup = new THREE.Group();
+
+            if (isTopInning) {
+                // あなたの攻撃：プレイヤーがバッター、CPUがピッチャー・キャッチャー
+                buildPowerProCharacter(pitcherGroup, cpuColor, false);
+                buildPowerProCharacter(batterGroup, playerColor, true);
+                buildPowerProCharacter(catcherGroup, cpuColor, false);
+            } else {
+                // COMの攻撃：CPUがバッター、プレイヤーがピッチャー・キャッチャー
+                buildPowerProCharacter(pitcherGroup, playerColor, false);
+                buildPowerProCharacter(batterGroup, cpuColor, true);
+                buildPowerProCharacter(catcherGroup, playerColor, false);
+            }
+
+            pitcherGroup.position.set(0, 0, -20);
+            batterGroup.position.set(-5, 0, 11);
+            catcherGroup.position.set(0, 0, 15);
+            catcherGroup.rotation.y = Math.PI;
+
+            scene.add(pitcherGroup);
+            scene.add(batterGroup);
+            scene.add(catcherGroup);
+
+            // カメラと透明度設定の適用
+            setCameraView(cameraMode);
+        }
+
+        // --- 3Dバッティングガイドエリア＆ミートカーソル生成 ---
+        function createBattingGuideZone() {
+            // ストライクゾーン全体の親グループを作成 (Z=11 に配置してホームプレート前面に)
+            strikeZoneGroup = new THREE.Group();
+            strikeZoneGroup.position.set(0, 0, 11);
+            scene.add(strikeZoneGroup);
+
+            // 実際の判定に使うストライクゾーン：幅12.0、高さ8.0（X: -6.0〜6.0, Y: 8.0〜16.0）
+            // 3x3 の9分割半透明プレートを生成
+            const cellW = 3.8;
+            const cellH = 2.5;
+            const cellGeo = new THREE.PlaneGeometry(cellW, cellH);
+            const cellMat = new THREE.MeshBasicMaterial({
+                color: 0x38bdf8, // クールな半透明ネオンブルー
+                transparent: true,
+                opacity: 0.15,
+                side: THREE.DoubleSide
+            });
+
+            // 9分割プレートの内枠境界線マテリアル
+            const borderMat = new THREE.LineBasicMaterial({ color: 0x0284c7, linewidth: 1.5 });
+
+            const xs = [-4.0, 0, 4.0];
+            const ys = [14.66, 12.0, 9.34];
+
+            for (let r = 0; r < 3; r++) {
+                for (let c = 0; c < 3; c++) {
+                    // 各マスの半透明面
+                    const cellMesh = new THREE.Mesh(cellGeo, cellMat);
+                    cellMesh.position.set(xs[c], ys[r] - 12.0, 0); // Y座標は中心12.0基準
+                    strikeZoneGroup.add(cellMesh);
+
+                    // 各マスの外枠境界線
+                    const edges = new THREE.EdgesGeometry(cellGeo);
+                    const line = new THREE.LineSegments(edges, borderMat);
+                    line.position.set(xs[c], ys[r] - 12.0, 0.01); // Z重なり防止でわずかに手前に
+                    strikeZoneGroup.add(line);
+                }
+            }
+
+            // ストライクゾーン全体の黄色い外枠 (幅 12.0, 高さ 8.0)
+            const outerGeo = new THREE.PlaneGeometry(12.0, 8.0);
+            const outerEdges = new THREE.EdgesGeometry(outerGeo);
+            const outerLineMat = new THREE.LineBasicMaterial({ color: 0xeab308, linewidth: 3 });
+            batZoneMesh = new THREE.LineSegments(outerEdges, outerLineMat);
+            batZoneMesh.position.set(0, 0, 0.02); // 中心(0, 12.0, 11)
+            strikeZoneGroup.add(batZoneMesh);
+
+            // ミートカーソル（パワプロ風黄色い楕円形のリング）
+            const cursorRingGeo = new THREE.RingGeometry(1.6, 1.9, 32);
+            const cursorMat = new THREE.MeshBasicMaterial({
+                color: 0xfacc15,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.75
+            });
+            meetCursorMesh = new THREE.Mesh(cursorRingGeo, cursorMat);
+            meetCursorMesh.position.set(0, 12, 10.9); // ゾーンのすぐ手前(Z=10.9)に表示
+            scene.add(meetCursorMesh);
+        }
+
+
+        // --- UI更新ヘルパー ---
+        function setAnnouncement(text) {
+            liveAnnouncement.textContent = text;
+        }
+
+        function updateBSO_UI() {
+            // Balls
+            let bHtml = '';
+            for (let i = 0; i < 3; i++) {
+                bHtml += `<div class="w-3.5 h-3.5 rounded-full ${i < count.balls ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-slate-800 border border-slate-700'}"></div>`;
+            }
+            ballsContainer.innerHTML = bHtml;
+
+            // Strikes
+            let sHtml = '';
+            for (let i = 0; i < 2; i++) {
+                sHtml += `<div class="w-3.5 h-3.5 rounded-full ${i < count.strikes ? 'bg-amber-400 shadow-[0_0_8px_#fbbf24]' : 'bg-slate-800 border border-slate-700'}"></div>`;
+            }
+            strikesContainer.innerHTML = sHtml;
+
+            // Outs
+            let oHtml = '';
+            for (let i = 0; i < 2; i++) {
+                oHtml += `<div class="w-3.5 h-3.5 rounded-full ${i < count.outs ? 'bg-rose-500 shadow-[0_0_8px_#f43f5e]' : 'bg-slate-800 border border-slate-700'}"></div>`;
+            }
+            outsContainer.innerHTML = oHtml;
+        }
+
+        function updateBasesUI() {
+            uiBase1.className = `absolute top-2 -right-1 w-2.5 h-2.5 rotate-45 transition-all duration-300 border ${bases[0] ? 'bg-yellow-400 border-yellow-300 shadow-[0_0_8px_#facc15]' : 'bg-slate-800 border-slate-600'}`;
+            uiBase2.className = `absolute -top-1 left-2 w-2.5 h-2.5 rotate-45 transition-all duration-300 border ${bases[1] ? 'bg-yellow-400 border-yellow-300 shadow-[0_0_8px_#facc15]' : 'bg-slate-800 border-slate-600'}`;
+            uiBase3.className = `absolute top-2 -left-1 w-2.5 h-2.5 rotate-45 transition-all duration-300 border ${bases[2] ? 'bg-yellow-400 border-yellow-300 shadow-[0_0_8px_#facc15]' : 'bg-slate-800 border-slate-600'}`;
+        }
+
+        function updateStatsUI() {
+            statsBattingEl.textContent = `${stats.atBats} - ${stats.hits}`;
+            statsHrsEl.textContent = stats.hrs;
+            statsStrikeoutsEl.textContent = stats.strikeouts;
+            statsCpuHitsEl.textContent = stats.cpuHits;
+        }
+
+        function updateScoreboard() {
+            scorePlayerEl.textContent = score.player;
+            scoreCpuEl.textContent = score.cpu;
+            inningTextEl.textContent = `${currentInning}回${isTopInning ? '表' : '裏'}`;
+
+            if (isTopInning) {
+                pitchControlPanel.classList.add('opacity-40', 'pointer-events-none');
+                battingTip.classList.remove('opacity-0');
+            } else {
+                pitchControlPanel.classList.remove('opacity-40', 'pointer-events-none');
+                battingTip.classList.add('opacity-0');
+            }
+        }
+
+        // コール（STRIKE!, HOMERUN!等）のポップアップエフェクト
+        function triggerUIPopup(text, colorClass = 'text-yellow-400') {
+            resultCallText.textContent = text;
+            resultCallText.className = `text-4xl md:text-6xl font-black italic sports-text-shadow tracking-widest ${colorClass} uppercase font-display`;
+            
+            resultCall.classList.remove('scale-0');
+            resultCall.classList.add('scale-100', 'animate-bounce');
+
+            setTimeout(() => {
+                resultCall.classList.remove('scale-100', 'animate-bounce');
+                resultCall.classList.add('scale-0');
+            }, 1800);
+        }
+
+        // --- イニング・カウントシステム ---
+        function startGame() {
+            totalInnings = parseInt(selectInnings.value);
+            currentInning = 1;
+            isTopInning = true;
+            score = { player: 0, cpu: 0 };
+            count = { balls: 0, strikes: 0, outs: 0 };
+            bases = [false, false, false];
+            stats = { atBats: 0, hits: 0, hrs: 0, cpuHits: 0, strikeouts: 0 };
+
+            overlay.classList.add('hidden');
+            
+            updateScoreboard();
+            updateBSO_UI();
+            updateBasesUI();
+            updateStatsUI();
+
+            setCameraView('batting');
+            updatePlayerColorsAndUniforms();
+
+            setAnnouncement("プレイボール！ あなたの攻撃です。ミートカーソルを動かしてタイミングよく打ち返してください！");
+            
+            // 初回描画
+            renderer.render(scene, camera);
+        }
+
+        function setDifficulty(level) {
+            difficulty = level;
+            document.getElementById('btn-diff-easy').className = "flex-1 py-1.5 rounded-lg text-xs border border-emerald-500 bg-emerald-950/40 text-emerald-300 font-extrabold tracking-wider transition-all";
+            document.getElementById('btn-diff-normal').className = "flex-1 py-1.5 rounded-lg text-xs border border-yellow-500 bg-yellow-950/40 text-yellow-300 font-extrabold tracking-wider transition-all";
+            document.getElementById('btn-diff-hard').className = "flex-1 py-1.5 rounded-lg text-xs border border-rose-500 bg-rose-950/40 text-rose-300 font-extrabold tracking-wider transition-all";
+
+            // 難易度に応じてミートカーソル（黄色いリング）の視覚的な大きさを変更する
+            if (meetCursorMesh) {
+                if (level === 'easy') {
+                    meetCursorMesh.scale.set(1.8, 1.8, 1.0); // 視覚的にも超巨大に！
+                } else if (level === 'normal') {
+                    meetCursorMesh.scale.set(1.1, 1.1, 1.0);
+                } else {
+                    meetCursorMesh.scale.set(0.85, 0.85, 1.0);
+                }
+            }
+
+            if (level === 'easy') {
+                document.getElementById('btn-diff-easy').className = "flex-1 py-1.5 rounded-lg text-xs border border-emerald-500 bg-emerald-500 text-slate-950 font-black tracking-wider transition-all shadow-[0_0_10px_rgba(16,185,129,0.4)]";
+            } else if (level === 'normal') {
+                document.getElementById('btn-diff-normal').className = "flex-1 py-1.5 rounded-lg text-xs border border-yellow-500 bg-yellow-500 text-slate-950 font-black tracking-wider transition-all shadow-[0_0_10px_rgba(234,179,8,0.4)]";
+            } else {
+                document.getElementById('btn-diff-hard').className = "flex-1 py-1.5 rounded-lg text-xs border border-rose-500 bg-rose-500 text-slate-950 font-black tracking-wider transition-all shadow-[0_0_10px_rgba(244,63,94,0.4)]";
+            }
+        }
+
+        function resetInningCount() {
+            count.balls = 0;
+            count.strikes = 0;
+            updateBSO_UI();
+        }
+
+        function checkThreeOuts() {
+            if (count.outs >= 3) {
+                triggerUIPopup("CHANGE!", "text-cyan-400");
+                setAnnouncement("スリーアウト！ 攻守交代です。");
+                setTimeout(switchInning, 2200);
+            } else {
+                resetInningCount();
+            }
+        }
+
+        function switchInning() {
+            playSound('cheer');
+            count.outs = 0;
+            resetInningCount();
+            bases = [false, false, false];
+            updateBasesUI();
+
+            if (isTopInning) {
+                // 表 -> 裏
+                isTopInning = false;
+                setAnnouncement(`${currentInning}回裏：あなたの守備です！球種とコースを決めて投げ込んでください。`);
+                setCameraView('pitching');
+            } else {
+                // 裏 -> 表
+                isTopInning = true;
+                currentInning++;
+                if (currentInning > totalInnings) {
+                    endGame();
+                    return;
+                }
+                setAnnouncement(`${currentInning}回表：あなたの攻撃です。ミートカーソルを合わせてホームラン！`);
+                setCameraView('batting');
+            }
+
+            updatePlayerColorsAndUniforms();
+            updateScoreboard();
+        }
+
+        function endGame() {
+            let title = "";
+            let desc = "";
+            let isWin = score.player > score.cpu;
+            let isDraw = score.player === score.cpu;
+
+            if (isWin) {
+                title = "🎉 VICTORY! 🎉";
+                desc = `見事な大勝利！ ${score.player} - ${score.cpu} でウルトラ勝利をおさめました！`;
+                playSound('cheer');
+            } else if (isDraw) {
+                title = "🤝 DRAW 🤝";
+                desc = `激闘の末 ${score.player} - ${score.cpu} で引き分けました。`;
+                playSound('safe');
+            } else {
+                title = "😭 GAME OVER 😭";
+                desc = `${score.player} - ${score.cpu} でCOMに敗北しました。ルーキーモードで再挑戦してみましょう！`;
+                playSound('out');
+            }
+
+            overlay.innerHTML = `
+                <h1 class="text-3xl md:text-5xl text-yellow-400 font-black tracking-tighter italic sports-text-shadow mb-4 font-display">ULTRA BASEBALL 3D</h1>
+                <p class="text-slate-200 text-sm md:text-base mb-6">${desc}</p>
+                
+                <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-700/80 w-full max-w-sm mb-6 text-left space-y-2 text-xs md:text-sm">
+                    <h4 class="text-yellow-400 font-black border-b border-slate-700 pb-1.5 mb-2">本日の個人スタッツ：</h4>
+                    <p class="text-slate-300">安打数: <span class="font-extrabold text-white">${stats.hits}本</span> (打数:${stats.atBats})</p>
+                    <p class="text-slate-300">ホームラン: <span class="font-extrabold text-yellow-400">${stats.hrs}本</span></p>
+                    <p class="text-slate-300">奪三振: <span class="font-extrabold text-emerald-400">${stats.strikeouts}個</span></p>
+                    <p class="text-slate-300">COM被安打: <span class="font-extrabold text-rose-400">${stats.cpuHits}本</span></p>
+                </div>
+
+                <button onclick="location.reload()" class="px-10 py-4 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-black text-xl rounded-full border-4 border-white shadow-xl transition-all transform hover:scale-105">
+                    もう一度対戦する
+                </button>
+            `;
+            overlay.classList.remove('hidden');
+        }
+
+
+        // --- ピッチング＆バッティングアクション ---
+
+        // あなたの守備時：球種・コースの選択変更
+        function selectPitchType(type) {
+            document.getElementById('pt-straight').className = "py-2 text-[11px] font-extrabold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all border border-slate-700";
+            document.getElementById('pt-slider').className = "py-2 text-[11px] font-extrabold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all border border-slate-700";
+            document.getElementById('pt-fork').className = "py-2 text-[11px] font-extrabold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all border border-slate-700";
+
+            selectedPitchType = type;
+            document.getElementById(`pt-${type}`).className = "py-2 text-[11px] font-extrabold rounded-lg bg-blue-600 text-white transition-all border border-blue-400/40 shadow-[0_0_8px_rgba(37,99,235,0.4)]";
+        }
+
+        function selectPitchCourse(index) {
+            document.getElementById(`pc-${selectedPitchCourse}`).className = "w-11 h-9 bg-slate-800 hover:bg-rose-950/60 text-xs font-bold rounded-md transition-all";
+            
+            selectedPitchCourse = index;
+            document.getElementById(`pc-${selectedPitchCourse}`).className = "w-11 h-9 bg-yellow-500 text-slate-950 text-xs font-black rounded-md transition-all shadow-[0_0_8px_#eab308]";
+        }
+
+        // あなたの守備時：投球実行
+        btnPitchBall.addEventListener('click', () => {
+            if (ballPhysics.active || hitPhysics.active || pitcherAnimState !== 'idle') return;
+
+            pitcherAnimState = 'windup';
+            pitcherAnimTimer = 0;
+            setAnnouncement("ワインドアップから投げ込みました！");
+        });
+
+        // 実際のボール生成・射出ロジック
+        function executeBallPitch() {
+            const settings = difficultySettings[difficulty];
+            ballPhysics.active = true;
+            ballPhysics.x = 0;
+            ballPhysics.y = 12.5; // リリース高さ
+            ballPhysics.z = -20;  // マウンド
+
+            // 投げ出し時に投手前傾ポーズ
+            pitcherAnimState = 'release';
+            pitcherAnimTimer = 0;
+
+            let targetX = 0;
+            let targetY = 12;
+
+            if (isTopInning) {
+                // あなたの攻撃（COMが投球する）
+                // 球種をランダム決定
+                const rType = Math.random();
+                if (rType < 0.45) {
+                    ballPhysics.type = 'straight';
+                } else if (rType < 0.75) {
+                    ballPhysics.type = 'slider';
+                } else {
+                    ballPhysics.type = 'fork';
+                }
+
+                // コースをランダム決定
+                const isStrike = Math.random() < settings.strikeChance;
+                let gridIndex = 4; // 中央デフォルト
+                if (isStrike) {
+                    gridIndex = Math.floor(Math.random() * 9);
+                } else {
+                    gridIndex = Math.floor(Math.random() * 9);
+                }
+
+                const grid = strikeZoneGrid[gridIndex];
+                targetX = grid.x + (Math.random() * 2.5 - 1.25);
+                targetY = grid.y + (Math.random() * 2.5 - 1.25);
+
+            } else {
+                // あなたの守備（あなたがコースと球種を指定）
+                ballPhysics.type = selectedPitchType;
+                const grid = strikeZoneGrid[selectedPitchCourse];
+                targetX = grid.x;
+                targetY = grid.y;
+            }
+
+            ballPhysics.targetX = targetX;
+            ballPhysics.targetY = targetY;
+
+            // スピード算出 (球種による差)
+            let speedBase = settings.ballSpeedMin + Math.random() * (settings.ballSpeedMax - settings.ballSpeedMin);
+            if (ballPhysics.type === 'slider') speedBase *= 0.88;
+            if (ballPhysics.type === 'fork') speedBase *= 0.82;
+
+            ballPhysics.vz = speedBase; // 前進速度
+            // 球速表示はリアルでかっこいい表示（例: 130km/h~155km/h）になるようにスケールを補正！
+            ballPhysics.speedKmh = Math.floor(speedBase * 85); 
+
+            // スピード表示
+            speedVal.textContent = ballPhysics.speedKmh;
+            speedometer.classList.remove('hidden');
+
+            // 1ステップあたりの移動量
+            const zDistance = 32.5; // マウンドから打撃判定ゾーン
+            const totalSteps = zDistance / ballPhysics.vz;
+            ballPhysics.vx = (targetX - ballPhysics.x) / totalSteps;
+            ballPhysics.vy = (targetY - ballPhysics.y) / totalSteps;
+
+            // 変化球係数 (実際のvz速度低下に合わせ、変化もなめらかに調整)
+            if (ballPhysics.type === 'slider') {
+                ballPhysics.curveFactor = 0.05 * speedBase;
+            } else {
+                ballPhysics.curveFactor = 0;
+            }
+
+            if (ballPhysics.type === 'fork') {
+                ballPhysics.forkFactor = 0.07 * speedBase;
+            } else {
+                ballPhysics.forkFactor = 0;
+            }
+        }
+
+        // --- あなたの攻撃時：3Dミートカーソルのドラッグ＆クリック操作 ---
+        container.addEventListener('mousemove', (e) => {
+            if (!isTopInning) return; // 攻撃時のみミートカーソルを移動
+
+            const rect = container.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // カーソルの比率換算
+            const pctX = (mouseX / rect.width) * 2 - 1; // -1 to 1
+            const pctY = -((mouseY / rect.height) * 2 - 1); // -1 to 1
+
+            // 3Dストライクゾーン幅（zoneWidth, zoneHeight）にスケーリング
+            meetCursorPos.x = pctX * (zoneWidth * 0.7);
+            meetCursorPos.y = 12 + pctY * (zoneHeight * 0.7);
+
+            // 3Dメッシュの位置更新
+            meetCursorMesh.position.set(meetCursorPos.x, meetCursorPos.y, 10.9);
+        });
+
+        // スマホタッチスワイプでのミートカーソル移動
+        container.addEventListener('touchmove', (e) => {
+            if (!isTopInning || e.touches.length === 0) return;
+            const touch = e.touches[0];
+            const rect = container.getBoundingClientRect();
+            const touchX = touch.clientX - rect.left;
+            const touchY = touch.clientY - rect.top;
+
+            const pctX = (touchX / rect.width) * 2 - 1;
+            const pctY = -((touchY / rect.height) * 2 - 1);
+
+            meetCursorPos.x = pctX * (zoneWidth * 0.7);
+            meetCursorPos.y = 12 + pctY * (zoneHeight * 0.7);
+
+            meetCursorMesh.position.set(meetCursorPos.x, meetCursorPos.y, 10.9);
+        });
+
+        // クリック / タップで3Dスイング起動
+        container.addEventListener('mousedown', executeSwingAction);
+        container.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            executeSwingAction();
+        });
+
+        function executeSwingAction() {
+            // あなたの攻撃時：COMが投げたら打てる
+            if (isTopInning) {
+                if (!ballPhysics.active && !hitPhysics.active && pitcherAnimState === 'idle') {
+                    // 自動でCOMピッチング開始
+                    pitcherAnimState = 'windup';
+                    pitcherAnimTimer = 0;
+                } else if (ballPhysics.active && !batterSwingActive) {
+                    triggerSwing3D();
+                }
+            }
+        }
+
+        function triggerSwing3D() {
+            batterSwingActive = true;
+            batterSwingFrame = 0;
+            playSound('swing-miss');
+
+            // 3D衝突判定 (ボールZ軸がミート位置付近にあるか)
+            if (ballPhysics.active) {
+                const bZ = ballPhysics.z;
+                
+                // 【打撃タイミング判定の大幅緩和】
+                // 難易度ごとにZ軸の有効打撃フレーム（タイミングの広さ）を調整します。
+                let minZ = 9.8, maxZ = 11.8;
+                if (difficulty === 'easy') {
+                    minZ = 8.2;  // かなり手前でも
+                    maxZ = 13.0; // 通り過ぎた直後でも当たる！
+                } else if (difficulty === 'normal') {
+                    minZ = 9.3;
+                    maxZ = 12.1;
+                }
+
+                if (bZ >= minZ && bZ <= maxZ) {
+                    // X, Yミート判定
+                    const distToBall = Math.hypot(ballPhysics.x - meetCursorPos.x, ballPhysics.y - meetCursorPos.y);
+
+                    // 【ミートカーソル判定の大幅緩和】
+                    // ルーキー(easy)のときは、カーソルサイズを約2倍に。
+                    let meetRadius = 2.5; 
+                    if (difficulty === 'easy') {
+                        meetRadius = 4.8; // かなり大きくずれていても、当たります！
+                    } else if (difficulty === 'normal') {
+                        meetRadius = 3.3;
+                    }
+
+                    if (distToBall < meetRadius) { // ミート成功！
+                        calculateHit3D(distToBall, ballPhysics.y);
+                    }
+                }
+            }
+        }
+
+        // ミート判定＆打球計算
+        function calculateHit3D(meatAccuracy, contactY) {
+            ballPhysics.active = false;
+            hitPhysics.active = true;
+            hitPhysics.timer = 0;
+
+            // ボールの位置から打ち出し
+            hitPhysics.x = ballPhysics.x;
+            hitPhysics.y = ballPhysics.y;
+            hitPhysics.z = ballPhysics.z;
+
+            playSound('hit');
+            triggerUIPopup("CRACK!", "text-yellow-400");
+
+            // タイミング偏差
+            const perfectY = 11.5;
+            const timingOffset = contactY - perfectY; // タイミング差
+
+            // 精度に応じた飛距離
+            let power = 170 + Math.random() * 200; // 基礎パワーを少しアップ
+            
+            // 難易度がeasy（ルーキー）の時は、どんな当たりでも飛びやすく補正
+            if (difficulty === 'easy') {
+                power += 120; // ほぼ確定で外野を越える仕様に
+            }
+
+            if (meatAccuracy < 1.0) {
+                power += 150; // クリーンミートで特大！
+            } else if (meatAccuracy > 2.2) {
+                power -= 70;  // 先っぽ
+            }
+
+            power -= Math.abs(timingOffset) * 15; // 芯からズレるほど飛距離減
+            hitPhysics.maxDistance = Math.max(25, Math.floor(power));
+
+            // 打撃角度(3D軌道)
+            let angleYaw = -Math.PI / 2; // 正面方向
+            angleYaw += (timingOffset / 5) * (Math.PI / 4); // タイミングでレフト/ライトへ
+            angleYaw += (Math.random() * 0.15 - 0.075); // ブレ
+
+            let anglePitch = Math.PI / 11 + (Math.random() * Math.PI / 9); // 打球の上がり方
+
+            const hitSpeed = 2.5 + (power / 90);
+            hitPhysics.vx = Math.cos(angleYaw) * Math.cos(anglePitch) * hitSpeed;
+            hitPhysics.vy = Math.sin(anglePitch) * hitSpeed * 1.5;
+            hitPhysics.vz = Math.sin(angleYaw) * Math.cos(anglePitch) * hitSpeed; // Z軸前方向（ピッチャー方向へ飛ぶ）
+
+            // 飛距離による結果の事前割り当て
+            const dist = hitPhysics.maxDistance;
+            if (dist > 330) {
+                hitPhysics.resultType = 'hr';
+            } else if (dist > 250) {
+                hitPhysics.resultType = 'double';
+            } else if (dist > 110) {
+                hitPhysics.resultType = 'hit';
+            } else {
+                // フライやゴロ
+                const rnd = Math.random();
+                if (rnd < 0.4) {
+                    hitPhysics.resultType = 'fly_out';
+                } else if (rnd < 0.75) {
+                    hitPhysics.resultType = 'ground_out';
+                } else {
+                    hitPhysics.resultType = 'foul';
+                }
+            }
+
+            // カメラをダイナミックな打球追跡ビューに変更
+            setCameraView('fieldView');
+        }
+
+        // 打球結果の適用
+        function processHitResult() {
+            hitPhysics.active = false;
+            setCameraView(isTopInning ? 'batting' : 'pitching');
+
+            const res = hitPhysics.resultType;
+            let runCount = 0;
+
+            if (isTopInning) {
+                stats.atBats++;
+            }
+
+            if (res === 'hr') {
+                stats.hrs += isTopInning ? 1 : 0;
+                stats.hits += isTopInning ? 1 : 0;
+                stats.cpuHits += !isTopInning ? 1 : 0;
+                
+                playSound('cheer');
+                triggerUIPopup("HOME RUN!", "text-yellow-400 font-extrabold");
+
+                // ランナー進塁＆加算
+                let r = 0;
+                for (let i = 0; i < 3; i++) {
+                    if (bases[i]) r++;
+                }
+                const scoreGained = r + 1;
+                addScore(scoreGained);
+                bases = [false, false, false];
+
+                setAnnouncement(`完璧に捉えた打球はバックスクリーンへ！特大ホームラン！！ ${scoreGained}点追加！`);
+            } 
+            else if (res === 'double') {
+                stats.hits += isTopInning ? 1 : 0;
+                stats.cpuHits += !isTopInning ? 1 : 0;
+                playSound('safe');
+                triggerUIPopup("2-BASE HIT!", "text-green-400");
+
+                runCount = advanceRunners(2);
+                addScore(runCount);
+                bases[1] = true;
+                setAnnouncement(`右中間を真っ二つ！ツーベースヒット！ランナー${runCount}人が帰還！`);
+            } 
+            else if (res === 'hit') {
+                stats.hits += isTopInning ? 1 : 0;
+                stats.cpuHits += !isTopInning ? 1 : 0;
+                playSound('safe');
+                triggerUIPopup("HIT!", "text-green-400");
+
+                runCount = advanceRunners(1);
+                addScore(runCount);
+                bases[0] = true;
+                setAnnouncement(`クリーンヒット！ ランナーを貯めてチャンスを広げます。`);
+            } 
+            else if (res === 'foul') {
+                playSound('ball');
+                triggerUIPopup("FOUL!", "text-slate-400");
+                if (count.strikes < 2) count.strikes++;
+                setAnnouncement("ファウル！");
+            } 
+            else if (res === 'fly_out') {
+                playSound('out');
+                triggerUIPopup("OUT!", "text-red-500");
+                count.outs++;
+                setAnnouncement("高く上がった打球はセンターのグラブに収まりました、アウト！");
+                checkThreeOuts();
+            } 
+            else if (res === 'ground_out') {
+                playSound('out');
+                triggerUIPopup("OUT!", "text-red-500");
+                count.outs++;
+                setAnnouncement("ショートゴロ、俊足飛ばすも一塁アウト！");
+                checkThreeOuts();
+            }
+
+            updateBasesUI();
+            updateBSO_UI();
+            updateStatsUI();
+            updateScoreboard();
+        }
+
+        // ランナー進塁処理
+        function advanceRunners(amount) {
+            let runsGained = 0;
+            const nextBases = [false, false, false];
+
+            for (let i = 2; i >= 0; i--) {
+                if (bases[i]) {
+                    const dest = i + amount;
+                    if (dest >= 3) {
+                        runsGained++;
+                    } else {
+                        nextBases[dest] = true;
+                    }
+                }
+            }
+            bases = nextBases;
+            return runsGained;
+        }
+
+        function addScore(amount) {
+            if (amount <= 0) return;
+            if (isTopInning) {
+                score.player += amount;
+            } else {
+                score.cpu += amount;
+            }
+            updateScoreboard();
+        }
+
+        // COMバッティング自動判断 (あなたの守備時)
+        function checkCpuSwing() {
+            if (!ballPhysics.active || hitPhysics.active || batterSwingActive) return;
+
+            const bZ = ballPhysics.z;
+            const settings = difficultySettings[difficulty];
+
+            // ゾーン到達タイミングでCOMスイング判定
+            if (bZ >= 10.0 && bZ <= 11.5) {
+                // ストライクゾーンかどうか
+                const insideStrike = (ballPhysics.x >= -6.0 && ballPhysics.x <= 6.0) && (ballPhysics.y >= 8.0 && ballPhysics.y <= 16.0);
+                const swingChance = insideStrike ? settings.cpuReaction : 0.22;
+
+                if (Math.random() < swingChance) {
+                    // COMスイング開始
+                    batterSwingActive = true;
+                    batterSwingFrame = 0;
+                    playSound('swing-miss');
+
+                    // 接触成功か？
+                    const idealX = 0; // バッターミート位置
+                    const hitDist = Math.hypot(ballPhysics.x - idealX, ballPhysics.y - 12);
+                    if (hitDist < 2.5) {
+                        calculateHit3D(hitDist, ballPhysics.y);
+                    }
+                }
+            }
+        }
+
+
+        // --- ゲームループ・3Dレンダリング・アニメーション ---
+        function updateGame() {
+            // 1. ピッチャーアニメーション
+            if (pitcherAnimState === 'windup') {
+                pitcherAnimTimer++;
+                // 振りかぶる動き(腕の回転、体を少し下げる)
+                pitcherGroup.position.y = -Math.sin((pitcherAnimTimer / 25) * Math.PI) * 1.5;
+                if (pitcherAnimTimer > 25) {
+                    pitcherAnimState = 'release';
+                    pitcherAnimTimer = 0;
+                    executeBallPitch();
+                }
+            } else if (pitcherAnimState === 'release') {
+                pitcherAnimTimer++;
+                // 腕を振る戻りモーション
+                pitcherGroup.position.y = 0;
+                if (pitcherAnimTimer > 12) {
+                    pitcherAnimState = 'idle';
+                }
+            }
+
+            // 2. バッタースイングアニメーション
+            if (batterSwingActive) {
+                batterSwingFrame++;
+                const rad = (batterSwingFrame / maxSwingFrames) * Math.PI;
+                // バットを3Dで振り抜く（ラジアン回転）
+                if (batObject) {
+                    batObject.rotation.set(0.1, -rad * 1.8, -Math.PI / 4 + rad * 1.5);
+                    batObject.position.set(1.6 - Math.sin(rad) * 4, 9.5, 1.0 + Math.cos(rad) * 3);
+                }
+
+                if (batterSwingFrame >= maxSwingFrames) {
+                    batterSwingActive = false;
+                    // バット位置を元の構えに戻す
+                    if (batObject) {
+                        batObject.rotation.set(0.2, 0, -Math.PI / 4);
+                        batObject.position.set(1.6, 9.5, 1.0);
+                    }
+                }
+            }
+
+            // 3. ボールの3D移動
+            if (ballPhysics.active) {
+                // 球種に応じたカーブ（変化球）適用
+                if (ballPhysics.type === 'slider') {
+                    const prog = (ballPhysics.z - (-20)) / 32;
+                    ballPhysics.x += ballPhysics.curveFactor * prog;
+                } else if (ballPhysics.type === 'fork') {
+                    if (ballPhysics.z > 3.0) {
+                        ballPhysics.vy -= ballPhysics.forkFactor;
+                    }
+                }
+
+                ballPhysics.x += ballPhysics.vx;
+                ballPhysics.y += ballPhysics.vy;
+                ballPhysics.z += ballPhysics.vz;
+
+                // 3Dボール位置の更新
+                ballObject.position.set(ballPhysics.x, ballPhysics.y, ballPhysics.z);
+
+                // キャッチャーが捕球
+                if (ballPhysics.z >= 14.5) {
+                    ballPhysics.active = false;
+                    playSound('catch');
+                    speedometer.classList.add('hidden');
+
+                    // ストライク判定（X/Yのゾーン範囲：X -6.0〜6.0, Y 8.0〜16.0）
+                    const bX = ballPhysics.x;
+                    const bY = ballPhysics.y;
+
+                    // ストライクゾーン定義
+                    if (bX >= -6.0 && bX <= 6.0 && bY >= 8.0 && bY <= 16.0) {
+                        count.strikes++;
+                        playSound('strike');
+                        triggerUIPopup("STRIKE!", "text-yellow-400");
+                        setAnnouncement("判定ストライク！");
+                    } else {
+                        count.balls++;
+                        playSound('ball');
+                        triggerUIPopup("BALL", "text-emerald-400");
+                        setAnnouncement("判定ボール！");
+                    }
+
+                    // 三振・フォアボール判定
+                    if (count.strikes >= 3) {
+                        playSound('out');
+                        count.outs++;
+                        if (!isTopInning) stats.strikeouts++;
+                        triggerUIPopup("STRIKE OUT!", "text-red-500 font-extrabold");
+                        setAnnouncement("バッターアウト！三振！");
+                        checkThreeOuts();
+                    } else if (count.balls >= 4) {
+                        playSound('safe');
+                        triggerUIPopup("WALK!", "text-green-400");
+                        // 押し出し判定ありの満塁フォアボール
+                        const run = advanceRunners(1);
+                        addScore(run);
+                        bases[0] = true;
+                        updateBasesUI();
+                        setAnnouncement("フォアボール！ランナー1塁へ。");
+                        resetInningCount();
+                    }
+
+                    updateBSO_UI();
+                    updateScoreboard();
+                }
+            }
+
+            // 4. 打球の3D移動＆軌道計算
+            if (hitPhysics.active) {
+                hitPhysics.x += hitPhysics.vx;
+                hitPhysics.y += hitPhysics.vy;
+                hitPhysics.z += hitPhysics.vz; // 前後（投手方向）へ
+
+                // 簡易重力（3Dでボールが落下して地面に着地）
+                hitPhysics.vy -= 0.12; 
+
+                // 3Dボール位置の更新
+                ballObject.position.set(hitPhysics.x, hitPhysics.y, hitPhysics.z);
+
+                // カメラを少し打球に向けつつ追従
+                if (cameraMode === 'fieldView') {
+                    camera.lookAt(hitPhysics.x, hitPhysics.y, hitPhysics.z);
+                }
+
+                hitPhysics.timer++;
+
+                // 地面に着地、あるいは外野フェンスに達したら結果反映
+                // Y座標がグラウンド高(0)に落ちるか、フェンス外に抜けた時
+                if (hitPhysics.y <= 0.1 || hitPhysics.z <= -135 || hitPhysics.timer > 100) {
+                    processHitResult();
+                }
+            }
+
+            // COMバッティング自動AIの作動
+            if (!isTopInning) {
+                checkCpuSwing();
+            }
+        }
+
+        // レンダリング＆ループ実行
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // スタート画面以外の時だけ物理計算
+            if (overlay.classList.contains('hidden')) {
+                updateGame();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // ページロード時の初期化
+        window.onload = function() {
+            init3D();
+            setDifficulty('normal');
+            
+            // アニメーションループ起動
+            animate();
+        };
+
+        // イベント監視
+        btnStartGame.addEventListener('click', startGame);
+
+    </script>
+</body>
+</html>

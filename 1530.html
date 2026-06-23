@@ -1,0 +1,2128 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ネコの大冒険 - Neko's Adventure</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
+        body {
+            font-family: 'DotGothic16', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        canvas {
+            image-rendering: pixelated;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+        }
+        /* タッチボタンのブレ防止 */
+        .btn-active:active {
+            transform: scale(0.9);
+            filter: brightness(0.8);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-between p-2 md:p-4 overflow-hidden">
+
+    <!-- ヘッダーUI -->
+    <header class="w-full max-w-4xl flex justify-between items-center bg-slate-800/80 backdrop-blur border-2 border-amber-400 rounded-lg p-3 mb-2">
+        <div class="flex items-center gap-4 text-sm md:text-xl text-amber-300">
+            <div>STAGE: <span id="ui-stage" class="text-white">1/5</span></div>
+            <div>SCORE: <span id="ui-score" class="text-white">0</span></div>
+            <div>LIVES: <span id="ui-lives" class="text-red-500">❤️❤️❤️🖤🖤</span></div>
+        </div>
+        <div class="flex gap-2">
+            <button id="btn-reset" class="px-3 py-1 bg-red-600 hover:bg-red-700 active:scale-95 text-xs md:text-sm font-bold rounded border border-red-400 transition">最初から</button>
+            <button id="btn-pause" class="px-3 py-1 bg-slate-600 hover:bg-slate-700 active:scale-95 text-xs md:text-sm font-bold rounded border border-slate-400 transition">一時停止</button>
+        </div>
+    </header>
+
+    <!-- メインゲームエリア -->
+    <main class="relative w-full max-w-4xl flex-grow flex items-center justify-center">
+        <!-- キャンバス -->
+        <div class="relative w-full aspect-[16/9] max-h-[70vh] bg-slate-950 rounded-lg overflow-hidden border-4 border-slate-700">
+            <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+
+            <!-- スタート/ゲームオーバー/クリア画面のオーバーレイ -->
+            <div id="overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center text-center p-4 transition-all duration-300 z-10">
+                <h1 id="overlay-title" class="text-3xl md:text-5xl font-bold text-red-500 mb-4 tracking-widest animate-bounce">ネコの大冒険</h1>
+                <p id="overlay-desc" class="text-sm md:text-lg text-slate-300 max-w-md mb-6 leading-relaxed">
+                    お宝（コイン）を集めて、怪物をよけながら、光るゴールを目指そう！<br>
+                    <span class="text-red-400 font-bold">★難易度アップ！敵のスピード強化 ＆ 消える床がさらに速く！★</span>
+                </p>
+                <button id="overlay-btn" class="px-8 py-3 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-lg md:text-2xl rounded-full border-4 border-white shadow-lg shadow-amber-500/50 transition transform">
+                    挑戦をはじめる！
+                </button>
+                <div id="controls-guide" class="mt-8 text-xs md:text-sm text-slate-400 border-t border-slate-800 pt-4 w-full max-w-xs">
+                    <p class="font-bold mb-1 text-slate-300">【操作方法】</p>
+                    <p>移動: 左右矢印キー [←] [→] / A, D</p>
+                    <p>ジャンプ: 上矢印キー [↑] / W / Space</p>
+                    <p>（壁に張り付いている時にジャンプで壁キック！）</p>
+                </div>
+            </div>
+            
+            <!-- ポーズ画面 -->
+            <div id="pause-overlay" class="hidden absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-center p-4 z-10">
+                <h2 class="text-3xl font-bold text-slate-300 mb-4">ポーズ中</h2>
+                <button id="btn-resume" class="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-lg rounded-lg border-2 border-white transition">再開する</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- モバイル用仮想コントローラー -->
+    <footer class="w-full max-w-md mt-2 mb-1 flex justify-between items-center gap-4 px-4 h-24 md:h-28">
+        <!-- 左右キー -->
+        <div class="flex gap-3">
+            <button id="ctrl-left" class="btn-active w-16 h-16 md:w-20 md:h-20 bg-slate-700/80 active:bg-slate-600 border-2 border-slate-500 rounded-2xl flex items-center justify-center text-2xl md:text-3xl font-bold select-none touch-none shadow-md">
+                ◀
+            </button>
+            <button id="ctrl-right" class="btn-active w-16 h-16 md:w-20 md:h-20 bg-slate-700/80 active:bg-slate-600 border-2 border-slate-500 rounded-2xl flex items-center justify-center text-2xl md:text-3xl font-bold select-none touch-none shadow-md">
+                ▶
+            </button>
+        </div>
+        <!-- ジャンプキー -->
+        <div>
+            <button id="ctrl-jump" class="btn-active w-20 h-16 md:w-24 md:h-20 bg-amber-500/80 active:bg-amber-400 border-2 border-amber-300 rounded-2xl flex flex-col items-center justify-center text-slate-950 font-bold select-none touch-none shadow-md">
+                <span class="text-xl md:text-2xl">▲</span>
+                <span class="text-[10px] md:text-xs">JUMP</span>
+            </button>
+        </div>
+    </footer>
+
+    <script>
+        // --- 効果音システム (Web Audio API) ---
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            // ジャンプ音
+            playJump() {
+                this.init();
+                if (!this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.type = 'triangle';
+                const now = this.ctx.currentTime;
+                
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(650, now + 0.15);
+
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+                osc.start(now);
+                osc.stop(now + 0.15);
+            }
+
+            // バネジャンプ音 (ミョイン！)
+            playSpring() {
+                this.init();
+                if (!this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.type = 'triangle';
+                const now = this.ctx.currentTime;
+                
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.linearRampToValueAtTime(800, now + 0.1);
+                osc.frequency.linearRampToValueAtTime(400, now + 0.2);
+                osc.frequency.exponentialRampToValueAtTime(900, now + 0.35);
+
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
+                osc.start(now);
+                osc.stop(now + 0.35);
+            }
+
+            // コイン獲得音
+            playCoin() {
+                this.init();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+
+                const playTone = (freq, startDelay, duration) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + startDelay);
+
+                    gain.gain.setValueAtTime(0.1, now + startDelay);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + startDelay + duration);
+
+                    osc.start(now + startDelay);
+                    osc.stop(now + startDelay + duration);
+                };
+
+                playTone(987.77, 0, 0.08);     // シ
+                playTone(1318.51, 0.08, 0.25);  // ミ
+            }
+
+            // ライフ回復音
+            playHeal() {
+                this.init();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+                const notes = [
+                    { freq: 523.25, delay: 0.0 },  // ド
+                    { freq: 659.25, delay: 0.06 }, // ミ
+                    { freq: 783.99, delay: 0.12 }, // ソ
+                    { freq: 1046.50, delay: 0.18, duration: 0.4 } // ド(高)
+                ];
+
+                notes.forEach(note => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(note.freq, now + note.delay);
+
+                    const dur = note.duration || 0.15;
+                    gain.gain.setValueAtTime(0.12, now + note.delay);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + note.delay + dur);
+
+                    osc.start(now + note.delay);
+                    osc.stop(now + note.delay + dur);
+                });
+            }
+
+            // スター獲得音
+            playStar() {
+                this.init();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+                const notes = [
+                    { freq: 659.25, delay: 0.0 },  // ミ
+                    { freq: 783.99, delay: 0.05 }, // ソ
+                    { freq: 1046.50, delay: 0.1 }, // ド
+                    { freq: 1318.51, delay: 0.15, duration: 0.4 } // ミ(高)
+                ];
+
+                notes.forEach(note => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(note.freq, now + note.delay);
+
+                    const dur = note.duration || 0.12;
+                    gain.gain.setValueAtTime(0.1, now + note.delay);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + note.delay + dur);
+
+                    osc.start(now + note.delay);
+                    osc.stop(now + note.delay + dur);
+                });
+            }
+
+            // 敵を踏みつけた音
+            playStomp() {
+                this.init();
+                if (!this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.type = 'square';
+                const now = this.ctx.currentTime;
+
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.12);
+
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+
+                osc.start(now);
+                osc.stop(now + 0.12);
+            }
+
+            // ダメージ音
+            playDamage() {
+                this.init();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+
+                const playTone = (freq, duration) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, now);
+                    osc.frequency.linearRampToValueAtTime(freq / 2, now + duration);
+
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+
+                    osc.start(now);
+                    osc.stop(now + duration);
+                };
+
+                playTone(220, 0.3);
+                playTone(235, 0.3);
+            }
+
+            // ステージクリア音
+            playStageClear() {
+                this.init();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+                const notes = [
+                    { freq: 523.25, delay: 0.0 },  // ド
+                    { freq: 659.25, delay: 0.1 },  // ミ
+                    { freq: 783.99, delay: 0.2 },  // ソ
+                    { freq: 1046.50, delay: 0.3, duration: 0.6 } // ド（高）
+                ];
+
+                notes.forEach(note => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(note.freq, now + note.delay);
+
+                    const dur = note.duration || 0.15;
+                    gain.gain.setValueAtTime(0.15, now + note.delay);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + note.delay + dur);
+
+                    osc.start(now + note.delay);
+                    osc.stop(now + note.delay + dur);
+                });
+            }
+
+            // ゲームオーバー音
+            playGameOver() {
+                this.init();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+                const notes = [
+                    { freq: 392.00, delay: 0.0 }, // ソ
+                    { freq: 369.99, delay: 0.25 }, // ファ#
+                    { freq: 349.23, delay: 0.5 }, // ファ
+                    { freq: 293.66, delay: 0.75, duration: 0.8 } // レ
+                ];
+
+                notes.forEach(notes => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(notes.freq, now + notes.delay);
+
+                    const dur = notes.duration || 0.25;
+                    gain.gain.setValueAtTime(0.15, now + notes.delay);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + notes.delay + dur);
+
+                    osc.start(now + notes.delay);
+                    osc.stop(now + notes.delay + dur);
+                });
+            }
+        }
+
+        const sounds = new SoundEffects();
+
+        // --- ゲームの初期化・設定 ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const INTERNAL_WIDTH = 960;
+        const INTERNAL_HEIGHT = 540;
+        canvas.width = INTERNAL_WIDTH;
+        canvas.height = INTERNAL_HEIGHT;
+
+        let gameState = 'START';
+        let score = 0;
+        let lives = 3;
+        const MAX_LIVES = 5; 
+        let currentStageIndex = 0;
+        let isPaused = false;
+        
+        const keys = {
+            left: false,
+            right: false,
+            jump: false,
+            prevJump: false
+        };
+
+        const touchState = {
+            left: false,
+            right: false,
+            jump: false
+        };
+
+        let particles = [];
+
+        const camera = {
+            x: 0,
+            y: 0,
+            width: INTERNAL_WIDTH,
+            height: INTERNAL_HEIGHT
+        };
+
+        // --- 敵の種類の定義 ---
+        const ENEMY_TYPES = {
+            NORMAL: 'normal',
+            FLYING: 'flying',
+            SPIKY: 'spiky',
+            CHASER: 'chaser'
+        };
+
+        // --- アイテムの種類の定義 ---
+        const ITEM_TYPES = {
+            HEAL: 'heal',       
+            STAR: 'star'        
+        };
+
+        // --- ステージ設計（難易度アップ版！） ---
+        // 'B' = ジャンプバネ, 'M' = 動く床, 'T' = 消える一時床
+        // 'E' = 通常スライム, 'F' = コウモリ, 'R' = トゲスライム, 'A' = おっかけスライム
+        // 'H' = お魚（回復アイテム）
+        // 'U' = きらきらスター（無敵アイテム）
+        const STAGE_MAPS = [
+            // Stage 1: 操作練習 ＋ トゲ飛び越え（すでに少し難易度調整）
+            [
+                "==========================================================================================",
+                "=                                                                                        =",
+                "=                                                                                        =",
+                "=                                                                                        =",
+                "=            C   C                                                                       =",
+                "=           #####                                                    C                   =",
+                "=                                                                 #######                =",
+                "=                                       C   H   C                                        =",
+                "=                    C   B            #######   ###                                      =",
+                "=     P        S   #######                                     C      C       C   G      =",
+                "##########################################################################################"
+            ],
+            // Stage 2: 揺れるコウモリと動くリフト、配置がシビアに！
+            [
+                "====================================================================================================",
+                "=                                                                                                  =",
+                "=                                                                             #                    =",
+                "=                                                 C                           #                    =",
+                "=                                              #####                          #                    =",
+                "=               C     C             F                                         #       C            =",
+                "=              #########               M                S      ###            #    ########        =",
+                "=                                                                             #                    =",
+                "=                                    S   E   S         ###       E        #          H      G  =",
+                "=     P     S   E       E   S    #############     S       S     #####        #       S       #####",
+                "===================================================================================================="
+            ],
+            // Stage 3: 消える床(T)がギリギリ！トゲスライムの障害
+            [
+                "=======================================================================================================================",
+                "=                                                                                                                     =",
+                "=                                                                                                                     =",
+                "=                                         C                                                                           =",
+                "=                                       #####                                             #       C                   =",
+                "=                   C                                                                     #    #######                =",
+                "=                #######            T     T     T            C    C                       #                           =",
+                "=                                                          #########                      #             S             =",
+                "=                                    S   U  S                                             #          S  S   C       G =",
+                "=     P     S   E   B   R   S     ####### #######     S       M         S                 #       S  #######  #####",
+                "======================================================================================================================="
+            ],
+            // Stage 4: 追いかけモンスターとタイトな壁キック、消える床渡り
+            [
+                "=======================================================================================================================",
+                "=                                                                                                                     =",
+                "=                                                           C                                                         =",
+                "=                                                       #########                                                     =",
+                "=                                             M                                                                       =",
+                "=                                                                        T    T    T                                  =",
+                "=                   C        C                 F                     H                        C                       =",
+                "=                #######  #######                                                          #######                    =",
+                "=                                                                                                                     =",
+                "=            S                       S   A   S                B                 S            U               C      G =",
+                "=     P     ###     S   R    S   S    #############              ###             #######     S    S            #####  #####",
+                "======================================================================================================================="
+            ],
+            // Stage 5: 極限ステージ！敵の往来が激しく、精密なジャンプが必要！
+            [
+                "=================================================================================================================================================",
+                "=                                                                                                                                               =",
+                "=                                                                                                  C                                            =",
+                "=                                                                                               #######                                         =",
+                "=                                                               T    T    T                                                                     =",
+                "=                                           M                         F                                                                         =",
+                "=               C                       H                                                           C         C                         =",
+                "=            #######                                                                                     #######   #######                      =",
+                "=                                                                                                                                               =",
+                "=                         S   A   S                 B                    R         S     S     B          U           E                   C   G =",
+                "=     P       S       #############                ###                 #####      ###   ###   ###                                   ##### #####",
+                "================================================================================================================================================="
+            ]
+        ];
+
+        const TILE_SIZE = 45;
+
+        // --- クラス定義 ---
+
+        // プレイヤー（ネコ）
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 32;
+                this.height = 36;
+                this.vx = 0;
+                this.vy = 0;
+                
+                this.speed = 6;
+                this.gravity = 0.5;
+                this.jumpForce = -11;
+                this.doubleJumpForce = -9.5;
+                
+                this.grounded = false;
+                this.canDoubleJump = false;
+                this.isWallSliding = false;
+                this.wallDir = 0;
+                this.facing = 1;
+
+                this.isInvincible = false;
+                this.invincibleTimer = 0;
+
+                // 無敵スター状態用
+                this.isSuper = false;
+                this.superTimer = 0;
+
+                this.animFrame = 0;
+            }
+
+            update(worldWidth, worldHeight, platforms, spikes, enemies, springs, movingPlatforms, crumblingBlocks, items) {
+                // 通常ダメージの無敵時間
+                if (this.isInvincible && !this.isSuper) {
+                    this.invincibleTimer--;
+                    if (this.invincibleTimer <= 0) {
+                        this.isInvincible = false;
+                    }
+                }
+
+                // スター無敵時間のカウント
+                if (this.isSuper) {
+                    this.superTimer--;
+                    if (this.superTimer <= 0) {
+                        this.isSuper = false;
+                        this.isInvincible = false;
+                    }
+                    if (this.superTimer % 4 === 0) {
+                        const randomColor = `hsl(${Math.random() * 360}, 100%, 75%)`;
+                        createJumpParticles(this.x + this.width / 2, this.y + this.height, 0, randomColor);
+                    }
+                }
+
+                let moveLeft = keys.left || touchState.left;
+                let moveRight = keys.right || touchState.right;
+                let wantsJump = (keys.jump && !keys.prevJump) || touchState.jump;
+
+                // 左右移動
+                if (moveLeft) {
+                    this.vx = -this.speed;
+                    this.facing = -1;
+                } else if (moveRight) {
+                    this.vx = this.speed;
+                    this.facing = 1;
+                } else {
+                    this.vx *= 0.8;
+                    if (Math.abs(this.vx) < 0.1) this.vx = 0;
+                }
+
+                // 重力適用
+                if (this.isWallSliding) {
+                    this.vy += this.gravity * 0.3;
+                    if (this.vy > 2) this.vy = 2;
+                } else {
+                    this.vy += this.gravity;
+                }
+
+                if (this.vy > 12) this.vy = 12;
+
+                // 横移動と衝突
+                this.x += this.vx;
+                this.checkCollisionsX(platforms, crumblingBlocks);
+
+                // 縦移動と衝突
+                this.y += this.vy;
+                this.grounded = false;
+                this.checkCollisionsY(platforms, crumblingBlocks);
+
+                // 動く床
+                this.checkMovingPlatformCollisions(movingPlatforms);
+
+                // 落下
+                if (this.y > worldHeight + 100) {
+                    this.damage(true);
+                }
+
+                // 壁スライド
+                const allWalls = [...platforms, ...crumblingBlocks.filter(b => b.state !== 'hidden')];
+                this.checkWallSlide(allWalls, moveLeft, moveRight);
+
+                // ジャンプ
+                if (wantsJump) {
+                    if (this.grounded) {
+                        this.vy = this.jumpForce;
+                        this.grounded = false;
+                        this.canDoubleJump = true;
+                        createJumpParticles(this.x + this.width/2, this.y + this.height);
+                        sounds.playJump();
+                    } else if (this.isWallSliding) {
+                        this.vy = this.jumpForce * 0.9;
+                        this.vx = -this.wallDir * this.speed * 1.3;
+                        this.facing = -this.wallDir;
+                        this.isWallSliding = false;
+                        this.canDoubleJump = true;
+                        createJumpParticles(this.x + (this.wallDir === 1 ? this.width : 0), this.y + this.height/2, -this.wallDir);
+                        sounds.playJump();
+                    } else if (this.canDoubleJump) {
+                        this.vy = this.doubleJumpForce;
+                        this.canDoubleJump = false;
+                        createJumpParticles(this.x + this.width/2, this.y + this.height, 0, '#e0f2fe');
+                        sounds.playJump();
+                    }
+                    
+                    if (touchState.jump) touchState.jump = false;
+                }
+
+                keys.prevJump = keys.jump;
+
+                // 障害物＆バネ判定
+                if (!this.isSuper) {
+                    this.checkSpikeCollisions(spikes);
+                }
+                this.checkSpringCollisions(springs);
+                this.checkItemCollisions(items);
+
+                // アニメーション
+                if (Math.abs(this.vx) > 0.5 && this.grounded) {
+                    this.animFrame += 0.15;
+                } else {
+                    this.animFrame = 0;
+                }
+            }
+
+            checkCollisionsX(platforms, crumblingBlocks) {
+                for (let plat of platforms) {
+                    if (this.collidesWith(plat)) {
+                        if (this.vx > 0) this.x = plat.x - this.width;
+                        else if (this.vx < 0) this.x = plat.x + plat.width;
+                        this.vx = 0;
+                    }
+                }
+                for (let block of crumblingBlocks) {
+                    if (block.state === 'hidden') continue;
+                    if (this.collidesWith(block)) {
+                        if (this.vx > 0) this.x = block.x - this.width;
+                        else if (this.vx < 0) this.x = block.x + block.width;
+                        this.vx = 0;
+                    }
+                }
+            }
+
+            checkCollisionsY(platforms, crumblingBlocks) {
+                for (let plat of platforms) {
+                    if (this.collidesWith(plat)) {
+                        if (this.vy > 0) {
+                            this.y = plat.y - this.height;
+                            this.vy = 0;
+                            this.grounded = true;
+                            this.canDoubleJump = false;
+                        } else if (this.vy < 0) {
+                            this.y = plat.y + plat.height;
+                            this.vy = 0;
+                        }
+                    }
+                }
+                for (let block of crumblingBlocks) {
+                    if (block.state === 'hidden') continue;
+                    if (this.collidesWith(block)) {
+                        if (this.vy > 0) {
+                            this.y = block.y - this.height;
+                            this.vy = 0;
+                            this.grounded = true;
+                            this.canDoubleJump = false;
+                            block.trigger();
+                        } else if (this.vy < 0) {
+                            this.y = block.y + block.height;
+                            this.vy = 0;
+                        }
+                    }
+                }
+            }
+
+            checkMovingPlatformCollisions(movingPlatforms) {
+                for (let plat of movingPlatforms) {
+                    const onPlatform = (this.x + this.width > plat.x &&
+                                        this.x < plat.x + plat.width &&
+                                        this.y + this.height >= plat.y &&
+                                        this.y + this.height <= plat.y + 8 &&
+                                        this.vy >= 0);
+                    
+                    if (onPlatform) {
+                        this.y = plat.y - this.height;
+                        this.vy = 0;
+                        this.grounded = true;
+                        this.canDoubleJump = false;
+                        this.x += plat.vx; 
+                    }
+                }
+            }
+
+            checkWallSlide(walls, moveLeft, moveRight) {
+                this.isWallSliding = false;
+                this.wallDir = 0;
+
+                if (this.grounded) return;
+
+                const sensorDist = 2;
+                const leftSensor = { x: this.x - sensorDist, y: this.y + 4, width: sensorDist, height: this.height - 8 };
+                const rightSensor = { x: this.x + this.width, y: this.y + 4, width: sensorDist, height: this.height - 8 };
+
+                for (let wall of walls) {
+                    if (this.checkDirectCollision(leftSensor, wall) && moveLeft) {
+                        this.isWallSliding = true;
+                        this.wallDir = -1;
+                        break;
+                    }
+                    if (this.checkDirectCollision(rightSensor, wall) && moveRight) {
+                        this.isWallSliding = true;
+                        this.wallDir = 1;
+                        break;
+                    }
+                }
+            }
+
+            checkSpikeCollisions(spikes) {
+                if (this.isInvincible || this.isSuper) return;
+                for (let spike of spikes) {
+                    const spikeHitbox = {
+                        x: spike.x + 8,
+                        y: spike.y + TILE_SIZE - 15,
+                        width: spike.width - 16,
+                        height: 15
+                    };
+                    if (this.checkDirectCollision(this, spikeHitbox)) {
+                        this.damage();
+                        break;
+                    }
+                }
+            }
+
+            checkSpringCollisions(springs) {
+                for (let spring of springs) {
+                    if (this.collidesWith(spring)) {
+                        if (this.vy > 0 && this.y + this.height - this.vy <= spring.y + 12) {
+                            this.vy = this.jumpForce * 1.45;
+                            this.y = spring.y - this.height;
+                            this.grounded = false;
+                            this.canDoubleJump = true;
+                            spring.bounce();
+                            sounds.playSpring();
+                            createJumpParticles(this.x + this.width/2, this.y + this.height, 0, '#fbbf24');
+                        }
+                    }
+                }
+            }
+
+            checkItemCollisions(items) {
+                for (let item of items) {
+                    if (!item.collected && this.collidesWith(item)) {
+                        item.collect(this);
+                    }
+                }
+            }
+
+            damage(instantDeath = false) {
+                if ((this.isInvincible || this.isSuper) && !instantDeath) return;
+
+                lives--;
+                updateLivesUI();
+                createExplosion(this.x + this.width/2, this.y + this.height/2, '#ef4444', 15);
+                sounds.playDamage();
+
+                if (lives <= 0 || instantDeath) {
+                    gameOver();
+                } else {
+                    this.isInvincible = true;
+                    this.invincibleTimer = 90;
+                    this.vy = this.jumpForce * 0.7;
+                    this.vx = -this.facing * this.speed;
+                }
+            }
+
+            collidesWith(rect) {
+                return this.x < rect.x + rect.width &&
+                       this.x + this.width > rect.x &&
+                       this.y < rect.y + rect.height &&
+                       this.y + this.height > rect.y;
+            }
+
+            checkDirectCollision(rect1, rect2) {
+                return rect1.x < rect2.x + rect2.width &&
+                       rect1.x + rect1.width > rect2.x &&
+                       rect1.y < rect2.y + rect2.height &&
+                       rect1.y + rect1.height > rect2.y;
+            }
+
+            makeSuper() {
+                this.isSuper = true;
+                this.isInvincible = true;
+                this.superTimer = 240; // ★無敵時間を短縮！（約4秒間）
+                sounds.playStar();
+            }
+
+            draw() {
+                if (this.isInvincible && !this.isSuper && Math.floor(this.invincibleTimer / 4) % 2 === 0) {
+                    return;
+                }
+
+                ctx.save();
+                ctx.translate(this.x + this.width/2, this.y + this.height/2);
+                if (this.facing === -1) {
+                    ctx.scale(-1, 1);
+                }
+
+                let catColor = '#f8fafc';
+                let tailColor = '#cbd5e1';
+                let innerEarColor = '#fda4af';
+
+                if (this.isSuper) {
+                    const hue = (this.superTimer * 12) % 360;
+                    catColor = `hsl(${hue}, 95%, 85%)`;
+                    tailColor = `hsl(${(hue + 40) % 360}, 90%, 75%)`;
+                    innerEarColor = `hsl(${(hue + 180) % 360}, 95%, 75%)`;
+                }
+
+                ctx.fillStyle = catColor;
+                
+                // 尻尾
+                ctx.beginPath();
+                ctx.arc(-10, 8, 6, 0, Math.PI * 2);
+                ctx.fillStyle = tailColor;
+                ctx.fill();
+
+                // 体
+                ctx.fillStyle = catColor;
+                ctx.beginPath();
+                ctx.roundRect(-12, -10, 24, 26, 8);
+                ctx.fill();
+
+                // お腹
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.roundRect(-8, -2, 16, 16, 6);
+                ctx.fill();
+
+                // 頭
+                ctx.fillStyle = catColor;
+                ctx.beginPath();
+                ctx.roundRect(-14, -22, 28, 18, 8);
+                ctx.fill();
+
+                // 耳
+                ctx.fillStyle = catColor;
+                ctx.beginPath();
+                ctx.moveTo(-12, -20);
+                ctx.lineTo(-14, -28);
+                ctx.lineTo(-4, -20);
+                ctx.fill();
+                ctx.fillStyle = innerEarColor;
+                ctx.beginPath();
+                ctx.moveTo(-10, -20);
+                ctx.lineTo(-12, -25);
+                ctx.lineTo(-6, -20);
+                ctx.fill();
+
+                ctx.fillStyle = catColor;
+                ctx.beginPath();
+                ctx.moveTo(12, -20);
+                ctx.lineTo(14, -28);
+                ctx.lineTo(4, -20);
+                ctx.fill();
+                ctx.fillStyle = innerEarColor;
+                ctx.beginPath();
+                ctx.moveTo(10, -20);
+                ctx.lineTo(12, -25);
+                ctx.lineTo(6, -20);
+                ctx.fill();
+
+                // 目
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.arc(4, -14, 2.5, 0, Math.PI * 2);
+                ctx.arc(-4, -14, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 鼻・口
+                ctx.strokeStyle = '#fda4af';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(0, -11);
+                ctx.lineTo(0, -9);
+                ctx.stroke();
+
+                // 足
+                ctx.fillStyle = tailColor;
+                let walkCycle = Math.sin(this.animFrame) * 4;
+                if (!this.grounded) {
+                    ctx.fillRect(-10, 14, 6, 4);
+                    ctx.fillRect(4, 14, 6, 4);
+                } else if (Math.abs(this.vx) > 0.5) {
+                    ctx.fillRect(-10, 14 + walkCycle, 6, 4);
+                    ctx.fillRect(4, 14 - walkCycle, 6, 4);
+                } else {
+                    ctx.fillRect(-10, 14, 6, 4);
+                    ctx.fillRect(4, 14, 6, 4);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // 通常の足場ブロック
+        class Platform {
+            constructor(x, y, width, height, isDecorative = false) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.isDecorative = isDecorative;
+            }
+
+            draw() {
+                ctx.save();
+                if (this.isDecorative) {
+                    ctx.fillStyle = '#334155';
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                } else {
+                    ctx.fillStyle = '#475569';
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    
+                    ctx.strokeStyle = '#64748b';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(this.x + 1, this.y + 1, this.width - 2, this.height - 2);
+                    
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillRect(this.x, this.y, this.width, 3);
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fillRect(this.x, this.y + this.height - 4, this.width, 4);
+                }
+                ctx.restore();
+            }
+        }
+
+        // アイテムクラス
+        class Item {
+            constructor(x, y, type) {
+                this.x = x + 10;
+                this.y = y + 10;
+                this.width = 25;
+                this.height = 25;
+                this.type = type;
+                this.collected = false;
+                this.pulse = Math.random() * 10;
+            }
+
+            update() {
+                this.pulse += 0.08;
+            }
+
+            collect(player) {
+                this.collected = true;
+
+                if (this.type === ITEM_TYPES.HEAL) {
+                    if (lives < MAX_LIVES) {
+                        lives++;
+                        updateLivesUI();
+                    }
+                    score += 150;
+                    createExplosion(this.x + this.width/2, this.y + this.height/2, '#38bdf8', 12);
+                    sounds.playHeal();
+                } else if (this.type === ITEM_TYPES.STAR) {
+                    player.makeSuper();
+                    score += 300;
+                    createExplosion(this.x + this.width/2, this.y + this.height/2, '#facc15', 20);
+                }
+
+                document.getElementById('ui-score').textContent = score;
+            }
+
+            draw() {
+                if (this.collected) return;
+
+                ctx.save();
+                const floatOffset = Math.sin(this.pulse) * 4;
+                const drawY = this.y + floatOffset;
+
+                if (this.type === ITEM_TYPES.HEAL) {
+                    ctx.translate(this.x + this.width/2, drawY + this.height/2);
+                    const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, 18);
+                    grad.addColorStop(0, 'rgba(56, 189, 248, 0.6)');
+                    grad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 18, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 11, 7, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.moveTo(-10, 0);
+                    ctx.lineTo(-16, -6);
+                    ctx.lineTo(-14, 0);
+                    ctx.lineTo(-16, 6);
+                    ctx.closePath();
+                    ctx.fillStyle = '#0ea5e9';
+                    ctx.fill();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(6, -2, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#0f172a';
+                    ctx.beginPath();
+                    ctx.arc(7, -2, 0.8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                } else if (this.type === ITEM_TYPES.STAR) {
+                    ctx.translate(this.x + this.width/2, drawY + this.height/2);
+                    const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, 20);
+                    const hue = (Date.now() / 15) % 360;
+                    grad.addColorStop(0, `hsla(${hue}, 100%, 70%, 0.8)`);
+                    grad.addColorStop(1, 'rgba(250, 204, 21, 0)');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 20, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#facc15';
+                    ctx.strokeStyle = '#eab308';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    for (let i = 0; i < 5; i++) {
+                        ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * 12, -Math.sin((18 + i * 72) * Math.PI / 180) * 12);
+                        ctx.lineTo(Math.cos((54 + i * 72) * Math.PI / 180) * 5, -Math.sin((54 + i * 72) * Math.PI / 180) * 5);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillRect(-3, -3, 1.5, 4);
+                    ctx.fillRect(1, -3, 1.5, 4);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // ジャンプバネ
+        class Spring {
+            constructor(x, y) {
+                this.x = x + 4;
+                this.y = y + 20;
+                this.width = TILE_SIZE - 8;
+                this.height = 25;
+                this.timer = 0;
+                this.bouncing = false;
+            }
+
+            bounce() {
+                this.bouncing = true;
+                this.timer = 15;
+            }
+
+            update() {
+                if (this.bouncing) {
+                    this.timer--;
+                    if (this.timer <= 0) {
+                        this.bouncing = false;
+                    }
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.fillStyle = '#cbd5e1';
+                ctx.strokeStyle = '#475569';
+                ctx.lineWidth = 2;
+
+                let drawHeight = this.height;
+                let drawY = this.y;
+
+                if (this.bouncing) {
+                    if (this.timer > 8) {
+                        drawHeight = 10;
+                        drawY = this.y + 15;
+                    } else {
+                        drawHeight = 35;
+                        drawY = this.y - 10;
+                    }
+                }
+
+                ctx.fillStyle = '#ef4444';
+                ctx.fillRect(this.x, drawY, this.width, 8);
+                ctx.strokeRect(this.x, drawY, this.width, 8);
+
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.width/2, drawY + 8);
+                ctx.lineTo(this.x + this.width/2 - 10, drawY + 8 + (drawHeight - 14)/3);
+                ctx.lineTo(this.x + this.width/2 + 10, drawY + 8 + (drawHeight - 14)*2/3);
+                ctx.lineTo(this.x + this.width/2, drawY + drawHeight - 6);
+                ctx.stroke();
+
+                ctx.fillStyle = '#475569';
+                ctx.fillRect(this.x + 4, this.y + this.height - 6, this.width - 8, 6);
+
+                ctx.restore();
+            }
+        }
+
+        // 動く床
+        class MovingPlatform {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = TILE_SIZE * 2;
+                this.height = 18;
+                this.startX = x;
+                this.range = 150;
+                this.vx = 2;
+            }
+
+            update() {
+                this.x += this.vx;
+                if (Math.abs(this.x - this.startX) > this.range) {
+                    this.vx = -this.vx;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.fillStyle = '#f59e0b';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                ctx.strokeStyle = '#d97706';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(this.x, this.y, this.width, this.height);
+
+                ctx.fillStyle = '#1e293b';
+                for (let offset = 10; offset < this.width; offset += 20) {
+                    ctx.fillRect(this.x + offset, this.y + 4, 8, this.height - 8);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // 消える床 (難易度アップ版！)
+        class CrumblingBlock {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = TILE_SIZE;
+                this.height = TILE_SIZE;
+                this.state = 'normal';
+                this.timer = 0;
+            }
+
+            trigger() {
+                if (this.state === 'normal') {
+                    this.state = 'crumbling';
+                    this.timer = 24; // ★消えるまでの時間を短縮！（約0.4秒）
+                }
+            }
+
+            update() {
+                if (this.state === 'crumbling') {
+                    this.timer--;
+                    if (this.timer <= 0) {
+                        this.state = 'hidden';
+                        this.timer = 120;
+                    }
+                } else if (this.state === 'hidden') {
+                    this.timer--;
+                    if (this.timer <= 0) {
+                        this.state = 'normal';
+                    }
+                }
+            }
+
+            draw() {
+                if (this.state === 'hidden') return;
+
+                ctx.save();
+                let drawX = this.x;
+                
+                if (this.state === 'crumbling') {
+                    drawX += (Math.random() - 0.5) * 4;
+                    ctx.globalAlpha = 0.5 + (this.timer / 24) * 0.5;
+                }
+
+                ctx.fillStyle = '#854d0e';
+                ctx.fillRect(drawX, this.y, this.width, this.height);
+                
+                ctx.strokeStyle = '#a16207';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(drawX + 1, this.y + 1, this.width - 2, this.height - 2);
+
+                ctx.strokeStyle = '#451a03';
+                ctx.beginPath();
+                ctx.moveTo(drawX + 10, this.y + 5);
+                ctx.lineTo(drawX + 22, this.y + 25);
+                ctx.lineTo(drawX + 35, this.y + 40);
+                if (this.state === 'crumbling') {
+                    ctx.moveTo(drawX + 30, this.y + 10);
+                    ctx.lineTo(drawX + 15, this.y + 35);
+                }
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        // コイン
+        class Coin {
+            constructor(x, y) {
+                this.x = x + TILE_SIZE/2;
+                this.y = y + TILE_SIZE/2;
+                this.radius = 10;
+                this.collected = false;
+                this.pulse = Math.random() * 10;
+            }
+
+            update() {
+                this.pulse += 0.15;
+            }
+
+            draw() {
+                if (this.collected) return;
+                
+                ctx.save();
+                const sizeOffset = Math.sin(this.pulse) * 1.5;
+                const currentRadius = this.radius + sizeOffset;
+
+                const gradient = ctx.createRadialGradient(this.x, this.y, 2, this.x, this.y, currentRadius + 6);
+                gradient.addColorStop(0, 'rgba(251, 191, 36, 0.8)');
+                gradient.addColorStop(1, 'rgba(251, 191, 36, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, currentRadius + 6, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#fbbf24';
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, currentRadius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#d97706';
+                ctx.font = `bold ${currentRadius * 1.2}px 'DotGothic16', monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('C', this.x, this.y + 1);
+
+                ctx.restore();
+            }
+
+            checkCollision(player) {
+                if (this.collected) return;
+
+                const distX = Math.abs(this.x - player.x - player.width / 2);
+                const distY = Math.abs(this.y - player.y - player.height / 2);
+
+                if (distX <= (player.width / 2 + this.radius) && distY <= (player.height / 2 + this.radius)) {
+                    this.collected = true;
+                    score += 100;
+                    document.getElementById('ui-score').textContent = score;
+                    createExplosion(this.x, this.y, '#fbbf24', 8);
+                    sounds.playCoin();
+                }
+            }
+        }
+
+        // トゲ
+        class Spike {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = TILE_SIZE;
+                this.height = TILE_SIZE;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.fillStyle = '#cbd5e1';
+                ctx.strokeStyle = '#475569';
+                ctx.lineWidth = 2;
+
+                const spikeCount = 3;
+                const spikeWidth = this.width / spikeCount;
+
+                ctx.beginPath();
+                for (let i = 0; i < spikeCount; i++) {
+                    const startX = this.x + i * spikeWidth;
+                    ctx.moveTo(startX, this.y + this.height);
+                    ctx.lineTo(startX + spikeWidth / 2, this.y + 20);
+                    ctx.lineTo(startX + spikeWidth, this.y + this.height);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#ef4444';
+                for (let i = 0; i < spikeCount; i++) {
+                    ctx.beginPath();
+                    const startX = this.x + i * spikeWidth + spikeWidth * 0.3;
+                    ctx.moveTo(startX, this.y + this.height - 2);
+                    ctx.lineTo(this.x + i * spikeWidth + spikeWidth / 2, this.y + 24);
+                    ctx.lineTo(startX + spikeWidth * 0.4, this.y + this.height - 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // 敵キャラクタークラス (難易度アップ！)
+        class Enemy {
+            constructor(x, y, type = ENEMY_TYPES.NORMAL) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.width = 36;
+                this.height = 36;
+                this.vx = 2.5; // ★通常の歩行スピードを2.0→2.5へアップ！
+                this.vy = 0;
+                this.gravity = 0.5;
+                this.bounceRange = 120;
+                this.startX = x;
+                this.startY = y;
+                this.alive = true;
+                this.animTimer = 0;
+
+                if (this.type === ENEMY_TYPES.FLYING) {
+                    this.gravity = 0;
+                    this.vx = 0;
+                    this.vy = 2.4;    // ★コウモリの移動速度を1.5→2.4へアップ！
+                    this.bounceRange = 80; // ★少し上下幅を広く
+                    this.height = 30;
+                } else if (this.type === ENEMY_TYPES.SPIKY) {
+                    this.vx = 2.0;    // ★トゲスライムの移動速度を1.5→2.0へアップ！
+                } else if (this.type === ENEMY_TYPES.CHASER) {
+                    this.vx = 0;
+                    this.speed = 3.2; // ★追跡速度を2.5→3.2へ大幅アップ！
+                    this.detectionRange = 260; // ★プレイヤー検知範囲を220→260へ拡大！
+                }
+            }
+
+            update(platforms, player) {
+                if (!this.alive) return;
+
+                this.animTimer += 0.1;
+
+                if (this.type !== ENEMY_TYPES.FLYING) {
+                    this.vy += this.gravity;
+                    if (this.vy > 10) this.vy = 10;
+                }
+
+                if (this.type === ENEMY_TYPES.FLYING) {
+                    this.y += this.vy;
+                    if (Math.abs(this.y - this.startY) > this.bounceRange) {
+                        this.vy = -this.vy;
+                        this.y += this.vy;
+                    }
+                } else if (this.type === ENEMY_TYPES.CHASER) {
+                    const diffX = player.x - this.x;
+                    const diffY = Math.abs(player.y - this.y);
+                    const distance = Math.abs(diffX);
+
+                    if (distance < this.detectionRange && diffY < 120) {
+                        this.vx = diffX > 0 ? this.speed : -this.speed;
+                    } else {
+                        this.vx *= 0.8;
+                        if (Math.abs(this.vx) < 0.1) this.vx = 0;
+                    }
+                    this.x += this.vx;
+                } else {
+                    this.x += this.vx;
+                    if (Math.abs(this.x - this.startX) > this.bounceRange) {
+                        this.vx = -this.vx;
+                        this.x += this.vx;
+                    }
+                }
+
+                if (this.type !== ENEMY_TYPES.FLYING) {
+                    let onGround = false;
+                    for (let plat of platforms) {
+                        if (this.collidesWith(plat)) {
+                            if (this.vx > 0 && this.x + this.width - this.vx <= plat.x) {
+                                this.x = plat.x - this.width;
+                                if (this.type !== ENEMY_TYPES.CHASER) this.vx = -this.vx;
+                            } else if (this.vx < 0 && this.x - this.vx >= plat.x + plat.width) {
+                                this.x = plat.x + plat.width;
+                                if (this.type !== ENEMY_TYPES.CHASER) this.vx = -this.vx;
+                            }
+
+                            if (this.vy > 0 && this.y + this.height - this.vy <= plat.y) {
+                                this.y = plat.y - this.height;
+                                this.vy = 0;
+                                onGround = true;
+                            }
+                        }
+                    }
+
+                    if (onGround && this.type !== ENEMY_TYPES.CHASER) {
+                        let edgeSensorX = this.vx > 0 ? this.x + this.width : this.x - 10;
+                        let edgeSensorY = this.y + this.height + 5;
+                        let hasPlatformBelow = false;
+
+                        for (let plat of platforms) {
+                            if (edgeSensorX >= plat.x && edgeSensorX <= plat.x + plat.width &&
+                                edgeSensorY >= plat.y && edgeSensorY <= plat.y + plat.height) {
+                                hasPlatformBelow = true;
+                                break;
+                            }
+                        }
+
+                        if (!hasPlatformBelow) {
+                            this.vx = -this.vx;
+                        }
+                    }
+
+                    this.y += this.vy;
+                }
+            }
+
+            collidesWith(rect) {
+                return this.x < rect.x + rect.width &&
+                       this.x + this.width > rect.x &&
+                       this.y < rect.y + rect.height &&
+                       this.y + this.height > rect.y;
+            }
+
+            draw() {
+                if (!this.alive) return;
+
+                ctx.save();
+                const stretch = Math.sin(this.animTimer) * 2;
+
+                if (this.type === ENEMY_TYPES.NORMAL) {
+                    ctx.fillStyle = '#a855f7';
+                    ctx.beginPath();
+                    ctx.roundRect(this.x - stretch/2, this.y + stretch, this.width + stretch, this.height - stretch, 10);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#7e22ce';
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.width/2, this.y + this.height - 8, 8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    this.drawEyes(14, false);
+
+                } else if (this.type === ENEMY_TYPES.FLYING) {
+                    ctx.fillStyle = '#f43f5e';
+                    ctx.beginPath();
+                    ctx.roundRect(this.x, this.y + stretch, this.width, this.height - stretch, 8);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#be123c';
+                    const wingHeight = Math.sin(this.animTimer * 1.5) * 12;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y + 12);
+                    ctx.lineTo(this.x - 16, this.y + 12 - wingHeight);
+                    ctx.lineTo(this.x, this.y + 22);
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + this.width, this.y + 12);
+                    ctx.lineTo(this.x + this.width + 16, this.y + 12 - wingHeight);
+                    ctx.lineTo(this.x + this.width, this.y + 22);
+                    ctx.fill();
+
+                    this.drawEyes(10, false);
+
+                } else if (this.type === ENEMY_TYPES.SPIKY) {
+                    ctx.fillStyle = '#f97316';
+                    ctx.beginPath();
+                    ctx.roundRect(this.x - stretch/2, this.y + stretch, this.width + stretch, this.height - stretch, 10);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#ea580c';
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + 6, this.y + 4);
+                    ctx.lineTo(this.x + 12, this.y - 10);
+                    ctx.lineTo(this.x + 18, this.y + 2);
+                    
+                    ctx.moveTo(this.x + 18, this.y + 2);
+                    ctx.lineTo(this.x + 24, this.y - 10);
+                    ctx.lineTo(this.x + 30, this.y + 4);
+                    ctx.fill();
+
+                    this.drawEyes(14, true);
+
+                } else if (this.type === ENEMY_TYPES.CHASER) {
+                    ctx.fillStyle = '#84cc16';
+                    ctx.beginPath();
+                    ctx.roundRect(this.x - stretch/2, this.y + stretch, this.width + stretch, this.height - stretch, 10);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.width/2, this.y + 15, 8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#b91c1c';
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.width/2 + (this.vx > 0 ? 2 : (this.vx < 0 ? -2 : 0)), this.y + 15, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#1e1b4b';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + 10, this.y + 6);
+                    ctx.lineTo(this.x + 26, this.y + 6);
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+
+            drawEyes(eyeY, isAngry) {
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(this.x + 10, this.y + eyeY, 5, 0, Math.PI * 2);
+                ctx.arc(this.x + 26, this.y + eyeY, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.arc(this.x + 10, this.y + eyeY, 2, 0, Math.PI * 2);
+                ctx.arc(this.x + 26, this.y + eyeY, 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (isAngry) {
+                    ctx.strokeStyle = '#1e1b4b';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + 5, this.y + eyeY - 6);
+                    ctx.lineTo(this.x + 14, this.y + eyeY - 2);
+                    ctx.moveTo(this.x + 31, this.y + eyeY - 6);
+                    ctx.lineTo(this.x + 22, this.y + eyeY - 2);
+                    ctx.stroke();
+                }
+            }
+
+            checkPlayerCollision(player) {
+                if (!this.alive) return;
+
+                if (player.collidesWith(this)) {
+                    if (player.isSuper) {
+                        this.alive = false;
+                        player.vy = player.jumpForce * 0.5; 
+                        score += 300; 
+                        document.getElementById('ui-score').textContent = score;
+
+                        let effectColor = '#facc15'; 
+                        createExplosion(this.x + this.width/2, this.y + this.height/2, effectColor, 15);
+                        sounds.playStomp();
+                        return;
+                    }
+
+                    if (this.type === ENEMY_TYPES.SPIKY) {
+                        player.damage();
+                        return;
+                    }
+
+                    if (player.vy > 0 && player.y + player.height - player.vy <= this.y + 10) {
+                        this.alive = false;
+                        player.vy = player.jumpForce * 0.8;
+                        score += 200;
+                        document.getElementById('ui-score').textContent = score;
+                        
+                        let effectColor = '#c084fc';
+                        if (this.type === ENEMY_TYPES.FLYING) effectColor = '#fda4af';
+                        if (this.type === ENEMY_TYPES.CHASER) effectColor = '#a3e635';
+                        
+                        createExplosion(this.x + this.width/2, this.y + this.height/2, effectColor, 12);
+                        sounds.playStomp();
+                    } else {
+                        player.damage();
+                    }
+                }
+            }
+        }
+
+        // ゴール
+        class Goal {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y - 15;
+                this.width = 45;
+                this.height = 60;
+                this.angle = 0;
+            }
+
+            update() {
+                this.angle += 0.05;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x + this.width/2, this.y + this.height/2);
+                ctx.rotate(this.angle);
+
+                const grad = ctx.createRadialGradient(0, 0, 5, 0, 0, 30);
+                grad.addColorStop(0, '#38bdf8');
+                grad.addColorStop(0.5, '#818cf8');
+                grad.addColorStop(1, 'rgba(99, 102, 241, 0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 25, 35, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 15, 25, Math.PI/4, 0, Math.PI);
+                ctx.stroke();
+
+                ctx.restore();
+            }
+
+            checkCollision(player) {
+                const distX = Math.abs((this.x + this.width/2) - (player.x + player.width/2));
+                const distY = Math.abs((this.y + this.height/2) - (player.y + player.height/2));
+
+                if (distX < 25 && distY < 35) {
+                    nextStage();
+                }
+            }
+        }
+
+        // --- パーティクルエフェクト ---
+
+        class Particle {
+            constructor(x, y, vx, vy, color, size, life) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.color = color;
+                this.size = size;
+                this.maxLife = life;
+                this.life = life;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.05;
+                this.life--;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.life / this.maxLife;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function createExplosion(x, y, color, count = 10) {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 4 + 1;
+                const vx = Math.cos(angle) * speed;
+                const vy = Math.sin(angle) * speed - 1;
+                const size = Math.random() * 4 + 2;
+                const life = Math.random() * 20 + 20;
+                particles.push(new Particle(x, y, vx, vy, color, size, life));
+            }
+        }
+
+        function createJumpParticles(x, y, dir = 0, color = '#f1f5f9') {
+            const count = 5;
+            for (let i = 0; i < count; i++) {
+                const vx = (dir === 0 ? (Math.random() - 0.5) * 4 : -dir * (Math.random() * 2 + 1));
+                const vy = -(Math.random() * 2 + 1);
+                const size = Math.random() * 3 + 1.5;
+                const life = Math.random() * 15 + 10;
+                particles.push(new Particle(x, y, vx, vy, color, size, life));
+            }
+        }
+
+        // --- ステージ生成 ---
+
+        let player;
+        let platforms = [];
+        let coins = [];
+        let spikes = [];
+        let enemies = [];
+        let springs = [];
+        let movingPlatforms = [];
+        let crumblingBlocks = [];
+        let items = [];            
+        let goal;
+        let worldWidth = 0;
+        let worldHeight = 0;
+
+        function buildStage(stageIndex) {
+            platforms = [];
+            coins = [];
+            spikes = [];
+            enemies = [];
+            springs = [];
+            movingPlatforms = [];
+            crumblingBlocks = [];
+            items = [];
+            particles = [];
+            
+            const map = STAGE_MAPS[stageIndex];
+            worldHeight = map.length * TILE_SIZE;
+            worldWidth = map[0].length * TILE_SIZE;
+
+            for (let r = 0; r < map.length; r++) {
+                const row = map[r];
+                for (let c = 0; c < row.length; c++) {
+                    const char = row[c];
+                    const x = c * TILE_SIZE;
+                    const y = r * TILE_SIZE;
+
+                    switch (char) {
+                        case '#':
+                            platforms.push(new Platform(x, y, TILE_SIZE, TILE_SIZE, false));
+                            break;
+                        case '=':
+                            platforms.push(new Platform(x, y, TILE_SIZE, TILE_SIZE, true));
+                            break;
+                        case 'P':
+                            player = new Player(x, y + (TILE_SIZE - 36));
+                            break;
+                        case 'C':
+                            coins.push(new Coin(x, y));
+                            break;
+                        case 'S':
+                            spikes.push(new Spike(x, y));
+                            break;
+                        case 'E':
+                            enemies.push(new Enemy(x, y + (TILE_SIZE - 36), ENEMY_TYPES.NORMAL));
+                            break;
+                        case 'F':
+                            enemies.push(new Enemy(x, y + 10, ENEMY_TYPES.FLYING));
+                            break;
+                        case 'R':
+                            enemies.push(new Enemy(x, y + (TILE_SIZE - 36), ENEMY_TYPES.SPIKY));
+                            break;
+                        case 'A':
+                            enemies.push(new Enemy(x, y + (TILE_SIZE - 36), ENEMY_TYPES.CHASER));
+                            break;
+                        case 'B':
+                            springs.push(new Spring(x, y));
+                            break;
+                        case 'M':
+                            movingPlatforms.push(new MovingPlatform(x, y));
+                            break;
+                        case 'T':
+                            crumblingBlocks.push(new CrumblingBlock(x, y));
+                            break;
+                        case 'H': 
+                            items.push(new Item(x, y, ITEM_TYPES.HEAL));
+                            break;
+                        case 'U': 
+                            items.push(new Item(x, y, ITEM_TYPES.STAR));
+                            break;
+                        case 'G':
+                            goal = new Goal(x, y);
+                            break;
+                    }
+                }
+            }
+
+            camera.x = 0;
+            camera.y = 0;
+
+            document.getElementById('ui-stage').textContent = `${stageIndex + 1}/${STAGE_MAPS.length}`;
+            updateLivesUI();
+        }
+
+        // ライフメーター表示
+        function updateLivesUI() {
+            const container = document.getElementById('ui-lives');
+            container.innerHTML = '';
+            for (let i = 0; i < MAX_LIVES; i++) {
+                if (i < lives) {
+                    container.innerHTML += '❤️';
+                } else {
+                    container.innerHTML += '🖤';
+                }
+            }
+        }
+
+        // --- ゲームループ ---
+
+        function update() {
+            if (gameState !== 'PLAYING') return;
+
+            player.update(worldWidth, worldHeight, platforms, spikes, enemies, springs, movingPlatforms, crumblingBlocks, items);
+
+            for (let enemy of enemies) {
+                enemy.update(platforms, player);
+                enemy.checkPlayerCollision(player);
+            }
+
+            for (let spring of springs) {
+                spring.update();
+            }
+
+            for (let plat of movingPlatforms) {
+                plat.update();
+            }
+
+            for (let block of crumblingBlocks) {
+                block.update();
+            }
+
+            for (let item of items) {
+                item.update();
+            }
+
+            for (let coin of coins) {
+                coin.update();
+                coin.checkCollision(player);
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                if (particles[i].life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            if (goal) {
+                goal.update();
+                goal.checkCollision(player);
+            }
+
+            const targetCamX = player.x - INTERNAL_WIDTH / 2 + player.width / 2;
+            camera.x += (targetCamX - camera.x) * 0.1;
+            
+            if (camera.x < 0) camera.x = 0;
+            if (camera.x > worldWidth - INTERNAL_WIDTH) camera.x = worldWidth - INTERNAL_WIDTH;
+        }
+
+        function draw() {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, INTERNAL_WIDTH, INTERNAL_HEIGHT);
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            for (let i = 0; i < 50; i++) {
+                const starX = ((i * 197) - camera.x * 0.2) % INTERNAL_WIDTH;
+                const starY = (i * 113) % INTERNAL_HEIGHT;
+                const size = (i % 3) + 1;
+                ctx.fillRect(starX, starY, size, size);
+            }
+            ctx.restore();
+
+            ctx.save();
+            ctx.translate(-camera.x, -camera.y);
+
+            for (let plat of platforms) {
+                plat.draw();
+            }
+
+            for (let block of crumblingBlocks) {
+                block.draw();
+            }
+
+            for (let plat of movingPlatforms) {
+                plat.draw();
+            }
+
+            for (let spike of spikes) {
+                spike.draw();
+            }
+
+            for (let spring of springs) {
+                spring.draw();
+            }
+
+            for (let item of items) {
+                item.draw();
+            }
+
+            for (let coin of coins) {
+                coin.draw();
+            }
+
+            for (let enemy of enemies) {
+                enemy.draw();
+            }
+
+            if (goal) {
+                goal.draw();
+            }
+
+            if (player) {
+                player.draw();
+            }
+
+            for (let particle of particles) {
+                particle.draw();
+            }
+
+            ctx.restore();
+
+            // 無敵スターゲージ
+            if (player && player.isSuper) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(20, 20, 160, 22);
+                
+                const hue = (player.superTimer * 6) % 360;
+                ctx.fillStyle = `hsl(${hue}, 100%, 60%)`;
+                const progressWidth = (player.superTimer / 240) * 156;
+                ctx.fillRect(22, 22, progressWidth, 18);
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.font = "bold 13px 'DotGothic16', monospace";
+                ctx.fillText("⭐ むてきネコ！", 28, 35);
+                ctx.restore();
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- ゲーム状態管理 ---
+
+        const overlay = document.getElementById('overlay');
+        const overlayTitle = document.getElementById('overlay-title');
+        const overlayDesc = document.getElementById('overlay-desc');
+        const overlayBtn = document.getElementById('overlay-btn');
+
+        function startGame() {
+            sounds.init();
+            lives = 3;
+            score = 0;
+            currentStageIndex = 0;
+            document.getElementById('ui-score').textContent = score;
+            buildStage(currentStageIndex);
+            
+            gameState = 'PLAYING';
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function nextStage() {
+            createExplosion(player.x + player.width/2, player.y + player.height/2, '#38bdf8', 30);
+            sounds.playStageClear();
+            
+            gameState = 'STAGE_CLEAR';
+            setTimeout(() => {
+                currentStageIndex++;
+                if (currentStageIndex < STAGE_MAPS.length) {
+                    buildStage(currentStageIndex);
+                    gameState = 'PLAYING';
+                } else {
+                    gameClear();
+                }
+            }, 600);
+        }
+
+        function gameOver() {
+            gameState = 'GAMEOVER';
+            sounds.playGameOver();
+            overlayTitle.textContent = 'ゲームオーバー';
+            overlayTitle.className = 'text-3xl md:text-5xl font-bold text-red-500 mb-4 tracking-widest';
+            overlayDesc.textContent = `ネコは力尽きてしまった...。 (最終スコア: ${score})`;
+            overlayBtn.textContent = 'もういちど挑戦';
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function gameClear() {
+            gameState = 'CLEAR';
+            overlayTitle.textContent = '⭐ 完全クリア ⭐';
+            overlayTitle.className = 'text-3xl md:text-5xl font-bold text-amber-300 mb-4 tracking-widest animate-pulse';
+            overlayDesc.innerHTML = `おめでとう！ネコは全5ステージの過酷な試練を乗り越え、伝説の財宝を手に入れました！<br><br><span class="text-xl text-emerald-400">最終獲得スコア: ${score}</span>`;
+            overlayBtn.textContent = 'もう一回遊ぶ';
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        // --- 操作イベントリスナー ---
+
+        window.addEventListener('keydown', (e) => {
+            if (gameState !== 'PLAYING') return;
+            sounds.init();
+            
+            switch (e.key) {
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    keys.left = true;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    keys.right = true;
+                    break;
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                case ' ':
+                    keys.jump = true;
+                    e.preventDefault();
+                    break;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            switch (e.key) {
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    keys.left = false;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    keys.right = false;
+                    break;
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                case ' ':
+                    keys.jump = false;
+                    break;
+            }
+        });
+
+        const setupTouchButton = (elemId, stateKey) => {
+            const btn = document.getElementById(elemId);
+            
+            const startPress = (e) => {
+                e.preventDefault();
+                sounds.init();
+                if (gameState !== 'PLAYING') return;
+                
+                if (stateKey === 'jump') {
+                    touchState.jump = true;
+                } else {
+                    touchState[stateKey] = true;
+                }
+            };
+
+            const endPress = (e) => {
+                e.preventDefault();
+                if (stateKey !== 'jump') {
+                    touchState[stateKey] = false;
+                }
+            };
+
+            btn.addEventListener('touchstart', startPress, { passive: false });
+            btn.addEventListener('touchend', endPress, { passive: false });
+            btn.addEventListener('touchcancel', endPress, { passive: false });
+
+            btn.addEventListener('mousedown', startPress);
+            btn.addEventListener('mouseup', endPress);
+            btn.addEventListener('mouseleave', endPress);
+        };
+
+        setupTouchButton('ctrl-left', 'left');
+        setupTouchButton('ctrl-right', 'right');
+        setupTouchButton('ctrl-jump', 'jump');
+
+        overlayBtn.addEventListener('click', () => {
+            startGame();
+        });
+
+        const pauseOverlay = document.getElementById('pause-overlay');
+        const btnPause = document.getElementById('btn-pause');
+        const btnResume = document.getElementById('btn-resume');
+        const btnReset = document.getElementById('btn-reset');
+
+        const togglePause = () => {
+            sounds.init();
+            if (gameState !== 'PLAYING' && gameState !== 'PAUSED') return;
+
+            if (isPaused) {
+                gameState = 'PLAYING';
+                pauseOverlay.classList.add('hidden');
+                btnPause.textContent = '一時停止';
+                isPaused = false;
+            } else {
+                gameState = 'PAUSED';
+                pauseOverlay.classList.remove('hidden');
+                btnPause.textContent = '再開';
+                isPaused = true;
+            }
+        };
+
+        btnPause.addEventListener('click', togglePause);
+        btnResume.addEventListener('click', togglePause);
+        btnReset.addEventListener('click', () => {
+            if (confirm('ゲームをリセットして最初から始めますか？')) {
+                pauseOverlay.classList.add('hidden');
+                btnPause.textContent = '一時停止';
+                isPaused = false;
+                startGame();
+            }
+        });
+
+        window.onload = function() {
+            gameLoop();
+        };
+    </script>
+</body>
+</html>

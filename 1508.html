@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>フォレスト・プテラ - 密林の大冒険</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', 'DotGothic16', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .pixel-corners {
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 flex justify-center items-center min-h-screen overflow-hidden p-2 sm:p-4 text-white">
+
+    <!-- メインコンテナ -->
+    <div class="relative w-full max-w-lg aspect-[9/16] max-h-[90vh] bg-emerald-950 rounded-2xl overflow-hidden shadow-2xl border-4 border-emerald-800 flex flex-col">
+        
+        <!-- ヘッダーUI -->
+        <div class="absolute top-0 inset-x-0 p-4 flex justify-between items-center z-10 pointer-events-none">
+            <!-- スコア表示 -->
+            <div class="bg-black/40 backdrop-blur-xs px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
+                <span class="text-xs uppercase tracking-wider text-amber-400 font-bold">Score</span>
+                <span id="score-val" class="text-xl font-black text-white">0</span>
+            </div>
+            
+            <!-- ハイスコア表示 -->
+            <div class="bg-black/40 backdrop-blur-xs px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
+                <span class="text-xs uppercase tracking-wider text-rose-400 font-bold">Best</span>
+                <span id="best-val" class="text-xl font-black text-white">0</span>
+            </div>
+        </div>
+
+        <!-- ゲームキャンバス領域 -->
+        <div class="relative flex-1 w-full bg-emerald-900 overflow-hidden" id="game-container">
+            <!-- 背景のグラデーション（森の時間帯変化用） -->
+            <div id="sky-gradient" class="absolute inset-0 bg-gradient-to-b from-emerald-800 via-emerald-900 to-teal-950 transition-colors duration-1000"></div>
+            
+            <!-- 遠景の巨大樹シルエット -->
+            <div class="absolute inset-x-0 bottom-12 h-40 opacity-20 pointer-events-none bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-emerald-500 via-teal-900 to-transparent"></div>
+
+            <!-- キャンバス本体 -->
+            <canvas id="game-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+
+            <!-- スタート・リトライメニュー (オーバーレイ) -->
+            <div id="menu-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col justify-center items-center p-6 text-center z-20 transition-all duration-300">
+                <!-- タイトル -->
+                <div class="mb-8 transform translate-y-0 transition-transform duration-500" id="menu-logo">
+                    <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-lime-300 to-emerald-500 drop-shadow-[0_4px_6px_rgba(0,0,0,0.6)]">
+                        FOREST PTERA
+                    </h1>
+                    <p class="text-xs tracking-widest text-emerald-200 mt-2 font-semibold">古代の森を駆け抜ける翼竜の冒険！</p>
+                </div>
+
+                <!-- プテラノドンのプレビューアニメーション (SVG) -->
+                <div class="w-20 h-20 mb-8 animate-bounce">
+                    <svg viewBox="0 0 100 100" class="w-full h-full filter drop-shadow-md">
+                        <!-- 翼（後ろ側） -->
+                        <path d="M 30 50 Q 15 30 5 45 Q 15 55 35 52 Z" fill="#7c3aed" />
+                        <!-- 胴体 -->
+                        <ellipse cx="45" cy="52" rx="18" ry="12" fill="#8b5cf6" />
+                        <!-- トサカ（頭の後ろの突起） -->
+                        <polygon points="35,38 15,32 32,45" fill="#7c3aed" />
+                        <!-- 頭 -->
+                        <circle cx="42" cy="42" r="10" fill="#8b5cf6" />
+                        <!-- 目 -->
+                        <circle cx="44" cy="40" r="2.5" fill="#000" />
+                        <circle cx="45" cy="39" r="1" fill="#fff" />
+                        <!-- 特徴的な長いくちばし -->
+                        <polygon points="48,38 75,44 46,47" fill="#f59e0b" />
+                        <!-- 翼（手前側） -->
+                        <path d="M 45 52 Q 30 25 15 40 Q 30 60 50 54 Z" fill="#a78bfa" />
+                    </svg>
+                </div>
+
+                <!-- スコアサマリー（ゲームオーバー時のみ表示） -->
+                <div id="game-over-summary" class="hidden w-full max-w-xs bg-slate-900/80 border border-emerald-800 p-4 rounded-xl mb-6 text-left">
+                    <p class="text-rose-400 text-center font-bold text-lg mb-2">GAME OVER</p>
+                    <div class="flex justify-between items-center py-1 border-b border-emerald-950">
+                        <span class="text-slate-400 text-sm">今回のスコア:</span>
+                        <span id="summary-score" class="text-xl font-bold text-white">0</span>
+                    </div>
+                    <div class="flex justify-between items-center py-1">
+                        <span class="text-slate-400 text-sm">ハイスコア:</span>
+                        <span id="summary-best" class="text-xl font-bold text-amber-400">0</span>
+                    </div>
+                </div>
+
+                <!-- プレイボタン -->
+                <button id="btn-play" class="px-8 py-4 bg-gradient-to-r from-lime-500 to-emerald-500 hover:from-lime-400 hover:to-emerald-400 text-slate-950 font-black text-xl rounded-2xl shadow-[0_4px_20px_rgba(132,204,22,0.4)] active:scale-95 transition-all cursor-pointer">
+                    冒険をはじめる
+                </button>
+
+                <!-- 操作説明 -->
+                <div class="mt-8 text-xs text-slate-300/80 max-w-xs space-y-1">
+                    <p class="font-bold text-white">【操作方法】</p>
+                    <p>画面クリック / タップ / [スペースキー] で上昇</p>
+                    <p class="text-emerald-300">生い茂る巨大な大木をうまく避けよう！</p>
+                </div>
+            </div>
+
+            <!-- 操作受付フラッシュ用オーバーレイ -->
+            <div id="tap-flash" class="absolute inset-0 bg-lime-500/5 pointer-events-none opacity-0 transition-opacity duration-100"></div>
+        </div>
+
+        <!-- フッター（操作補助・装飾） -->
+        <div class="bg-emerald-950 p-4 text-center border-t border-emerald-900 flex justify-between items-center">
+            <span class="text-xs text-emerald-600 font-medium">© 2026 FOREST PTERA Adventure</span>
+            <div class="flex gap-2">
+                <button id="btn-pause" class="p-2 bg-emerald-900 hover:bg-emerald-800 rounded-lg text-xs text-emerald-300 border border-emerald-800 focus:outline-none">
+                    一時停止
+                </button>
+                <button id="btn-sound" class="p-2 bg-emerald-900 hover:bg-emerald-800 rounded-lg text-xs text-emerald-300 border border-emerald-800 focus:outline-none">
+                    音: オフ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 音声合成・効果音生成用のWeb Audio APIコンテキスト -->
+    <script>
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+                this.enabled = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            toggle() {
+                this.enabled = !this.enabled;
+                if (this.enabled) {
+                    this.init();
+                    if (this.ctx && this.ctx.state === 'suspended') {
+                        this.ctx.resume();
+                    }
+                }
+                return this.enabled;
+            }
+
+            playJump() {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(140, now);
+                osc.frequency.exponentialRampToValueAtTime(360, now + 0.18);
+                
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.18);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                osc.start(now);
+                osc.stop(now + 0.18);
+            }
+
+            playScore() {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, now); // A4
+                osc.frequency.setValueAtTime(554.37, now + 0.08); // C#5
+                
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                osc.start(now);
+                osc.stop(now + 0.25);
+            }
+
+            playHit() {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                
+                const bufferSize = this.ctx.sampleRate * 0.35;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(600, now);
+                filter.frequency.exponentialRampToValueAtTime(10, now + 0.35);
+                
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.35);
+                
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                noise.start(now);
+                noise.stop(now + 0.35);
+            }
+        }
+
+        const sound = new SoundEffects();
+    </script>
+
+    <!-- メインゲームロジック -->
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const gameContainer = document.getElementById('game-container');
+        const menuOverlay = document.getElementById('menu-overlay');
+        const btnPlay = document.getElementById('btn-play');
+        const scoreVal = document.getElementById('score-val');
+        const bestVal = document.getElementById('best-val');
+        const gameOverSummary = document.getElementById('game-over-summary');
+        const summaryScore = document.getElementById('summary-score');
+        const summaryBest = document.getElementById('summary-best');
+        const tapFlash = document.getElementById('tap-flash');
+        const skyGradient = document.getElementById('sky-gradient');
+        const btnPause = document.getElementById('btn-pause');
+        const btnSound = document.getElementById('btn-sound');
+
+        // ハイスコア保持
+        let highscore = parseInt(localStorage.getItem('sky_bird_best') || '0');
+        bestVal.textContent = highscore;
+
+        // ゲーム状態定義
+        const STATE_MENU = 'menu';
+        const STATE_PLAYING = 'playing';
+        const STATE_GAMEOVER = 'gameover';
+        let gameState = STATE_MENU;
+        let isPaused = false;
+
+        // ゲームバランス定数
+        const GRAVITY = 0.34;
+        const JUMP_FORCE = -6.2;
+        const PIPE_SPEED_BASE = 2.4;
+        const PIPE_SPAWN_INTERVAL = 115; // フレーム数
+        const PIPE_GAP_BASE = 165;       // 通過できる大木の隙間の初期高
+
+        // ゲームオブジェクト・ステート
+        let bird = {
+            x: 0,
+            y: 0,
+            radius: 18,
+            velocity: 0,
+            targetRotation: 0,
+            rotation: 0,
+            wingAngle: 0,
+            wingSpeed: 0.15
+        };
+
+        let pipes = [];
+        let particles = [];
+        let backgroundDecorations = []; // 雲、木の葉など
+        let frameCount = 0;
+        let score = 0;
+        let animationFrameId;
+        
+        // 難易度調整用
+        let currentPipeSpeed = PIPE_SPEED_BASE;
+        let currentPipeGap = PIPE_GAP_BASE;
+
+        // 背景切り替え用の配色定義 (森の3つの時間帯)
+        const FOREST_THEMES = [
+            // 昼の密林 (鮮やかなエメラルドグリーン、茶色い大木)
+            { from: '#15803d', via: '#166534', to: '#14532d', woodColor: '#78350f', leafColor: '#4ade80', name: 'jungle_day' },
+            // 夕暮れの古森 (深いオレンジと緑、暗い茶色の大木)
+            { from: '#7c2d12', via: '#1e3a1e', to: '#0f172a', woodColor: '#451a03', leafColor: '#a3e635', name: 'jungle_sunset' },
+            // 月夜の原始林 (青緑と濃紺、コケむした暗い大木)
+            { from: '#064e3b', via: '#022c22', to: '#030712', woodColor: '#1e1b4b', leafColor: '#10b981', name: 'jungle_night' }
+        ];
+        let currentThemeIndex = 0;
+
+        // キャンバスサイズを親要素に合わせる
+        function resizeCanvas() {
+            const rect = gameContainer.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            
+            bird.x = canvas.width * 0.25;
+            
+            if (gameState === STATE_MENU) {
+                bird.y = canvas.height * 0.45;
+                draw();
+            }
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        setTimeout(resizeCanvas, 100);
+
+        // 背景装飾（雲と木の葉）の初期化
+        function initDecorations() {
+            backgroundDecorations = [];
+            // 森のモヤ（雲）
+            for (let i = 0; i < 3; i++) {
+                backgroundDecorations.push({
+                    type: 'fog',
+                    x: Math.random() * canvas.width * 1.5,
+                    y: Math.random() * (canvas.height * 0.3),
+                    speed: 0.15 + Math.random() * 0.15,
+                    scale: 0.8 + Math.random() * 0.8,
+                    opacity: 0.15 + Math.random() * 0.2
+                });
+            }
+            // 舞い落ちる木の葉
+            for (let i = 0; i < 8; i++) {
+                backgroundDecorations.push({
+                    type: 'leaf',
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    speedY: 0.5 + Math.random() * 1,
+                    speedX: -0.3 - Math.random() * 0.5,
+                    scale: 0.6 + Math.random() * 0.8,
+                    rotation: Math.random() * Math.PI,
+                    rotSpeed: (Math.random() - 0.5) * 0.02,
+                    color: Math.random() > 0.5 ? '#22c55e' : '#15803d'
+                });
+            }
+        }
+
+        // ゲーム初期化
+        function initGame() {
+            score = 0;
+            scoreVal.textContent = score;
+            frameCount = 0;
+            currentPipeSpeed = PIPE_SPEED_BASE;
+            currentPipeGap = PIPE_GAP_BASE;
+            currentThemeIndex = 0;
+            setTheme(0);
+            
+            bird.y = canvas.height * 0.4;
+            bird.velocity = 0;
+            bird.rotation = 0;
+            bird.targetRotation = 0;
+            
+            pipes = [];
+            particles = [];
+            initDecorations();
+
+            spawnPipe();
+        }
+
+        // 森の時間帯テーマを設定
+        function setTheme(index) {
+            currentThemeIndex = index % FOREST_THEMES.length;
+            const theme = FOREST_THEMES[currentThemeIndex];
+            skyGradient.style.background = `linear-gradient(to bottom, ${theme.from}, ${theme.via}, ${theme.to})`;
+        }
+
+        // 大木の障害物を生成
+        function spawnPipe() {
+            const gap = Math.max(125, currentPipeGap - Math.floor(score / 5) * 5);
+            
+            const minY = 120;
+            const maxY = canvas.height - gap - 120;
+            const gapY = minY + Math.random() * (maxY - minY);
+
+            pipes.push({
+                x: canvas.width,
+                width: 70, // 大木なので少し太めに
+                gapY: gapY,
+                gapHeight: gap,
+                passed: false,
+                woodColor: FOREST_THEMES[currentThemeIndex].woodColor,
+                leafColor: FOREST_THEMES[currentThemeIndex].leafColor
+            });
+        }
+
+        // 羽ばたき、タップエフェクト
+        function birdJump() {
+            if (gameState !== STATE_PLAYING || isPaused) return;
+
+            bird.velocity = JUMP_FORCE;
+            bird.targetRotation = -0.35;
+            sound.playJump();
+
+            // タップ時の画面フラッシュ
+            tapFlash.style.opacity = '1';
+            setTimeout(() => {
+                tapFlash.style.opacity = '0';
+            }, 80);
+
+            // 羽ばたき時の緑の木の葉きらめき粒子
+            createLeafParticles(bird.x - 10, bird.y);
+        }
+
+        // 羽ばたき時の木の葉粒子
+        function createLeafParticles(x, y) {
+            for (let i = 0; i < 4; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: -1.5 - Math.random() * 2.5,
+                    vy: (Math.random() - 0.5) * 2,
+                    radius: 2 + Math.random() * 3,
+                    color: Math.random() > 0.5 ? '#84cc16' : '#22c55e', // 黄緑〜緑
+                    opacity: 0.9,
+                    decay: 0.02 + Math.random() * 0.02,
+                    isLeaf: true,
+                    angle: Math.random() * Math.PI * 2,
+                    rotSpeed: (Math.random() - 0.5) * 0.15
+                });
+            }
+        }
+
+        // 衝突時の爆発エフェクト
+        function createExplosion(x, y) {
+            for (let i = 0; i < 20; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 2 + Math.random() * 5;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: 3 + Math.random() * 4,
+                    color: i % 2 === 0 ? '#bef264' : '#15803d',
+                    opacity: 1,
+                    decay: 0.02 + Math.random() * 0.03,
+                    isLeaf: false
+                });
+            }
+        }
+
+        // パーティクル更新・描画
+        function updateAndDrawParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.opacity -= p.decay;
+
+                if (p.opacity <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+
+                ctx.save();
+                ctx.globalAlpha = p.opacity;
+                ctx.fillStyle = p.color;
+
+                if (p.isLeaf) {
+                    p.angle += p.rotSpeed;
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.angle);
+                    ctx.beginPath();
+                    // 木の葉の形に描画
+                    ctx.ellipse(0, 0, p.radius * 2, p.radius * 0.9, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        // 背景装飾（雲と木の葉）の更新・描画
+        function updateAndDrawDecorations() {
+            backgroundDecorations.forEach(dec => {
+                if (dec.type === 'fog') {
+                    // 森のモヤ
+                    dec.x -= dec.speed;
+                    if (dec.x < -160 * dec.scale) {
+                        dec.x = canvas.width + 50;
+                        dec.y = Math.random() * (canvas.height * 0.3);
+                    }
+
+                    ctx.save();
+                    ctx.globalAlpha = dec.opacity;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    const cx = dec.x;
+                    const cy = dec.y;
+                    const s = dec.scale;
+                    ctx.arc(cx, cy, 30 * s, 0, Math.PI * 2);
+                    ctx.arc(cx + 25 * s, cy - 10 * s, 40 * s, 0, Math.PI * 2);
+                    ctx.arc(cx + 55 * s, cy, 30 * s, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                } else if (dec.type === 'leaf') {
+                    // ひらひら舞う葉っぱ
+                    dec.y += dec.speedY;
+                    dec.x += dec.speedX + Math.sin(frameCount * 0.02 + dec.scale) * 0.2; // ゆらゆら揺らす
+                    dec.rotation += dec.rotSpeed;
+
+                    if (dec.y > canvas.height + 20) {
+                        dec.y = -20;
+                        dec.x = Math.random() * canvas.width;
+                    }
+
+                    ctx.save();
+                    ctx.translate(dec.x, dec.y);
+                    ctx.rotate(dec.rotation);
+                    ctx.fillStyle = dec.color;
+                    ctx.globalAlpha = 0.4;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 8 * dec.scale, 4 * dec.scale, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            });
+        }
+
+        // プテラノドンの描画
+        function drawBird() {
+            ctx.save();
+            ctx.translate(bird.x, bird.y);
+            ctx.rotate(bird.rotation);
+
+            if (gameState === STATE_PLAYING && !isPaused) {
+                bird.wingAngle = Math.sin(frameCount * bird.wingSpeed) * 0.8;
+            } else {
+                bird.wingAngle = 0.3;
+            }
+
+            // シャドウ
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetY = 4;
+
+            // 1. 後ろの翼
+            ctx.save();
+            ctx.translate(-5, 2);
+            ctx.rotate(-bird.wingAngle * 0.5);
+            ctx.fillStyle = '#7c3aed'; // 濃い紫
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(-20, -15, -30, -5);
+            ctx.quadraticCurveTo(-15, 10, 0, 5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+
+            // 影解除
+            ctx.shadowColor = 'transparent';
+
+            // 2. 胴体
+            ctx.fillStyle = '#8b5cf6'; // 紫色
+            ctx.beginPath();
+            ctx.ellipse(0, 5, 18, 11, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 3. トサカ
+            ctx.fillStyle = '#7c3aed';
+            ctx.beginPath();
+            ctx.moveTo(-8, -8);
+            ctx.lineTo(-28, -12);
+            ctx.lineTo(-12, -2);
+            ctx.closePath();
+            ctx.fill();
+
+            // 4. 頭部
+            ctx.fillStyle = '#8b5cf6';
+            ctx.beginPath();
+            ctx.arc(-4, -5, 9, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 5. 目
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(-2, -6, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(-1.5, -6.5, 0.7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 6. 長いくちばし
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.moveTo(2, -8);
+            ctx.lineTo(26, -2);
+            ctx.lineTo(0, 1);
+            ctx.closePath();
+            ctx.fill();
+
+            // 7. 手前の翼
+            ctx.save();
+            ctx.translate(-2, 2);
+            ctx.rotate(bird.wingAngle);
+            ctx.fillStyle = '#a78bfa'; // 明るい紫
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(-25, -25, -35, -10);
+            ctx.quadraticCurveTo(-15, 15, 0, 5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+
+            ctx.restore();
+        }
+
+        // 大木の障害物の描画
+        function drawPipes() {
+            pipes.forEach(pipe => {
+                ctx.save();
+                
+                // 木の幹のグラデーション（立体感）
+                let grad = ctx.createLinearGradient(pipe.x, 0, pipe.x + pipe.width, 0);
+                grad.addColorStop(0, pipe.woodColor);
+                grad.addColorStop(0.2, '#ffffff15'); // 木の光沢感
+                grad.addColorStop(0.7, pipe.woodColor);
+                grad.addColorStop(1, '#00000055');
+
+                ctx.fillStyle = grad;
+                ctx.strokeStyle = '#064e3b';
+                ctx.lineWidth = 3;
+
+                // 1. 上の大木
+                const topTreeHeight = pipe.gapY;
+                ctx.fillRect(pipe.x, 0, pipe.width, topTreeHeight);
+                ctx.strokeRect(pipe.x, -5, pipe.width, topTreeHeight + 5);
+
+                // 木の節・模様
+                ctx.fillStyle = 'rgba(0,0,0,0.15)';
+                ctx.beginPath();
+                ctx.arc(pipe.x + pipe.width/2, topTreeHeight * 0.4, 8, 0, Math.PI*2);
+                ctx.fill();
+
+                // 2. 下の大木
+                const bottomTreeY = pipe.gapY + pipe.gapHeight;
+                const bottomTreeHeight = canvas.height - bottomTreeY;
+                ctx.fillStyle = grad;
+                ctx.fillRect(pipe.x, bottomTreeY, pipe.width, bottomTreeHeight);
+                ctx.strokeRect(pipe.x, bottomTreeY, pipe.width, bottomTreeHeight + 5);
+
+                // 下の大木の模様
+                ctx.fillStyle = 'rgba(0,0,0,0.15)';
+                ctx.beginPath();
+                ctx.arc(pipe.x + pipe.width/3, bottomTreeY + bottomTreeHeight * 0.5, 10, 0, Math.PI*2);
+                ctx.fill();
+
+                // 3. 木のふさふさした「葉っぱ（緑）」と「からまるツタ」の描画
+                ctx.save();
+                ctx.fillStyle = pipe.leafColor;
+                ctx.strokeStyle = '#065f46';
+                ctx.lineWidth = 2;
+
+                // 上の大木の先端に生い茂る葉
+                drawLeafClump(pipe.x + pipe.width/2, topTreeHeight - 5, 24, pipe.leafColor);
+                
+                // 下の大木の先端に生い茂る葉
+                drawLeafClump(pipe.x + pipe.width/2, bottomTreeY + 5, 24, pipe.leafColor);
+
+                // からまるツタを表現する波線
+                ctx.strokeStyle = '#22c55e';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                for (let y = 0; y < topTreeHeight - 15; y += 10) {
+                    ctx.lineTo(pipe.x + pipe.width/2 + Math.sin(y*0.1) * 6, y);
+                }
+                ctx.stroke();
+
+                ctx.beginPath();
+                for (let y = bottomTreeY + 15; y < canvas.height; y += 10) {
+                    ctx.lineTo(pipe.x + pipe.width/2 + Math.cos(y*0.1) * 6, y);
+                }
+                ctx.stroke();
+
+                ctx.restore();
+                ctx.restore();
+            });
+        }
+
+        // ふさふさの葉っぱ塊を描く補助関数
+        function drawLeafClump(cx, cy, radius, color) {
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.arc(cx - radius * 0.6, cy, radius * 0.7, 0, Math.PI * 2);
+            ctx.arc(cx + radius * 0.6, cy, radius * 0.7, 0, Math.PI * 2);
+            ctx.arc(cx, cy - radius * 0.5, radius * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // 古代の森の地面の描画
+        function drawGround() {
+            ctx.save();
+            // 苔むした草地レイヤー
+            ctx.fillStyle = '#047857'; // 濃い目のグリーン
+            ctx.fillRect(0, canvas.height - 16, canvas.width, 16);
+            
+            // 地面の土と古代の岩盤
+            ctx.fillStyle = '#064e3b';
+            ctx.fillRect(0, canvas.height - 8, canvas.width, 8);
+
+            // 地面に生える小さな草の装飾
+            ctx.fillStyle = '#10b981';
+            for (let i = 0; i < canvas.width; i += 30) {
+                ctx.beginPath();
+                ctx.moveTo(i, canvas.height - 16);
+                ctx.lineTo(i + 5, canvas.height - 24);
+                ctx.lineTo(i + 10, canvas.height - 16);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        // 全体更新処理
+        function update() {
+            if (isPaused) return;
+
+            frameCount++;
+
+            // 1. プテラノドンの物理演算
+            bird.velocity += GRAVITY;
+            bird.y += bird.velocity;
+
+            // 回転アニメーション
+            if (bird.velocity < 3) {
+                bird.targetRotation = Math.max(-0.4, bird.targetRotation - 0.05);
+            } else if (bird.velocity > 5) {
+                bird.targetRotation = Math.min(0.7, bird.targetRotation + 0.08);
+            }
+            bird.rotation += (bird.targetRotation - bird.rotation) * 0.25;
+
+            // 地面または天井に衝突したか
+            if (bird.y + bird.radius > canvas.height - 16) {
+                bird.y = canvas.height - 16 - bird.radius;
+                gameOver();
+                return;
+            }
+            if (bird.y - bird.radius < 0) {
+                bird.y = bird.radius;
+                bird.velocity = 0.5; // 押し戻す
+            }
+
+            // 2. 大木の物理演算・判定
+            if (frameCount % PIPE_SPAWN_INTERVAL === 0) {
+                spawnPipe();
+            }
+
+            currentPipeSpeed = PIPE_SPEED_BASE + Math.min(3.5, score * 0.08);
+
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                const pipe = pipes[i];
+                pipe.x -= currentPipeSpeed;
+
+                // 衝突判定
+                if (checkCollision(bird, pipe)) {
+                    gameOver();
+                    return;
+                }
+
+                // スコア判定
+                if (!pipe.passed && pipe.x + pipe.width < bird.x) {
+                    pipe.passed = true;
+                    score++;
+                    scoreVal.textContent = score;
+                    sound.playScore();
+
+                    // スコア10ごとに森のテーマを変更（昼→夕方→月夜）
+                    if (score > 0 && score % 10 === 0) {
+                        setTheme(Math.floor(score / 10));
+                    }
+                }
+
+                // 画面外に出た大木の削除
+                if (pipe.x + pipe.width < -100) {
+                    pipes.splice(i, 1);
+                }
+            }
+        }
+
+        // 衝突判定ロジック
+        function checkCollision(b, p) {
+            if (b.x + b.radius - 2 > p.x && b.x - b.radius + 2 < p.x + p.width) {
+                if (b.y - b.radius + 4 < p.gapY || b.y + b.radius - 4 > p.gapY + p.gapHeight) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 全体描画
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // スクロールする森のモヤ・舞い落ちる木の葉
+            updateAndDrawDecorations();
+
+            // 古代の大木
+            drawPipes();
+
+            // プテラノドン
+            drawBird();
+
+            // 苔むした地面
+            drawGround();
+
+            // パーティクル
+            updateAndDrawParticles();
+        }
+
+        // ゲームループ
+        function loop() {
+            if (gameState === STATE_PLAYING) {
+                update();
+                draw();
+                animationFrameId = requestAnimationFrame(loop);
+            }
+        }
+
+        // ゲームオーバー処理
+        function gameOver() {
+            gameState = STATE_GAMEOVER;
+            cancelAnimationFrame(animationFrameId);
+
+            sound.playHit();
+            createExplosion(bird.x, bird.y);
+
+            let crashFrames = 0;
+            function runCrashAnimation() {
+                if (crashFrames < 35) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    updateAndDrawDecorations();
+                    drawPipes();
+                    bird.y = Math.min(canvas.height - 16 - bird.radius, bird.y + 5);
+                    bird.rotation += 0.1;
+                    drawBird();
+                    drawGround();
+                    updateAndDrawParticles();
+                    crashFrames++;
+                    requestAnimationFrame(runCrashAnimation);
+                } else {
+                    showEndMenu();
+                }
+            }
+            runCrashAnimation();
+        }
+
+        // 終了メニューの表示
+        function showEndMenu() {
+            if (score > highscore) {
+                highscore = score;
+                localStorage.setItem('sky_bird_best', highscore);
+                bestVal.textContent = highscore;
+            }
+
+            summaryScore.textContent = score;
+            summaryBest.textContent = highscore;
+
+            document.getElementById('menu-logo').classList.add('scale-75');
+            gameOverSummary.classList.remove('hidden');
+            btnPlay.textContent = 'もう一度あそぶ';
+            menuOverlay.classList.remove('opacity-0', 'pointer-events-none');
+            menuOverlay.classList.add('opacity-100');
+        }
+
+        // ゲーム開始
+        function startGame() {
+            sound.init();
+            menuOverlay.classList.remove('opacity-100');
+            menuOverlay.classList.add('opacity-0', 'pointer-events-none');
+            
+            gameState = STATE_PLAYING;
+            isPaused = false;
+            btnPause.textContent = "一時停止";
+
+            initGame();
+            loop();
+        }
+
+        // --- イベントリスナー ---
+
+        btnPlay.addEventListener('click', (e) => {
+            e.stopPropagation();
+            startGame();
+        });
+
+        gameContainer.addEventListener('mousedown', (e) => {
+            if (gameState === STATE_PLAYING) {
+                birdJump();
+            }
+        });
+
+        gameContainer.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameState === STATE_PLAYING) {
+                birdJump();
+            }
+        }, { passive: false });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (gameState === STATE_PLAYING) {
+                    birdJump();
+                } else if (gameState === STATE_MENU || gameState === STATE_GAMEOVER) {
+                    if (menuOverlay.classList.contains('opacity-100')) {
+                        startGame();
+                    }
+                }
+            }
+        });
+
+        btnPause.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (gameState !== STATE_PLAYING) return;
+            
+            isPaused = !isPaused;
+            if (isPaused) {
+                btnPause.textContent = "再開";
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 24px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2);
+            } else {
+                btnPause.textContent = "一時停止";
+                loop();
+            }
+        });
+
+        btnSound.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const enabled = sound.toggle();
+            btnSound.textContent = enabled ? "音: オン" : "音: オフ";
+            btnSound.classList.toggle('bg-lime-500', enabled);
+            btnSound.classList.toggle('text-slate-950', enabled);
+        });
+
+        function menuLoop() {
+            if (gameState === STATE_MENU) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                updateAndDrawDecorations();
+                
+                frameCount++;
+                bird.y = (canvas.height * 0.45) + Math.sin(frameCount * 0.05) * 15;
+                drawBird();
+                
+                drawGround();
+                requestAnimationFrame(menuLoop);
+            }
+        }
+        
+        initDecorations();
+        menuLoop();
+    </script>
+</body>
+</html>
