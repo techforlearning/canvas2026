@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ワクワク動物絵合わせゲーム</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Murecho: ポップで丸みのある日本語フォント) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Murecho:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti (クリア時の紙吹雪用) -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Murecho', sans-serif;
+            background: linear-gradient(135deg, #fef08a 0%, #bbf7d0 100%);
+            min-height: 100vh;
+        }
+
+        /* 3Dカードフリップのアニメーション */
+        .card-container {
+            perspective: 1000px;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        .card-container.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        /* カードの裏面（隠れているとき） */
+        .card-back {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 4px solid #ffffff;
+        }
+
+        /* カードの表面（絵柄が見えるとき） */
+        .card-front {
+            background-color: #ffffff;
+            transform: rotateY(180deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 4px solid #4ade80;
+        }
+
+        /* ペア確定時のふわっと浮き上がるアニメーション */
+        @keyframes success-pulse {
+            0% { transform: scale(1) rotateY(180deg); }
+            50% { transform: scale(1.1) rotateY(180deg); box-shadow: 0 10px 15px -3px rgba(74, 222, 128, 0.5); }
+            100% { transform: scale(1) rotateY(180deg); opacity: 0.85; }
+        }
+
+        .card-container.matched .card-inner {
+            animation: success-pulse 0.5s ease-out forwards;
+            cursor: default;
+        }
+
+        /* もこもこ雲の背景パーツ */
+        .cloud {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 9999px;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 flex flex-col items-center justify-start overflow-x-hidden relative">
+
+    <!-- 背景の装飾的な雲 -->
+    <div class="cloud w-32 h-12 top-10 left-10 hidden md:block" style="filter: blur(1px);"></div>
+    <div class="cloud w-48 h-16 top-24 right-12 hidden md:block" style="filter: blur(2px);"></div>
+    <div class="cloud w-40 h-14 bottom-20 left-8 hidden md:block" style="filter: blur(1px);"></div>
+
+    <!-- ゲーム全体のコンテナ -->
+    <div class="w-full max-w-4xl bg-white/80 backdrop-blur-md rounded-3xl p-6 shadow-2xl border-4 border-white/60">
+        
+        <!-- ヘッダータイトル -->
+        <header class="text-center mb-6">
+            <h1 class="text-3xl md:text-5xl font-extrabold text-amber-600 drop-shadow-sm flex items-center justify-center gap-2">
+                <span>🐱</span>どうぶつ絵合わせ<span>🐶</span>
+            </h1>
+            <p class="text-gray-600 text-sm md:text-base mt-2 font-bold">早くそろえるほど高スコア！めざせ三ツ星！🌟</p>
+        </header>
+
+        <!-- コントロール・情報エリア -->
+        <div class="flex flex-col md:flex-row gap-4 items-center justify-between mb-6 bg-amber-100/60 p-4 rounded-2xl border-2 border-amber-200">
+            <!-- 難易度選択 -->
+            <div class="flex items-center gap-2">
+                <span class="font-bold text-amber-800">むずかしさ:</span>
+                <div class="inline-flex rounded-md shadow-sm" role="group">
+                    <button id="btn-easy" onclick="setDifficulty('easy')" class="px-4 py-2 text-xs md:text-sm font-bold text-amber-700 bg-white border border-amber-200 rounded-l-xl hover:bg-amber-50 transition duration-200">かんたん</button>
+                    <button id="btn-normal" onclick="setDifficulty('normal')" class="px-4 py-2 text-xs md:text-sm font-bold text-amber-700 bg-white border-t border-b border-amber-200 hover:bg-amber-50 transition duration-200">ふつう</button>
+                    <button id="btn-hard" onclick="setDifficulty('hard')" class="px-4 py-2 text-xs md:text-sm font-bold text-amber-700 bg-white border border-amber-200 rounded-r-xl hover:bg-amber-50 transition duration-200">むずかしい</button>
+                </div>
+            </div>
+
+            <!-- ステータス表示 -->
+            <div class="flex gap-4 md:gap-6 text-sm md:text-base">
+                <div class="flex items-center gap-1 font-bold text-amber-900">
+                    <span>⏱️</span>
+                    <span>じかん: <span id="timer-val" class="text-xl font-black text-amber-600">0</span> 秒</span>
+                </div>
+                <div class="flex items-center gap-1 font-bold text-amber-900">
+                    <span>🔄</span>
+                    <span>めくった数: <span id="moves-val" class="text-xl font-black text-amber-600">0</span> 回</span>
+                </div>
+            </div>
+
+            <!-- リセットボタン -->
+            <button onclick="resetGame()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 py-2.5 rounded-full shadow-lg hover:shadow-xl transform active:scale-95 transition-all flex items-center gap-1">
+                <span>🔄</span> はじめから
+            </button>
+        </div>
+
+        <!-- ハイスコア表示 -->
+        <div class="text-center mb-4 text-xs md:text-sm text-amber-800 font-bold flex justify-center gap-4 flex-wrap bg-amber-50 py-2 rounded-xl border border-amber-100">
+            <span id="best-easy">🏆 かんたん最高スコア: - 点</span>
+            <span id="best-normal">🏆 ふつう最高スコア: - 点</span>
+            <span id="best-hard">🏆 むずかしい最高スコア: - 点</span>
+        </div>
+
+        <!-- ゲームボード -->
+        <div id="game-board" class="grid gap-3 md:gap-4 justify-center mx-auto my-4 min-h-[300px]">
+            <!-- JavaScriptでカードが動的に生成されます -->
+        </div>
+
+    </div>
+
+    <!-- クリア時モーダル -->
+    <div id="clear-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden transition-opacity duration-300 opacity-0">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-11/12 text-center shadow-2xl border-4 border-amber-300 transform scale-90 transition-transform duration-300">
+            <div class="text-6xl mb-4">🎉</div>
+            <h2 class="text-3xl font-black text-amber-600 mb-1">ゲームクリア！</h2>
+            <p class="text-gray-600 font-bold mb-4">ぜんぶのペアをそろえたよ！</p>
+            
+            <!-- スコア詳細 -->
+            <div class="bg-amber-50 rounded-2xl p-4 mb-6 border border-amber-200 text-left">
+                <div class="flex justify-between items-center mb-1 text-sm">
+                    <span class="text-gray-600 font-bold">⏱️ かかった時間</span>
+                    <span class="font-extrabold text-amber-800" id="final-time">0秒</span>
+                </div>
+                <div class="flex justify-between items-center mb-1 text-sm">
+                    <span class="text-gray-600 font-bold">🔄 めくった手数</span>
+                    <span class="font-extrabold text-amber-800" id="final-moves">0回</span>
+                </div>
+                <div class="flex justify-between items-center mb-2 text-sm text-green-600 font-bold">
+                    <span>⚡ スピードボーナス</span>
+                    <span id="final-bonus">+0点</span>
+                </div>
+                <hr class="border-amber-200 mb-3">
+                
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-amber-900 font-black text-lg">✨ トータルスコア</span>
+                    <span class="text-2xl font-black text-amber-600" id="final-score">0点</span>
+                </div>
+
+                <div class="flex flex-col items-center border-t border-amber-200 pt-3">
+                    <span class="text-xs text-amber-800/80 font-bold mb-1">ひょうか</span>
+                    <div class="flex gap-1 text-4xl" id="star-rating">
+                        <!-- 星マークが動的に変化 -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <button onclick="closeModalAndRestart()" class="bg-amber-500 hover:bg-amber-600 text-white font-extrabold py-3 px-6 rounded-full shadow-lg transform active:scale-95 transition-all text-lg">
+                    もう一回あそぶ！
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 動物のSVGアイコン定義
+        const ICON_TEMPLATES = {
+            cat: `<svg class="w-12 h-12 md:w-16 md:h-16 text-orange-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C11.1 2 10.3 2.5 9.8 3.3C9 3.1 8.1 3 7.2 3C4.3 3 2 5.3 2 8.2C2 12 6.5 17.5 12 22C17.5 17.5 22 12 22 8.2C22 5.3 19.7 3 16.8 3C15.9 3 15 3.1 14.2 3.3C13.7 2.5 12.9 2 12 2M12 4C12.3 4 12.5 4.1 12.7 4.3L14.7 7.7C14.1 8 13.4 8.2 12.6 8.2C11.8 8.2 11.1 8 10.5 7.7L12.5 4.3C12.5 4.1 12.7 4 12 4M7.2 5C8.8 5 10.2 5.8 11 7C10.1 7.6 9.5 8.6 9.2 9.7C8.1 9.3 7.3 8.3 7.2 7.2C7.2 6 8.2 5 7.2 5M16.8 5C15.8 5 14.8 6 14.8 7.2C14.7 8.3 13.9 9.3 12.8 9.7C12.5 8.6 11.9 7.6 11 7C11.8 5.8 13.2 5 16.8 5Z"/></svg>`,
+            dog: `<svg class="w-12 h-12 md:w-16 md:h-16 text-yellow-600" viewBox="0 0 24 24" fill="currentColor"><path d="M12,2C10.89,2 10,2.89 10,4C10,5.11 10.89,6 12,6C13.11,6 14,5.11 14,4C14,2.89 13.11,2 12,2M19,10.5C18.17,10.5 17.5,11.17 17.5,12C17.5,12.83 18.17,13.5 19,13.5C19.83,13.5 20.5,12.83 20.5,12C20.5,11.17 19.83,10.5 19,10.5M5,10.5C4.17,10.5 3.5,11.17 3.5,12C3.5,12.83 4.17,13.5 5,13.5C5.83,13.5 6.5,12.83 6.5,12C6.5,11.17 5.83,10.5 5,10.5M12,8C8.69,8 6,10.69 6,14C6,17.31 8.69,20 12,20C15.31,20 18,17.31 18,14C18,10.69 15.31,8 12,8Z"/></svg>`,
+            frog: `<svg class="w-12 h-12 md:w-16 md:h-16 text-green-500" viewBox="0 0 24 24" fill="currentColor"><path d="M19,5.5C19,4.12 17.88,3 16.5,3C15.62,3 14.85,3.46 14.41,4.16C13.68,4.06 12.87,4 12,4C11.13,4 10.32,4.06 9.59,4.16C9.15,3.46 8.38,3 7.5,3C6.12,3 5,4.12 5,5.5C5,6.5 5.59,7.37 6.45,7.76C6.16,8.44 6,9.19 6,10C6,14.42 9.58,18 14,18H10C14.42,18 18,14.42 18,10C18,9.19 17.84,8.44 17.55,7.76C18.41,7.37 19,6.5 19,5.5M7.5,4.5C8.05,4.5 8.5,4.95 8.5,5.5C8.5,6.05 8.05,6.5 7.5,6.5C6.95,6.5 6.5,6.05 6.5,5.5C6.5,4.95 6.95,4.5 7.5,4.5M16.5,4.5C17.05,4.5 17.5,4.95 17.5,5.5C17.5,6.05 17.05,6.5 16.5,6.5C15.95,6.5 15.5,6.05 15.5,5.5C15.5,4.95 15.95,4.5 16.5,4.5M12,16C9.24,16 7,13.76 7,11C7,10.45 7.45,10 8,10C8.55,10 9,10.45 9,11C9,12.65 10.35,14 12,14C13.65,14 15,12.65 15,11C15,10.45 15.45,10 16,10C16.55,10 17,10.45 17,11C17,13.76 14.76,16 12,16Z"/></svg>`,
+            pig: `<svg class="w-12 h-12 md:w-16 md:h-16 text-pink-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12,2C6.48,2 2,6.48 2,12C2,17.52 6.48,22 12,22C17.52,22 22,17.52 22,12C22,6.48 17.52,2 12,2M12,18C8.69,18 6,15.31 6,12C6,8.69 8.69,6 12,6C15.31,6 18,8.69 18,12C18,15.31 15.31,18 12,18M11,10H13V14H11V10M8.5,8A1.5,1.5 0 0,1 10,9.5A1.5,1.5 0 0,1 8.5,11A1.5,1.5 0 0,1 7,9.5A1.5,1.5 0 0,1 8.5,8M15.5,8A1.5,1.5 0 0,1 17,9.5A1.5,1.5 0 0,1 15.5,11A1.5,1.5 0 0,1 14,9.5A1.5,1.5 0 0,1 15.5,8Z"/></svg>`,
+            rabbit: `<svg class="w-12 h-12 md:w-16 md:h-16 text-sky-400" viewBox="0 0 24 24" fill="currentColor"><path d="M17 2C16 2 15 2.5 14.3 3.3C13.5 3.1 12.8 3 12 3s-1.5.1-2.3.3C9 2.5 8 2 7 2C4.8 2 3 3.8 3 6c0 .8.2 1.5.7 2.1C3.3 9.3 3 10.6 3 12c0 5 4 9 9 9s9-4 9-9c0-1.4-.3-2.7-.7-3.9.5-.6.7-1.3.7-2.1 0-2.2-1.8-4-4-4zm-1.5 13c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5zm-7 0C7.7 15 7 14.3 7 13.5S7.7 12 8.5 12s1.5.7 1.5 1.5-.7 1.5-1.5 1.5z"/></svg>`,
+            panda: `<svg class="w-12 h-12 md:w-16 md:h-16 text-slate-700" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-5 6.5c.83 0 1.5.67 1.5 1.5S7.83 11.5 7 11.5 5.5 10.83 5.5 10 6.17 8.5 7 8.5zm10 0c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5zm-5 10.5c-2.33 0-4.31-1.46-5.11-3.5h10.22c-.8 2.04-2.78 3.5-5.11 3.5z"/></svg>`,
+            fox: `<svg class="w-12 h-12 md:w-16 md:h-16 text-amber-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L8.5 7.5L3 6l1.5 7L12 22l7.5-9L21 6l-5.5 1.5L12 2zm-3.5 9c-.83 0-1.5-.67-1.5-1.5S7.67 8 8.5 8s1.5.67 1.5 1.5S9.33 11 8.5 11zm7 0c-.83 0-1.5-.67-1.5-1.5S14.67 8 15.5 8s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>`,
+            bear: `<svg class="w-12 h-12 md:w-16 md:h-16 text-yellow-800" viewBox="0 0 24 24" fill="currentColor"><path d="M12,2C6.48,2 2,6.48 2,12C2,15.6 3.9,18.76 6.75,20.53L6.56,20.81C6.2,21.36 6.36,22.1 6.9,22.46C7.45,22.82 8.2,22.66 8.56,22.11L9.67,20.45C10.41,20.81 11.2,21 12,21C12.8,21 13.59,20.81 14.33,20.45L15.44,22.11C15.8,22.66 16.55,22.82 17.1,22.46C17.64,22.1 17.8,21.36 17.44,20.81L17.25,20.53C20.1,18.76 22,15.6 22,12C22,6.48 17.52,2 12,2M8.5,9.5A1.5,1.5 0 0,1 10,11A1.5,1.5 0 0,1 8.5,12.5A1.5,1.5 0 0,1 7,11A1.5,1.5 0 0,1 8.5,9.5M15.5,9.5A1.5,1.5 0 0,1 17,11A1.5,1.5 0 0,1 15.5,12.5A1.5,1.5 0 0,1 14,11A1.5,1.5 0 0,1 15.5,9.5Z"/></svg>`,
+            koala: `<svg class="w-12 h-12 md:w-16 md:h-16 text-stone-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12,2C6.48,2 2,6.48 2,12C2,17.52 6.48,22 12,22C17.52,22 22,17.52 22,12C22,6.48 17.52,2 12,2M12,19.5C9,19.5 6.5,17 6.5,14C6.5,11.3 8.4,9.1 11,8.6V11.1C10.4,11.5 10,12.2 10,13C10,14.1 10.9,15 12,15C13.1,15 14,14.1 14,13C14,12.2 13.6,11.5 13,11.1V8.6C15.6,9.1 17.5,11.3 17.5,14C17.5,17 15,19.5 12,19.5Z"/></svg>`,
+            lion: `<svg class="w-12 h-12 md:w-16 md:h-16 text-amber-600" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15.5h-2v-2h2v2zm1.07-6.75l-.9.92C12.45 11.9 12 12.5 12 14h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/></svg>`,
+            monkey: `<svg class="w-12 h-12 md:w-16 md:h-16 text-amber-800" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-1.03-4.58l-.02.08H10.05l.02-.08c.28-1.07 1.05-1.92 2.1-2.22l.43 1.91c-.48.14-.84.53-.97.99zM15.5 11c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-7 0C7.67 11 7 10.33 7 9.5S7.67 8 8.5 8s1.5.67 1.5 1.5S9.33 11 8.5 11z"/></svg>`,
+            mouse: `<svg class="w-12 h-12 md:w-16 md:h-16 text-slate-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5.67-1.5 1.5-1.5 1.5.67 1.5 1.5zm1.5-5.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-5 0C9.17 11 8.5 10.33 8.5 9.5S9.17 8 10 8s1.5.67 1.5 1.5S10.83 11 10 11z"/></svg>`
+        };
+
+        const DIFFICULTY_SETTINGS = {
+            easy: { 
+                rows: 3, 
+                cols: 4, 
+                pairs: 6, 
+                gridClass: 'grid-cols-4 max-w-[400px]', 
+                cardSize: 'h-24 w-20 md:h-32 md:w-24',
+                targetTime: 25 // 星3つの基準目標タイム (秒)
+            },
+            normal: { 
+                rows: 4, 
+                cols: 4, 
+                pairs: 8, 
+                gridClass: 'grid-cols-4 max-w-[400px]', 
+                cardSize: 'h-24 w-20 md:h-32 md:w-24',
+                targetTime: 40 // 星3つの基準目標タイム (秒)
+            },
+            hard: { 
+                rows: 4, 
+                cols: 6, 
+                pairs: 12, 
+                gridClass: 'grid-cols-6 max-w-[620px]', 
+                cardSize: 'h-20 w-16 md:h-28 md:w-22',
+                targetTime: 70 // 星3つの基準目標タイム (秒)
+            }
+        };
+
+        let currentDifficulty = 'normal';
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let moves = 0;
+        let timer = 0;
+        let timerInterval = null;
+        let isLockBoard = false;
+        let isGameStarted = false;
+
+        // ハイスコア（ベスト得点）のロード（古い最小手数のキーから引き継がないよう、新しいキー名を使用）
+        const bestScores = {
+            easy: localStorage.getItem('best_score_easy') ? parseInt(localStorage.getItem('best_score_easy')) : null,
+            normal: localStorage.getItem('best_score_normal') ? parseInt(localStorage.getItem('best_score_normal')) : null,
+            hard: localStorage.getItem('best_score_hard') ? parseInt(localStorage.getItem('best_score_hard')) : null
+        };
+
+        // 起動時にハイスコア表示を更新
+        updateBestScoresUI();
+
+        // 難易度変更
+        function setDifficulty(diff) {
+            if (isGameStarted && !confirm('途中のデータは消えてしまいますが、よろしいですか？')) {
+                return;
+            }
+            currentDifficulty = diff;
+            
+            // ボタンのアクティブスタイル変更
+            ['easy', 'normal', 'hard'].forEach(d => {
+                const btn = document.getElementById(`btn-${d}`);
+                if (d === diff) {
+                    btn.classList.add('bg-amber-500', 'text-white');
+                    btn.classList.remove('bg-white', 'text-amber-700');
+                } else {
+                    btn.classList.remove('bg-amber-500', 'text-white');
+                    btn.classList.add('bg-white', 'text-amber-700');
+                }
+            });
+
+            resetGame();
+        }
+
+        // ベストスコア表示更新
+        function updateBestScoresUI() {
+            document.getElementById('best-easy').innerText = `🏆 かんたん最高: ${bestScores.easy ? bestScores.easy + '点' : '-'}`;
+            document.getElementById('best-normal').innerText = `🏆 ふつう最高: ${bestScores.normal ? bestScores.normal + '点' : '-'}`;
+            document.getElementById('best-hard').innerText = `🏆 むずかしい最高: ${bestScores.hard ? bestScores.hard + '点' : '-'}`;
+        }
+
+        // タイマー開始
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timer = 0;
+            document.getElementById('timer-val').innerText = timer;
+            timerInterval = setInterval(() => {
+                timer++;
+                document.getElementById('timer-val').innerText = timer;
+            }, 1000);
+        }
+
+        // タイマー停止
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        // ゲーム初期化・リセット
+        function resetGame() {
+            stopTimer();
+            isGameStarted = false;
+            moves = 0;
+            matchedPairs = 0;
+            flippedCards = [];
+            isLockBoard = false;
+            
+            document.getElementById('moves-val').innerText = moves;
+            document.getElementById('timer-val').innerText = 0;
+
+            const setting = DIFFICULTY_SETTINGS[currentDifficulty];
+            const board = document.getElementById('game-board');
+            
+            // グリッドレイアウト適用
+            board.className = `grid gap-2 md:gap-3 justify-center mx-auto my-4 min-h-[300px] ${setting.gridClass}`;
+            board.innerHTML = '';
+
+            // 使用する動物リストをシャッフルして必要なペア数だけ選ぶ
+            const allKeys = Object.keys(ICON_TEMPLATES);
+            const shuffledKeys = shuffle([...allKeys]);
+            const selectedKeys = shuffledKeys.slice(0, setting.pairs);
+
+            // ペアデータ作成（同じ種類を2つずつ）
+            const cardData = [];
+            selectedKeys.forEach(key => {
+                cardData.push({ id: key + '_1', type: key, icon: ICON_TEMPLATES[key] });
+                cardData.push({ id: key + '_2', type: key, icon: ICON_TEMPLATES[key] });
+            });
+
+            // カード全体を再度シャッフル
+            const shuffledCards = shuffle(cardData);
+
+            // カードHTMLの作成
+            shuffledCards.forEach((cardInfo, index) => {
+                const cardEl = document.createElement('div');
+                cardEl.className = `card-container ${setting.cardSize}`;
+                cardEl.setAttribute('data-id', cardInfo.id);
+                cardEl.setAttribute('data-type', cardInfo.type);
+
+                cardEl.innerHTML = `
+                    <div class="card-inner">
+                        <div class="card-front">
+                            ${cardInfo.icon}
+                        </div>
+                        <div class="card-back">
+                            <!-- クエスチョンマーク柄 -->
+                            <svg class="w-8 h-8 text-blue-200" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A3.5,3.5 0 0,0 8.5,9.5H10.5A1.5,1.5 0 0,1 12,8A1.5,1.5 0 0,1 13.5,9.5C13.5,10.5 12,11 11.25,11.75C10.5,12.5 10.5,13.5 10.5,13.5H12.5C12.5,12.75 12.5,12.5 13,12C13.75,11.25 15.5,10.75 15.5,9.5A3.5,3.5 0 0,0 12,6M11,15V17H13V15H11Z"/>
+                            </svg>
+                        </div>
+                    </div>
+                `;
+
+                // クリックイベントの設定
+                cardEl.addEventListener('click', () => handleCardClick(cardEl));
+                board.appendChild(cardEl);
+            });
+        }
+
+        // 配列シャッフル（フィッシャー・イェーツ）
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // カードクリック時の制御
+        function handleCardClick(cardEl) {
+            // ロック中、もしくは既にめくられている、またはペア成立済みの場合は無視
+            if (isLockBoard) return;
+            if (cardEl.classList.contains('flipped') || cardEl.classList.contains('matched')) return;
+
+            // 最初の1枚をクリックしたときにタイマー開始
+            if (!isGameStarted) {
+                isGameStarted = true;
+                startTimer();
+            }
+
+            // カードをめくる
+            cardEl.classList.add('flipped');
+            flippedCards.push(cardEl);
+
+            // 2枚選ばれた場合の検証
+            if (flippedCards.length === 2) {
+                moves++;
+                document.getElementById('moves-val').innerText = moves;
+                checkMatch();
+            }
+        }
+
+        // ペア成立判定
+        function checkMatch() {
+            isLockBoard = true;
+            const [card1, card2] = flippedCards;
+            const type1 = card1.getAttribute('data-type');
+            const type2 = card2.getAttribute('data-type');
+
+            if (type1 === type2) {
+                // ペア成立
+                setTimeout(() => {
+                    card1.classList.add('matched');
+                    card2.classList.add('matched');
+                    
+                    matchedPairs++;
+                    flippedCards = [];
+                    isLockBoard = false;
+
+                    // 全ペア成立でクリア
+                    const setting = DIFFICULTY_SETTINGS[currentDifficulty];
+                    if (matchedPairs === setting.pairs) {
+                        handleGameClear();
+                    }
+                }, 400);
+            } else {
+                // ペア不成立
+                setTimeout(() => {
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                    flippedCards = [];
+                    isLockBoard = false;
+                }, 1000);
+            }
+        }
+
+        // スコア計算ロジック
+        function calculateScore(moves, time, difficulty) {
+            const setting = DIFFICULTY_SETTINGS[difficulty];
+            
+            // 1. 基礎スコア（手数に応じたスコア）
+            // 完璧な手数（ペア数と同じ）なら 5000点。1手増えるごとに-150点ペナルティ。
+            const perfectMoves = setting.pairs;
+            const extraMoves = Math.max(0, moves - perfectMoves);
+            const moveScore = Math.max(1000, 5000 - (extraMoves * 150));
+
+            // 2. タイムボーナス（時間に応じたボーナス）
+            // 目標タイムより早くクリアすれば、1秒につき 150点 のボーナス！
+            // 目標より遅くてもペナルティはなく、0点になります。
+            const targetTime = setting.targetTime;
+            const timeDiff = targetTime - time;
+            const timeBonus = timeDiff > 0 ? timeDiff * 150 : 0;
+
+            // 3. 合計スコア
+            const totalScore = moveScore + timeBonus;
+
+            return {
+                total: totalScore,
+                bonus: timeBonus
+            };
+        }
+
+        // ゲームクリアの処理
+        function handleGameClear() {
+            stopTimer();
+
+            // 紙吹雪を振らせる！
+            triggerConfetti();
+
+            // スコアを計算
+            const scoreResult = calculateScore(moves, timer, currentDifficulty);
+            const totalScore = scoreResult.total;
+            const timeBonus = scoreResult.bonus;
+
+            // ハイスコアの検証と保存
+            const currentBest = bestScores[currentDifficulty];
+            if (currentBest === null || totalScore > currentBest) {
+                bestScores[currentDifficulty] = totalScore;
+                localStorage.setItem(`best_score_${currentDifficulty}`, totalScore);
+                updateBestScoresUI();
+            }
+
+            // モーダルへスコアを反映
+            document.getElementById('final-time').innerText = `${timer} 秒`;
+            document.getElementById('final-moves').innerText = `${moves} 回`;
+            document.getElementById('final-bonus').innerText = `+${timeBonus} 点`;
+            document.getElementById('final-score').innerText = `${totalScore} 点`;
+
+            // スコアに応じて星評価を決定（最大 3つ星）
+            const starContainer = document.getElementById('star-rating');
+            starContainer.innerHTML = '';
+            
+            let starCount = 1;
+            // 難易度ごとの星しきい値設定
+            const starThresholds = {
+                easy: { star3: 5000, star2: 3500 },
+                normal: { star3: 5000, star2: 3500 },
+                hard: { star3: 5000, star2: 3500 }
+            };
+
+            const threshold = starThresholds[currentDifficulty];
+            if (totalScore >= threshold.star3) {
+                starCount = 3; // タイムも手数もすばらしい！
+            } else if (totalScore >= threshold.star2) {
+                starCount = 2; // なかなか早い！
+            } else {
+                starCount = 1; // クリアできたね！
+            }
+
+            for (let i = 0; i < 3; i++) {
+                const star = document.createElement('span');
+                star.className = i < starCount ? 'text-yellow-400' : 'text-gray-300';
+                star.innerText = '★';
+                starContainer.appendChild(star);
+            }
+
+            // モーダルをふわっと表示
+            const modal = document.getElementById('clear-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('div').classList.remove('scale-90');
+                modal.querySelector('div').classList.add('scale-100');
+            }, 10);
+        }
+
+        // 紙吹雪エフェクト
+        function triggerConfetti() {
+            const end = Date.now() + (2 * 1000); // 2秒間
+
+            (function frame() {
+                confetti({
+                    particleCount: 4,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 },
+                    colors: ['#f59e0b', '#10b981', '#3b82f6', '#ec4899']
+                });
+                confetti({
+                    particleCount: 4,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 },
+                    colors: ['#f59e0b', '#10b981', '#3b82f6', '#ec4899']
+                });
+
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        }
+
+        // クリアモーダルを閉じて再スタート
+        function closeModalAndRestart() {
+            const modal = document.getElementById('clear-modal');
+            modal.classList.add('opacity-0');
+            modal.querySelector('div').classList.add('scale-90');
+            modal.querySelector('div').classList.remove('scale-100');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                resetGame();
+            }, 300);
+        }
+
+        // 読み込み完了時に最初のゲームを開始
+        window.onload = function() {
+            setDifficulty('normal');
+        };
+    </script>
+</body>
+</html>
